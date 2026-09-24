@@ -54,3 +54,13 @@ sql:
             go_type:
               type: "time.Time"
               pointer: true
+          # Same story for date (todo.due_date): pgtype.Date otherwise. pgx scans
+          # a date as midnight UTC, so read it with .Format("2006-01-02") and
+          # never compare it against a time.Local value.
+          - db_type: "date"
+            go_type: "time.Time"
+          - db_type: "date"
+            nullable: true
+            go_type:
+              type: "time.Time"
+              pointer: true

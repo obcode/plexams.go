@@ -1,0 +1,143 @@
+# Todos: the planners' own task list, per semester. A todo can be linked to phases,
+# planning conditions, exams, teachers, rooms, ... and shown next to them in the GUI.
+# Descriptions and comments are Markdown; the GUI renders and sanitises them.
+#
+# Todo mutations stay allowed on a read-only semester (they change no planning
+# data), but VIEWERs still cannot write them.
+
+enum TodoPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum TodoLinkKind {
+  "key: phase key, e.g. phase1"
+  PHASE
+  "key: planning condition key, e.g. roomPlanPublished"
+  CONDITION
+  "key: ancode"
+  EXAM
+  "key: ZPA person id"
+  TEACHER
+  "key: room name"
+  ROOM
+  "key: study program shortname"
+  STUDY_PROGRAM
+  "key: ISO date, e.g. 2026-07-13"
+  DAY
+  "key: mtknr"
+  NTA
+  "key: http(s) URL"
+  URL
+  "key: Jira issue key, e.g. PLEX-42"
+  JIRA
+}
+
+type TodoLink {
+  kind: TodoLinkKind!
+  key: String!
+  "Display text, resolved on read (the key if the target no longer exists)."
+  label: String!
+  "Where the GUI should link to, if anywhere (a GUI path or an external URL)."
+  href: String
+}
+
+type TodoComment {
+  id: Int!
+  todoId: Int!
+  body: String!
+  "Email of the author."
+  author: String!
+  authorName: String!
+  createdAt: Time!
+  editedAt: Time
+}
+
+type Todo {
+  id: Int!
+  title: String!
+  description: String!
+  priority: TodoPriority!
+  "ISO date (YYYY-MM-DD)."
+  dueDate: String
+  labels: [String!]!
+  "Comes back (open) in every following semester on carry-over."
+  recurring: Boolean!
+  done: Boolean!
+  doneAt: Time
+  doneBy: String
+  doneByName: String
+  createdAt: Time!
+  createdBy: String!
+  createdByName: String!
+  updatedAt: Time!
+  "The semester this todo was carried over from, if any."
+  carriedFromSemester: String
+  links: [TodoLink!]!
+  commentCount: Int!
+  comments: [TodoComment!]!
+}
+
+type TodoLinkCount {
+  key: String!
+  count: Int!
+}
+
+input TodoLinkInput {
+  kind: TodoLinkKind!
+  key: String!
+}
+
+input TodoInput {
+  title: String!
+  description: String
+  priority: TodoPriority
+  "ISO date (YYYY-MM-DD); null or empty = no due date."
+  dueDate: String
+  labels: [String!]
+  recurring: Boolean
+  "On create: the initial links. On update: replaces all links when given."
+  links: [TodoLinkInput!]
+}
+
+input TodoFilter {
+  "true = done only, false = open only, null = all."
+  done: Boolean
+  label: String
+  link: TodoLinkInput
+}
+
+extend type Query {
+  "The todos of the semester: open first, then by priority, due date and age."
+  todos(filter: TodoFilter): [Todo!]!
+  todo(id: Int!): Todo
+  "All labels used in the semester, for autocompletion."
+  todoLabels: [String!]!
+  "Up to 20 link targets of a kind matching the query, for the link picker."
+  todoLinkSuggestions(kind: TodoLinkKind!, query: String!): [TodoLink!]!
+  "Number of open todos per link key of a kind, e.g. per phase."
+  openTodoCountsByLink(kind: TodoLinkKind!): [TodoLinkCount!]!
+  "How many todos carryOverTodos(fromSemester) would copy into the active semester."
+  todoCarryOverCandidates(fromSemester: String!): Int!
+}
+
+extend type Mutation {
+  createTodo(input: TodoInput!): Todo!
+  updateTodo(id: Int!, input: TodoInput!): Todo!
+  setTodoDone(id: Int!, done: Boolean!): Todo!
+  "Only the creator or an ADMIN may delete a todo."
+  deleteTodo(id: Int!): Boolean!
+  addTodoComment(todoId: Int!, body: String!): TodoComment!
+  "Only the author may edit a comment."
+  updateTodoComment(id: Int!, body: String!): TodoComment!
+  addTodoLink(todoId: Int!, link: TodoLinkInput!): Todo!
+  removeTodoLink(todoId: Int!, link: TodoLinkInput!): Todo!
+  """
+  Copy the open and the recurring todos of fromSemester into the active semester.
+  Links to exams and days and the due date are dropped (they belong to that
+  semester); originals that are still open are closed with a comment. Idempotent.
+  Returns the number of todos copied.
+  """
+  carryOverTodos(fromSemester: String!): Int!
+}

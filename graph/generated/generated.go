@@ -36,6 +36,7 @@ type ResolverRoot interface {
 	Query() QueryResolver
 	RoomsForSlot() RoomsForSlotResolver
 	Subscription() SubscriptionResolver
+	Todo() TodoResolver
 }
 
 type DirectiveRoot struct {
@@ -744,19 +745,24 @@ type ComplexityRoot struct {
 		AddRoom                       func(childComplexity int, input model.RoomInput) int
 		AddRoomRequest                func(childComplexity int, room string, starttime time.Time, from time.Time, until time.Time) int
 		AddStudentReg                 func(childComplexity int, program string, ancode int, mtknr string) int
+		AddTodoComment                func(childComplexity int, todoID int, body string) int
+		AddTodoLink                   func(childComplexity int, todoID int, link model.TodoLinkInput) int
 		AddZpaExamToPlan              func(childComplexity int, ancode int) int
 		ApplyRoomRequestsPreview      func(childComplexity int, force bool) int
 		BlockRoomAt                   func(childComplexity int, room string, starttime time.Time, reason *string) int
 		BlockRoomAtTimes              func(childComplexity int, room string, starttimes []*time.Time, reason *string) int
+		CarryOverTodos                func(childComplexity int, fromSemester string) int
 		ClearEmailAttachments         func(childComplexity int, kind string) int
 		ConnectPreplanExamToAncode    func(childComplexity int, id int, ancode int) int
 		CreateJiraIssue               func(childComplexity int, project *string, issueType *string, summary string, description *string) int
 		CreateSemester                func(childComplexity int, semester string, input model.SemesterConfigInputData) int
+		CreateTodo                    func(childComplexity int, input model.TodoInput) int
 		DeleteAdditionalExam          func(childComplexity int, ancode int) int
 		DeleteInvigilatorConstraints  func(childComplexity int, teacherID int) int
 		DeletePreplanExam             func(childComplexity int, id int) int
 		DeleteSpecialInterest         func(childComplexity int, name string) int
 		DeleteStudyProgram            func(childComplexity int, shortname string) int
+		DeleteTodo                    func(childComplexity int, id int) int
 		DisconnectPreplanExam         func(childComplexity int, id int) int
 		Exahm                         func(childComplexity int, ancode int) int
 		FixExamRoomsPhase             func(childComplexity int) int
@@ -783,6 +789,7 @@ type ComplexityRoot struct {
 		RemovePrimussAncode           func(childComplexity int, zpaAncode int, program string) int
 		RemoveStudentConflictDecision func(childComplexity int, ancode1 int, ancode2 int, mtknr string) int
 		RemoveStudentReg              func(childComplexity int, program string, ancode int, mtknr string) int
+		RemoveTodoLink                func(childComplexity int, todoID int, link model.TodoLinkInput) int
 		RemoveUser                    func(childComplexity int, email string) int
 		ResetAssembledExams           func(childComplexity int) int
 		ResetDryRunTestMail           func(childComplexity int) int
@@ -824,6 +831,7 @@ type ComplexityRoot struct {
 		SetSemesterPlaner             func(childComplexity int, name *string, email *string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) int
 		SetSemesterReadOnly           func(childComplexity int, readOnly bool) int
 		SetStudentConflictDecision    func(childComplexity int, ancode1 int, ancode2 int, mtknr string, decision model.ConflictDecision) int
+		SetTodoDone                   func(childComplexity int, id int, done bool) int
 		SetUser                       func(childComplexity int, email string, name string, role model.Role) int
 		TransitionJiraIssue           func(childComplexity int, key string, transitionID string) int
 		UnblockRoomAt                 func(childComplexity int, room string, starttime time.Time) int
@@ -833,6 +841,8 @@ type ComplexityRoot struct {
 		UpdatePreplanExam             func(childComplexity int, id int, input model.PreplanExamInput) int
 		UpdateRoom                    func(childComplexity int, input model.RoomInput) int
 		UpdateRoomRequestTime         func(childComplexity int, room string, starttime time.Time, from time.Time, until time.Time) int
+		UpdateTodo                    func(childComplexity int, id int, input model.TodoInput) int
+		UpdateTodoComment             func(childComplexity int, id int, body string) int
 		UpsertAdditionalExam          func(childComplexity int, input model.AdditionalExamInput) int
 		UpsertSpecialInterest         func(childComplexity int, input model.SpecialInterestInput) int
 		UpsertStudyProgram            func(childComplexity int, input model.StudyProgramInput) int
@@ -1237,6 +1247,7 @@ type ComplexityRoot struct {
 		NtaRoomAloneWaivers           func(childComplexity int) int
 		Ntas                          func(childComplexity int) int
 		NtasWithRegs                  func(childComplexity int) int
+		OpenTodoCountsByLink          func(childComplexity int, kind model.TodoLinkKind) int
 		PermanentNonInvigilators      func(childComplexity int) int
 		Planer                        func(childComplexity int) int
 		PlannedExam                   func(childComplexity int, ancode int) int
@@ -1286,6 +1297,11 @@ type ComplexityRoot struct {
 		SyncLog                       func(childComplexity int, limit *int) int
 		Teacher                       func(childComplexity int, id int) int
 		Teachers                      func(childComplexity int, fromZpa *bool) int
+		Todo                          func(childComplexity int, id int) int
+		TodoCarryOverCandidates       func(childComplexity int, fromSemester string) int
+		TodoLabels                    func(childComplexity int) int
+		TodoLinkSuggestions           func(childComplexity int, kind model.TodoLinkKind, query string) int
+		Todos                         func(childComplexity int, filter *model.TodoFilter) int
 		UnplacedExams                 func(childComplexity int) int
 		Users                         func(childComplexity int) int
 		ValidatePreplanAssignment     func(childComplexity int) int
@@ -1681,6 +1697,50 @@ type ComplexityRoot struct {
 		Shortname    func(childComplexity int) int
 	}
 
+	Todo struct {
+		CarriedFromSemester func(childComplexity int) int
+		CommentCount        func(childComplexity int) int
+		Comments            func(childComplexity int) int
+		CreatedAt           func(childComplexity int) int
+		CreatedBy           func(childComplexity int) int
+		CreatedByName       func(childComplexity int) int
+		Description         func(childComplexity int) int
+		Done                func(childComplexity int) int
+		DoneAt              func(childComplexity int) int
+		DoneBy              func(childComplexity int) int
+		DoneByName          func(childComplexity int) int
+		DueDate             func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		Labels              func(childComplexity int) int
+		Links               func(childComplexity int) int
+		Priority            func(childComplexity int) int
+		Recurring           func(childComplexity int) int
+		Title               func(childComplexity int) int
+		UpdatedAt           func(childComplexity int) int
+	}
+
+	TodoComment struct {
+		Author     func(childComplexity int) int
+		AuthorName func(childComplexity int) int
+		Body       func(childComplexity int) int
+		CreatedAt  func(childComplexity int) int
+		EditedAt   func(childComplexity int) int
+		ID         func(childComplexity int) int
+		TodoID     func(childComplexity int) int
+	}
+
+	TodoLink struct {
+		Href  func(childComplexity int) int
+		Key   func(childComplexity int) int
+		Kind  func(childComplexity int) int
+		Label func(childComplexity int) int
+	}
+
+	TodoLinkCount struct {
+		Count func(childComplexity int) int
+		Key   func(childComplexity int) int
+	}
+
 	UnplacedExam struct {
 		Ancode    func(childComplexity int) int
 		Mtknrs    func(childComplexity int) int
@@ -1915,6 +1975,15 @@ type MutationResolver interface {
 	UpsertStudyProgram(ctx context.Context, input model.StudyProgramInput) (*model.StudyProgram, error)
 	DeleteStudyProgram(ctx context.Context, shortname string) (bool, error)
 	SeedStudyProgramsFromConfig(ctx context.Context) (int, error)
+	CreateTodo(ctx context.Context, input model.TodoInput) (*model.Todo, error)
+	UpdateTodo(ctx context.Context, id int, input model.TodoInput) (*model.Todo, error)
+	SetTodoDone(ctx context.Context, id int, done bool) (*model.Todo, error)
+	DeleteTodo(ctx context.Context, id int) (bool, error)
+	AddTodoComment(ctx context.Context, todoID int, body string) (*model.TodoComment, error)
+	UpdateTodoComment(ctx context.Context, id int, body string) (*model.TodoComment, error)
+	AddTodoLink(ctx context.Context, todoID int, link model.TodoLinkInput) (*model.Todo, error)
+	RemoveTodoLink(ctx context.Context, todoID int, link model.TodoLinkInput) (*model.Todo, error)
+	CarryOverTodos(ctx context.Context, fromSemester string) (int, error)
 	AddZpaExamToPlan(ctx context.Context, ancode int) (bool, error)
 	RmZpaExamFromPlan(ctx context.Context, ancode int) (bool, error)
 }
@@ -2036,6 +2105,12 @@ type QueryResolver interface {
 	StudentsByName(ctx context.Context, regex string) ([]*model.Student, error)
 	Students(ctx context.Context) ([]*model.Student, error)
 	StudyPrograms(ctx context.Context) ([]*model.StudyProgram, error)
+	Todos(ctx context.Context, filter *model.TodoFilter) ([]*model.Todo, error)
+	Todo(ctx context.Context, id int) (*model.Todo, error)
+	TodoLabels(ctx context.Context) ([]string, error)
+	TodoLinkSuggestions(ctx context.Context, kind model.TodoLinkKind, query string) ([]*model.TodoLink, error)
+	OpenTodoCountsByLink(ctx context.Context, kind model.TodoLinkKind) ([]*model.TodoLinkCount, error)
+	TodoCarryOverCandidates(ctx context.Context, fromSemester string) (int, error)
 	Teacher(ctx context.Context, id int) (*model.Teacher, error)
 	Teachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error)
 	Invigilators(ctx context.Context) ([]*model.ZPAInvigilator, error)
@@ -2112,6 +2187,9 @@ type SubscriptionResolver interface {
 	ImportInvigilatorRequirementsFromZpa(ctx context.Context) (<-chan *model.LogLine, error)
 	ImportStudentsFromZpa(ctx context.Context) (<-chan *model.LogLine, error)
 	TriggerScheduledSync(ctx context.Context) (<-chan *model.LogLine, error)
+}
+type TodoResolver interface {
+	Comments(ctx context.Context, obj *model.Todo) ([]*model.TodoComment, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -5057,6 +5135,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddStudentReg(childComplexity, args["program"].(string), args["ancode"].(int), args["mtknr"].(string)), true
+	case "Mutation.addTodoComment":
+		if e.ComplexityRoot.Mutation.AddTodoComment == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addTodoComment_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AddTodoComment(childComplexity, args["todoId"].(int), args["body"].(string)), true
+	case "Mutation.addTodoLink":
+		if e.ComplexityRoot.Mutation.AddTodoLink == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addTodoLink_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AddTodoLink(childComplexity, args["todoId"].(int), args["link"].(model.TodoLinkInput)), true
 	case "Mutation.addZpaExamToPlan":
 		if e.ComplexityRoot.Mutation.AddZpaExamToPlan == nil {
 			break
@@ -5101,6 +5201,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.BlockRoomAtTimes(childComplexity, args["room"].(string), args["starttimes"].([]*time.Time), args["reason"].(*string)), true
+	case "Mutation.carryOverTodos":
+		if e.ComplexityRoot.Mutation.CarryOverTodos == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_carryOverTodos_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CarryOverTodos(childComplexity, args["fromSemester"].(string)), true
 	case "Mutation.clearEmailAttachments":
 		if e.ComplexityRoot.Mutation.ClearEmailAttachments == nil {
 			break
@@ -5145,6 +5256,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateSemester(childComplexity, args["semester"].(string), args["input"].(model.SemesterConfigInputData)), true
+	case "Mutation.createTodo":
+		if e.ComplexityRoot.Mutation.CreateTodo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createTodo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateTodo(childComplexity, args["input"].(model.TodoInput)), true
 	case "Mutation.deleteAdditionalExam":
 		if e.ComplexityRoot.Mutation.DeleteAdditionalExam == nil {
 			break
@@ -5200,6 +5322,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteStudyProgram(childComplexity, args["shortname"].(string)), true
+	case "Mutation.deleteTodo":
+		if e.ComplexityRoot.Mutation.DeleteTodo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteTodo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteTodo(childComplexity, args["id"].(int)), true
 	case "Mutation.disconnectPreplanExam":
 		if e.ComplexityRoot.Mutation.DisconnectPreplanExam == nil {
 			break
@@ -5461,6 +5594,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RemoveStudentReg(childComplexity, args["program"].(string), args["ancode"].(int), args["mtknr"].(string)), true
+	case "Mutation.removeTodoLink":
+		if e.ComplexityRoot.Mutation.RemoveTodoLink == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeTodoLink_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemoveTodoLink(childComplexity, args["todoId"].(int), args["link"].(model.TodoLinkInput)), true
 	case "Mutation.removeUser":
 		if e.ComplexityRoot.Mutation.RemoveUser == nil {
 			break
@@ -5867,6 +6011,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetStudentConflictDecision(childComplexity, args["ancode1"].(int), args["ancode2"].(int), args["mtknr"].(string), args["decision"].(model.ConflictDecision)), true
+	case "Mutation.setTodoDone":
+		if e.ComplexityRoot.Mutation.SetTodoDone == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setTodoDone_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetTodoDone(childComplexity, args["id"].(int), args["done"].(bool)), true
 	case "Mutation.setUser":
 		if e.ComplexityRoot.Mutation.SetUser == nil {
 			break
@@ -5961,6 +6116,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateRoomRequestTime(childComplexity, args["room"].(string), args["starttime"].(time.Time), args["from"].(time.Time), args["until"].(time.Time)), true
+	case "Mutation.updateTodo":
+		if e.ComplexityRoot.Mutation.UpdateTodo == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateTodo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateTodo(childComplexity, args["id"].(int), args["input"].(model.TodoInput)), true
+	case "Mutation.updateTodoComment":
+		if e.ComplexityRoot.Mutation.UpdateTodoComment == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateTodoComment_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateTodoComment(childComplexity, args["id"].(int), args["body"].(string)), true
 	case "Mutation.upsertAdditionalExam":
 		if e.ComplexityRoot.Mutation.UpsertAdditionalExam == nil {
 			break
@@ -7799,6 +7976,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.NtasWithRegs(childComplexity), true
+	case "Query.openTodoCountsByLink":
+		if e.ComplexityRoot.Query.OpenTodoCountsByLink == nil {
+			break
+		}
+
+		args, err := ec.field_Query_openTodoCountsByLink_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.OpenTodoCountsByLink(childComplexity, args["kind"].(model.TodoLinkKind)), true
 	case "Query.permanentNonInvigilators":
 		if e.ComplexityRoot.Query.PermanentNonInvigilators == nil {
 			break
@@ -8193,6 +8381,56 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Teachers(childComplexity, args["fromZPA"].(*bool)), true
+	case "Query.todo":
+		if e.ComplexityRoot.Query.Todo == nil {
+			break
+		}
+
+		args, err := ec.field_Query_todo_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Todo(childComplexity, args["id"].(int)), true
+	case "Query.todoCarryOverCandidates":
+		if e.ComplexityRoot.Query.TodoCarryOverCandidates == nil {
+			break
+		}
+
+		args, err := ec.field_Query_todoCarryOverCandidates_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.TodoCarryOverCandidates(childComplexity, args["fromSemester"].(string)), true
+	case "Query.todoLabels":
+		if e.ComplexityRoot.Query.TodoLabels == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.TodoLabels(childComplexity), true
+	case "Query.todoLinkSuggestions":
+		if e.ComplexityRoot.Query.TodoLinkSuggestions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_todoLinkSuggestions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.TodoLinkSuggestions(childComplexity, args["kind"].(model.TodoLinkKind), args["query"].(string)), true
+	case "Query.todos":
+		if e.ComplexityRoot.Query.Todos == nil {
+			break
+		}
+
+		args, err := ec.field_Query_todos_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Todos(childComplexity, args["filter"].(*model.TodoFilter)), true
 	case "Query.unplacedExams":
 		if e.ComplexityRoot.Query.UnplacedExams == nil {
 			break
@@ -10066,6 +10304,202 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Teacher.Shortname(childComplexity), true
 
+	case "Todo.carriedFromSemester":
+		if e.ComplexityRoot.Todo.CarriedFromSemester == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.CarriedFromSemester(childComplexity), true
+	case "Todo.commentCount":
+		if e.ComplexityRoot.Todo.CommentCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.CommentCount(childComplexity), true
+	case "Todo.comments":
+		if e.ComplexityRoot.Todo.Comments == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.Comments(childComplexity), true
+	case "Todo.createdAt":
+		if e.ComplexityRoot.Todo.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.CreatedAt(childComplexity), true
+	case "Todo.createdBy":
+		if e.ComplexityRoot.Todo.CreatedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.CreatedBy(childComplexity), true
+	case "Todo.createdByName":
+		if e.ComplexityRoot.Todo.CreatedByName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.CreatedByName(childComplexity), true
+	case "Todo.description":
+		if e.ComplexityRoot.Todo.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.Description(childComplexity), true
+	case "Todo.done":
+		if e.ComplexityRoot.Todo.Done == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.Done(childComplexity), true
+	case "Todo.doneAt":
+		if e.ComplexityRoot.Todo.DoneAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.DoneAt(childComplexity), true
+	case "Todo.doneBy":
+		if e.ComplexityRoot.Todo.DoneBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.DoneBy(childComplexity), true
+	case "Todo.doneByName":
+		if e.ComplexityRoot.Todo.DoneByName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.DoneByName(childComplexity), true
+	case "Todo.dueDate":
+		if e.ComplexityRoot.Todo.DueDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.DueDate(childComplexity), true
+	case "Todo.id":
+		if e.ComplexityRoot.Todo.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.ID(childComplexity), true
+	case "Todo.labels":
+		if e.ComplexityRoot.Todo.Labels == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.Labels(childComplexity), true
+	case "Todo.links":
+		if e.ComplexityRoot.Todo.Links == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.Links(childComplexity), true
+	case "Todo.priority":
+		if e.ComplexityRoot.Todo.Priority == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.Priority(childComplexity), true
+	case "Todo.recurring":
+		if e.ComplexityRoot.Todo.Recurring == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.Recurring(childComplexity), true
+	case "Todo.title":
+		if e.ComplexityRoot.Todo.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.Title(childComplexity), true
+	case "Todo.updatedAt":
+		if e.ComplexityRoot.Todo.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Todo.UpdatedAt(childComplexity), true
+
+	case "TodoComment.author":
+		if e.ComplexityRoot.TodoComment.Author == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoComment.Author(childComplexity), true
+	case "TodoComment.authorName":
+		if e.ComplexityRoot.TodoComment.AuthorName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoComment.AuthorName(childComplexity), true
+	case "TodoComment.body":
+		if e.ComplexityRoot.TodoComment.Body == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoComment.Body(childComplexity), true
+	case "TodoComment.createdAt":
+		if e.ComplexityRoot.TodoComment.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoComment.CreatedAt(childComplexity), true
+	case "TodoComment.editedAt":
+		if e.ComplexityRoot.TodoComment.EditedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoComment.EditedAt(childComplexity), true
+	case "TodoComment.id":
+		if e.ComplexityRoot.TodoComment.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoComment.ID(childComplexity), true
+	case "TodoComment.todoId":
+		if e.ComplexityRoot.TodoComment.TodoID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoComment.TodoID(childComplexity), true
+
+	case "TodoLink.href":
+		if e.ComplexityRoot.TodoLink.Href == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoLink.Href(childComplexity), true
+	case "TodoLink.key":
+		if e.ComplexityRoot.TodoLink.Key == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoLink.Key(childComplexity), true
+	case "TodoLink.kind":
+		if e.ComplexityRoot.TodoLink.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoLink.Kind(childComplexity), true
+	case "TodoLink.label":
+		if e.ComplexityRoot.TodoLink.Label == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoLink.Label(childComplexity), true
+
+	case "TodoLinkCount.count":
+		if e.ComplexityRoot.TodoLinkCount.Count == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoLinkCount.Count(childComplexity), true
+	case "TodoLinkCount.key":
+		if e.ComplexityRoot.TodoLinkCount.Key == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TodoLinkCount.Key(childComplexity), true
+
 	case "UnplacedExam.ancode":
 		if e.ComplexityRoot.UnplacedExam.Ancode == nil {
 			break
@@ -10574,6 +11008,9 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSemesterConfigInputData,
 		ec.unmarshalInputSpecialInterestInput,
 		ec.unmarshalInputStudyProgramInput,
+		ec.unmarshalInputTodoFilter,
+		ec.unmarshalInputTodoInput,
+		ec.unmarshalInputTodoLinkInput,
 	)
 	first := true
 
@@ -13881,6 +14318,150 @@ input StudyProgramInput {
   jointFaculty: String
 }
 `, BuiltIn: false},
+	{Name: "../todo.graphqls", Input: `# Todos: the planners' own task list, per semester. A todo can be linked to phases,
+# planning conditions, exams, teachers, rooms, ... and shown next to them in the GUI.
+# Descriptions and comments are Markdown; the GUI renders and sanitises them.
+#
+# Todo mutations stay allowed on a read-only semester (they change no planning
+# data), but VIEWERs still cannot write them.
+
+enum TodoPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum TodoLinkKind {
+  "key: phase key, e.g. phase1"
+  PHASE
+  "key: planning condition key, e.g. roomPlanPublished"
+  CONDITION
+  "key: ancode"
+  EXAM
+  "key: ZPA person id"
+  TEACHER
+  "key: room name"
+  ROOM
+  "key: study program shortname"
+  STUDY_PROGRAM
+  "key: ISO date, e.g. 2026-07-13"
+  DAY
+  "key: mtknr"
+  NTA
+  "key: http(s) URL"
+  URL
+  "key: Jira issue key, e.g. PLEX-42"
+  JIRA
+}
+
+type TodoLink {
+  kind: TodoLinkKind!
+  key: String!
+  "Display text, resolved on read (the key if the target no longer exists)."
+  label: String!
+  "Where the GUI should link to, if anywhere (a GUI path or an external URL)."
+  href: String
+}
+
+type TodoComment {
+  id: Int!
+  todoId: Int!
+  body: String!
+  "Email of the author."
+  author: String!
+  authorName: String!
+  createdAt: Time!
+  editedAt: Time
+}
+
+type Todo {
+  id: Int!
+  title: String!
+  description: String!
+  priority: TodoPriority!
+  "ISO date (YYYY-MM-DD)."
+  dueDate: String
+  labels: [String!]!
+  "Comes back (open) in every following semester on carry-over."
+  recurring: Boolean!
+  done: Boolean!
+  doneAt: Time
+  doneBy: String
+  doneByName: String
+  createdAt: Time!
+  createdBy: String!
+  createdByName: String!
+  updatedAt: Time!
+  "The semester this todo was carried over from, if any."
+  carriedFromSemester: String
+  links: [TodoLink!]!
+  commentCount: Int!
+  comments: [TodoComment!]!
+}
+
+type TodoLinkCount {
+  key: String!
+  count: Int!
+}
+
+input TodoLinkInput {
+  kind: TodoLinkKind!
+  key: String!
+}
+
+input TodoInput {
+  title: String!
+  description: String
+  priority: TodoPriority
+  "ISO date (YYYY-MM-DD); null or empty = no due date."
+  dueDate: String
+  labels: [String!]
+  recurring: Boolean
+  "On create: the initial links. On update: replaces all links when given."
+  links: [TodoLinkInput!]
+}
+
+input TodoFilter {
+  "true = done only, false = open only, null = all."
+  done: Boolean
+  label: String
+  link: TodoLinkInput
+}
+
+extend type Query {
+  "The todos of the semester: open first, then by priority, due date and age."
+  todos(filter: TodoFilter): [Todo!]!
+  todo(id: Int!): Todo
+  "All labels used in the semester, for autocompletion."
+  todoLabels: [String!]!
+  "Up to 20 link targets of a kind matching the query, for the link picker."
+  todoLinkSuggestions(kind: TodoLinkKind!, query: String!): [TodoLink!]!
+  "Number of open todos per link key of a kind, e.g. per phase."
+  openTodoCountsByLink(kind: TodoLinkKind!): [TodoLinkCount!]!
+  "How many todos carryOverTodos(fromSemester) would copy into the active semester."
+  todoCarryOverCandidates(fromSemester: String!): Int!
+}
+
+extend type Mutation {
+  createTodo(input: TodoInput!): Todo!
+  updateTodo(id: Int!, input: TodoInput!): Todo!
+  setTodoDone(id: Int!, done: Boolean!): Todo!
+  "Only the creator or an ADMIN may delete a todo."
+  deleteTodo(id: Int!): Boolean!
+  addTodoComment(todoId: Int!, body: String!): TodoComment!
+  "Only the author may edit a comment."
+  updateTodoComment(id: Int!, body: String!): TodoComment!
+  addTodoLink(todoId: Int!, link: TodoLinkInput!): Todo!
+  removeTodoLink(todoId: Int!, link: TodoLinkInput!): Todo!
+  """
+  Copy the open and the recurring todos of fromSemester into the active semester.
+  Links to exams and days and the due date are dropped (they belong to that
+  semester); originals that are still open are closed with a comment. Idempotent.
+  Returns the number of todos copied.
+  """
+  carryOverTodos(fromSemester: String!): Int!
+}
+`, BuiltIn: false},
 	{Name: "../validation.graphqls", Input: `"""ValidationLevel classifies a single validation finding."""
 enum ValidationLevel {
   INFO
@@ -16784,6 +17365,94 @@ func (ec *executionContext) childFields_Teacher(ctx context.Context, field graph
 	return nil, fmt.Errorf("no field named %q was found under type Teacher", field.Name)
 }
 
+func (ec *executionContext) childFields_Todo(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_Todo_id(ctx, field)
+	case "title":
+		return ec.fieldContext_Todo_title(ctx, field)
+	case "description":
+		return ec.fieldContext_Todo_description(ctx, field)
+	case "priority":
+		return ec.fieldContext_Todo_priority(ctx, field)
+	case "dueDate":
+		return ec.fieldContext_Todo_dueDate(ctx, field)
+	case "labels":
+		return ec.fieldContext_Todo_labels(ctx, field)
+	case "recurring":
+		return ec.fieldContext_Todo_recurring(ctx, field)
+	case "done":
+		return ec.fieldContext_Todo_done(ctx, field)
+	case "doneAt":
+		return ec.fieldContext_Todo_doneAt(ctx, field)
+	case "doneBy":
+		return ec.fieldContext_Todo_doneBy(ctx, field)
+	case "doneByName":
+		return ec.fieldContext_Todo_doneByName(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_Todo_createdAt(ctx, field)
+	case "createdBy":
+		return ec.fieldContext_Todo_createdBy(ctx, field)
+	case "createdByName":
+		return ec.fieldContext_Todo_createdByName(ctx, field)
+	case "updatedAt":
+		return ec.fieldContext_Todo_updatedAt(ctx, field)
+	case "carriedFromSemester":
+		return ec.fieldContext_Todo_carriedFromSemester(ctx, field)
+	case "links":
+		return ec.fieldContext_Todo_links(ctx, field)
+	case "commentCount":
+		return ec.fieldContext_Todo_commentCount(ctx, field)
+	case "comments":
+		return ec.fieldContext_Todo_comments(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Todo", field.Name)
+}
+
+func (ec *executionContext) childFields_TodoComment(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_TodoComment_id(ctx, field)
+	case "todoId":
+		return ec.fieldContext_TodoComment_todoId(ctx, field)
+	case "body":
+		return ec.fieldContext_TodoComment_body(ctx, field)
+	case "author":
+		return ec.fieldContext_TodoComment_author(ctx, field)
+	case "authorName":
+		return ec.fieldContext_TodoComment_authorName(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_TodoComment_createdAt(ctx, field)
+	case "editedAt":
+		return ec.fieldContext_TodoComment_editedAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type TodoComment", field.Name)
+}
+
+func (ec *executionContext) childFields_TodoLink(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "kind":
+		return ec.fieldContext_TodoLink_kind(ctx, field)
+	case "key":
+		return ec.fieldContext_TodoLink_key(ctx, field)
+	case "label":
+		return ec.fieldContext_TodoLink_label(ctx, field)
+	case "href":
+		return ec.fieldContext_TodoLink_href(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type TodoLink", field.Name)
+}
+
+func (ec *executionContext) childFields_TodoLinkCount(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "key":
+		return ec.fieldContext_TodoLinkCount_key(ctx, field)
+	case "count":
+		return ec.fieldContext_TodoLinkCount_count(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type TodoLinkCount", field.Name)
+}
+
 func (ec *executionContext) childFields_UnplacedExam(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "starttime":
@@ -17366,6 +18035,50 @@ func (ec *executionContext) field_Mutation_addStudentReg_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_addTodoComment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "todoId",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["todoId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "body",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["body"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_addTodoLink_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "todoId",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["todoId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "link",
+		func(ctx context.Context, v any) (model.TodoLinkInput, error) {
+			return ec.unmarshalNTodoLinkInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["link"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_addZpaExamToPlan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -17451,6 +18164,20 @@ func (ec *executionContext) field_Mutation_blockRoomAt_args(ctx context.Context,
 		return nil, err
 	}
 	args["reason"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_carryOverTodos_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "fromSemester",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["fromSemester"] = arg0
 	return args, nil
 }
 
@@ -17550,6 +18277,20 @@ func (ec *executionContext) field_Mutation_createSemester_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createTodo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.TodoInput, error) {
+			return ec.unmarshalNTodoInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteAdditionalExam_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -17617,6 +18358,20 @@ func (ec *executionContext) field_Mutation_deleteStudyProgram_args(ctx context.C
 		return nil, err
 	}
 	args["shortname"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteTodo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -18087,6 +18842,28 @@ func (ec *executionContext) field_Mutation_removeStudentReg_args(ctx context.Con
 		return nil, err
 	}
 	args["mtknr"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeTodoLink_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "todoId",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["todoId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "link",
+		func(ctx context.Context, v any) (model.TodoLinkInput, error) {
+			return ec.unmarshalNTodoLinkInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["link"] = arg1
 	return args, nil
 }
 
@@ -18810,6 +19587,28 @@ func (ec *executionContext) field_Mutation_setStudentConflictDecision_args(ctx c
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setTodoDone_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "done",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["done"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -18991,6 +19790,50 @@ func (ec *executionContext) field_Mutation_updateRoom_args(ctx context.Context, 
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateTodoComment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "body",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["body"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateTodo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.TodoInput, error) {
+			return ec.unmarshalNTodoInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
 	return args, nil
 }
 
@@ -19388,6 +20231,20 @@ func (ec *executionContext) field_Query_nta_args(ctx context.Context, rawArgs ma
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_openTodoCountsByLink_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (model.TodoLinkKind, error) {
+			return ec.unmarshalNTodoLinkKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_plannedExam_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19689,6 +20546,70 @@ func (ec *executionContext) field_Query_teachers_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["fromZPA"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_todoCarryOverCandidates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "fromSemester",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["fromSemester"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_todoLinkSuggestions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (model.TodoLinkKind, error) {
+			return ec.unmarshalNTodoLinkKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "query",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["query"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_todo_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_todos_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter",
+		func(ctx context.Context, v any) (*model.TodoFilter, error) {
+			return ec.unmarshalOTodoFilter2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoFilter(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg0
 	return args, nil
 }
 
@@ -35825,6 +36746,402 @@ func (ec *executionContext) fieldContext_Mutation_seedStudyProgramsFromConfig(_ 
 	return graphql.NewScalarFieldContext("Mutation", field, true, true, errors.New("field of type Int does not have child fields"))
 }
 
+func (ec *executionContext) _Mutation_createTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createTodo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateTodo(ctx, fc.Args["input"].(model.TodoInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+			return ec.marshalNTodo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Todo(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateTodo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateTodo(ctx, fc.Args["id"].(int), fc.Args["input"].(model.TodoInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+			return ec.marshalNTodo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Todo(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setTodoDone(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setTodoDone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetTodoDone(ctx, fc.Args["id"].(int), fc.Args["done"].(bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+			return ec.marshalNTodo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setTodoDone(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Todo(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setTodoDone_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_deleteTodo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteTodo(ctx, fc.Args["id"].(int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_deleteTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteTodo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addTodoComment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_addTodoComment(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AddTodoComment(ctx, fc.Args["todoId"].(int), fc.Args["body"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TodoComment) graphql.Marshaler {
+			return ec.marshalNTodoComment2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoComment(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_addTodoComment(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TodoComment(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addTodoComment_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateTodoComment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateTodoComment(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateTodoComment(ctx, fc.Args["id"].(int), fc.Args["body"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TodoComment) graphql.Marshaler {
+			return ec.marshalNTodoComment2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoComment(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateTodoComment(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TodoComment(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateTodoComment_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addTodoLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_addTodoLink(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AddTodoLink(ctx, fc.Args["todoId"].(int), fc.Args["link"].(model.TodoLinkInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+			return ec.marshalNTodo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_addTodoLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Todo(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addTodoLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeTodoLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_removeTodoLink(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemoveTodoLink(ctx, fc.Args["todoId"].(int), fc.Args["link"].(model.TodoLinkInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+			return ec.marshalNTodo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_removeTodoLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Todo(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeTodoLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_carryOverTodos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_carryOverTodos(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CarryOverTodos(ctx, fc.Args["fromSemester"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_carryOverTodos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_carryOverTodos_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addZpaExamToPlan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -45080,6 +46397,249 @@ func (ec *executionContext) fieldContext_Query_studyPrograms(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_todos(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_todos(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Todos(ctx, fc.Args["filter"].(*model.TodoFilter))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Todo) graphql.Marshaler {
+			return ec.marshalNTodo2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_todos(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Todo(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_todos_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_todo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_todo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Todo(ctx, fc.Args["id"].(int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+			return ec.marshalOTodo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Query_todo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Todo(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_todo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_todoLabels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_todoLabels(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().TodoLabels(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_todoLabels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Query_todoLinkSuggestions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_todoLinkSuggestions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().TodoLinkSuggestions(ctx, fc.Args["kind"].(model.TodoLinkKind), fc.Args["query"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TodoLink) graphql.Marshaler {
+			return ec.marshalNTodoLink2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_todoLinkSuggestions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TodoLink(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_todoLinkSuggestions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_openTodoCountsByLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_openTodoCountsByLink(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().OpenTodoCountsByLink(ctx, fc.Args["kind"].(model.TodoLinkKind))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TodoLinkCount) graphql.Marshaler {
+			return ec.marshalNTodoLinkCount2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkCountᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_openTodoCountsByLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TodoLinkCount(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_openTodoCountsByLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_todoCarryOverCandidates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_todoCarryOverCandidates(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().TodoCarryOverCandidates(ctx, fc.Args["fromSemester"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_todoCarryOverCandidates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_todoCarryOverCandidates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_teacher(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -52948,6 +54508,760 @@ func (ec *executionContext) fieldContext_Teacher_isActive(_ context.Context, fie
 	return graphql.NewScalarFieldContext("Teacher", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _Todo_id(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_title(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_description(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_description(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_priority(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_priority(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Priority, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.TodoPriority) graphql.Marshaler {
+			return ec.marshalNTodoPriority2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoPriority(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_priority(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type TodoPriority does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_dueDate(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_dueDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DueDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_dueDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_labels(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_labels(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Labels, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_labels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_recurring(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_recurring(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Recurring, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_recurring(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_done(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_done(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Done(), nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_done(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, true, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_doneAt(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_doneAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DoneAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_doneAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_doneBy(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_doneBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DoneBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_doneBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_doneByName(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_doneByName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DoneByName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_doneByName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_createdBy(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_createdBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_createdBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_createdByName(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_createdByName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedByName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_createdByName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_updatedAt(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_updatedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_carriedFromSemester(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_carriedFromSemester(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CarriedFromSemester, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_carriedFromSemester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_links(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_links(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Links, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TodoLink) graphql.Marshaler {
+			return ec.marshalNTodoLink2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_links(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TodoLink(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Todo_commentCount(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_commentCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CommentCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_commentCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Todo", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Todo_comments(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Todo_comments(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Todo().Comments(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TodoComment) graphql.Marshaler {
+			return ec.marshalNTodoComment2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoCommentᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Todo_comments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TodoComment(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TodoComment_id(ctx context.Context, field graphql.CollectedField, obj *model.TodoComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoComment_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoComment_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoComment", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _TodoComment_todoId(ctx context.Context, field graphql.CollectedField, obj *model.TodoComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoComment_todoId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TodoID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoComment_todoId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoComment", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _TodoComment_body(ctx context.Context, field graphql.CollectedField, obj *model.TodoComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoComment_body(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Body, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoComment_body(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TodoComment_author(ctx context.Context, field graphql.CollectedField, obj *model.TodoComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoComment_author(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Author, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoComment_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TodoComment_authorName(ctx context.Context, field graphql.CollectedField, obj *model.TodoComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoComment_authorName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoComment_authorName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoComment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TodoComment_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.TodoComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoComment_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoComment_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoComment", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _TodoComment_editedAt(ctx context.Context, field graphql.CollectedField, obj *model.TodoComment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoComment_editedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EditedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TodoComment_editedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoComment", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _TodoLink_kind(ctx context.Context, field graphql.CollectedField, obj *model.TodoLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoLink_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.TodoLinkKind) graphql.Marshaler {
+			return ec.marshalNTodoLinkKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoLink_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoLink", field, false, false, errors.New("field of type TodoLinkKind does not have child fields"))
+}
+
+func (ec *executionContext) _TodoLink_key(ctx context.Context, field graphql.CollectedField, obj *model.TodoLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoLink_key(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoLink_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoLink", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TodoLink_label(ctx context.Context, field graphql.CollectedField, obj *model.TodoLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoLink_label(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoLink_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoLink", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TodoLink_href(ctx context.Context, field graphql.CollectedField, obj *model.TodoLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoLink_href(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Href, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TodoLink_href(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoLink", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TodoLinkCount_key(ctx context.Context, field graphql.CollectedField, obj *model.TodoLinkCount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoLinkCount_key(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Key, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoLinkCount_key(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoLinkCount", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TodoLinkCount_count(ctx context.Context, field graphql.CollectedField, obj *model.TodoLinkCount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TodoLinkCount_count(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Count, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TodoLinkCount_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TodoLinkCount", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
 func (ec *executionContext) _UnplacedExam_starttime(ctx context.Context, field graphql.CollectedField, obj *model.UnplacedExam) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57271,6 +59585,159 @@ func (ec *executionContext) unmarshalInputStudyProgramInput(ctx context.Context,
 				return it, err
 			}
 			it.JointFaculty = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTodoFilter(ctx context.Context, obj any) (model.TodoFilter, error) {
+	var it model.TodoFilter
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"done", "label", "link"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "done":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("done"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Done = data
+		case "label":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("label"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Label = data
+		case "link":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("link"))
+			data, err := ec.unmarshalOTodoLinkInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Link = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTodoInput(ctx context.Context, obj any) (model.TodoInput, error) {
+	var it model.TodoInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"title", "description", "priority", "dueDate", "labels", "recurring", "links"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "priority":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("priority"))
+			data, err := ec.unmarshalOTodoPriority2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoPriority(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Priority = data
+		case "dueDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dueDate"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DueDate = data
+		case "labels":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("labels"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Labels = data
+		case "recurring":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("recurring"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Recurring = data
+		case "links":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("links"))
+			data, err := ec.unmarshalOTodoLinkInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Links = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTodoLinkInput(ctx context.Context, obj any) (model.TodoLinkInput, error) {
+	var it model.TodoLinkInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"kind", "key"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "kind":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kind"))
+			data, err := ec.unmarshalNTodoLinkKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkKind(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Kind = data
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
 		}
 	}
 	return it, nil
@@ -62894,6 +65361,69 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setTodoDone":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setTodoDone(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteTodo":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteTodo(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addTodoComment":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addTodoComment(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateTodoComment":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateTodoComment(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addTodoLink":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addTodoLink(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeTodoLink":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeTodoLink(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "carryOverTodos":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_carryOverTodos(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addZpaExamToPlan":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addZpaExamToPlan(ctx, field)
@@ -67847,6 +70377,138 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "todos":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_todos(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "todo":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_todo(ctx, field)
+				if res == graphql.RequiredNull {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "todoLabels":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_todoLabels(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "todoLinkSuggestions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_todoLinkSuggestions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "openTodoCountsByLink":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_openTodoCountsByLink(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "todoCarryOverCandidates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_todoCarryOverCandidates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "teacher":
 			field := field
 
@@ -70562,6 +73224,331 @@ func (ec *executionContext) _Teacher(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "isActive":
 			out.Values[i] = ec._Teacher_isActive(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var todoImplementors = []string{"Todo"}
+
+func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj *model.Todo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, todoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Todo")
+		case "id":
+			out.Values[i] = ec._Todo_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "title":
+			out.Values[i] = ec._Todo_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "description":
+			out.Values[i] = ec._Todo_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "priority":
+			out.Values[i] = ec._Todo_priority(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "dueDate":
+			out.Values[i] = ec._Todo_dueDate(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "labels":
+			out.Values[i] = ec._Todo_labels(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "recurring":
+			out.Values[i] = ec._Todo_recurring(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "done":
+			out.Values[i] = ec._Todo_done(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "doneAt":
+			out.Values[i] = ec._Todo_doneAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "doneBy":
+			out.Values[i] = ec._Todo_doneBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "doneByName":
+			out.Values[i] = ec._Todo_doneByName(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "createdAt":
+			out.Values[i] = ec._Todo_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "createdBy":
+			out.Values[i] = ec._Todo_createdBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "createdByName":
+			out.Values[i] = ec._Todo_createdByName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "updatedAt":
+			out.Values[i] = ec._Todo_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "carriedFromSemester":
+			out.Values[i] = ec._Todo_carriedFromSemester(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "links":
+			out.Values[i] = ec._Todo_links(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "commentCount":
+			out.Values[i] = ec._Todo_commentCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "comments":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Todo_comments(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.IsDeferred() {
+				deferredFieldSet.AddField(field)
+				fieldIndex := len(deferredFieldSet.Values) - 1
+				deferredFieldSet.Concurrently(fieldIndex, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, deferredFieldSet)
+				})
+
+				for _, deferrable := range field.Deferrables {
+					view, ok := deferLabelToView[deferrable.Label]
+					if !ok {
+						view = deferredFieldSet.NewView()
+						deferLabelToView[deferrable.Label] = view
+					}
+					view.AddIndices(fieldIndex)
+				}
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var todoCommentImplementors = []string{"TodoComment"}
+
+func (ec *executionContext) _TodoComment(ctx context.Context, sel ast.SelectionSet, obj *model.TodoComment) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, todoCommentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TodoComment")
+		case "id":
+			out.Values[i] = ec._TodoComment_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "todoId":
+			out.Values[i] = ec._TodoComment_todoId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "body":
+			out.Values[i] = ec._TodoComment_body(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "author":
+			out.Values[i] = ec._TodoComment_author(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "authorName":
+			out.Values[i] = ec._TodoComment_authorName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._TodoComment_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "editedAt":
+			out.Values[i] = ec._TodoComment_editedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var todoLinkImplementors = []string{"TodoLink"}
+
+func (ec *executionContext) _TodoLink(ctx context.Context, sel ast.SelectionSet, obj *model.TodoLink) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, todoLinkImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TodoLink")
+		case "kind":
+			out.Values[i] = ec._TodoLink_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "key":
+			out.Values[i] = ec._TodoLink_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._TodoLink_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "href":
+			out.Values[i] = ec._TodoLink_href(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var todoLinkCountImplementors = []string{"TodoLinkCount"}
+
+func (ec *executionContext) _TodoLinkCount(ctx context.Context, sel ast.SelectionSet, obj *model.TodoLinkCount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, todoLinkCountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TodoLinkCount")
+		case "key":
+			out.Values[i] = ec._TodoLinkCount_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._TodoLinkCount_count(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -75263,6 +78250,153 @@ func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel
 	return res
 }
 
+func (ec *executionContext) marshalNTodo2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx context.Context, sel ast.SelectionSet, v model.Todo) graphql.Marshaler {
+	return ec._Todo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Todo) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNTodo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTodo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx context.Context, sel ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Todo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTodoComment2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoComment(ctx context.Context, sel ast.SelectionSet, v model.TodoComment) graphql.Marshaler {
+	return ec._TodoComment(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTodoComment2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoCommentᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TodoComment) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNTodoComment2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoComment(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTodoComment2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoComment(ctx context.Context, sel ast.SelectionSet, v *model.TodoComment) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TodoComment(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTodoInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoInput(ctx context.Context, v any) (model.TodoInput, error) {
+	res, err := ec.unmarshalInputTodoInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTodoLink2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TodoLink) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNTodoLink2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLink(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTodoLink2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLink(ctx context.Context, sel ast.SelectionSet, v *model.TodoLink) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TodoLink(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTodoLinkCount2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TodoLinkCount) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNTodoLinkCount2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkCount(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTodoLinkCount2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkCount(ctx context.Context, sel ast.SelectionSet, v *model.TodoLinkCount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TodoLinkCount(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTodoLinkInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkInput(ctx context.Context, v any) (model.TodoLinkInput, error) {
+	res, err := ec.unmarshalInputTodoLinkInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNTodoLinkInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkInput(ctx context.Context, v any) (*model.TodoLinkInput, error) {
+	res, err := ec.unmarshalInputTodoLinkInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNTodoLinkKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkKind(ctx context.Context, v any) (model.TodoLinkKind, error) {
+	var res model.TodoLinkKind
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTodoLinkKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkKind(ctx context.Context, sel ast.SelectionSet, v model.TodoLinkKind) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNTodoPriority2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoPriority(ctx context.Context, v any) (model.TodoPriority, error) {
+	var res model.TodoPriority
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTodoPriority2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoPriority(ctx context.Context, sel ast.SelectionSet, v model.TodoPriority) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNUnplacedExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnplacedExamᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.UnplacedExam) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -76576,6 +79710,62 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 	_ = ctx
 	res := graphql.MarshalTime(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOTodo2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodo(ctx context.Context, sel ast.SelectionSet, v *model.Todo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Todo(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTodoFilter2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoFilter(ctx context.Context, v any) (*model.TodoFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTodoFilter(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOTodoLinkInput2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkInputᚄ(ctx context.Context, v any) ([]*model.TodoLinkInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]*model.TodoLinkInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNTodoLinkInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOTodoLinkInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoLinkInput(ctx context.Context, v any) (*model.TodoLinkInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTodoLinkInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOTodoPriority2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoPriority(ctx context.Context, v any) (*model.TodoPriority, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.TodoPriority)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTodoPriority2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTodoPriority(ctx context.Context, sel ast.SelectionSet, v *model.TodoPriority) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOValidationReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐValidationReport(ctx context.Context, sel ast.SelectionSet, v *model.ValidationReport) graphql.Marshaler {

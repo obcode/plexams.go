@@ -604,6 +604,41 @@ type Teacher struct {
 	Fk           string
 }
 
+type Todo struct {
+	SemesterID          string
+	ID                  int64
+	Title               string
+	Description         string
+	Priority            string
+	DueDate             *time.Time
+	Labels              []string
+	Recurring           bool
+	DoneAt              *time.Time
+	DoneBy              *string
+	CreatedAt           time.Time
+	CreatedBy           string
+	UpdatedAt           time.Time
+	CarriedFromSemester *string
+	CarriedFromID       *int64
+}
+
+type TodoComment struct {
+	SemesterID string
+	TodoID     int64
+	ID         int64
+	Body       string
+	Author     string
+	CreatedAt  time.Time
+	EditedAt   *time.Time
+}
+
+type TodoLink struct {
+	SemesterID string
+	TodoID     int64
+	Kind       string
+	Key        string
+}
+
 type UnplacedExam struct {
 	SemesterID string
 	Ancode     int

@@ -1654,6 +1654,55 @@ type StudyProgramInput struct {
 type Subscription struct {
 }
 
+type TodoComment struct {
+	ID     int    `json:"id"`
+	TodoID int    `json:"todoId"`
+	Body   string `json:"body"`
+	// Email of the author.
+	Author     string     `json:"author"`
+	AuthorName string     `json:"authorName"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	EditedAt   *time.Time `json:"editedAt,omitempty"`
+}
+
+type TodoFilter struct {
+	// true = done only, false = open only, null = all.
+	Done  *bool          `json:"done,omitempty"`
+	Label *string        `json:"label,omitempty"`
+	Link  *TodoLinkInput `json:"link,omitempty"`
+}
+
+type TodoInput struct {
+	Title       string        `json:"title"`
+	Description *string       `json:"description,omitempty"`
+	Priority    *TodoPriority `json:"priority,omitempty"`
+	// ISO date (YYYY-MM-DD); null or empty = no due date.
+	DueDate   *string  `json:"dueDate,omitempty"`
+	Labels    []string `json:"labels,omitempty"`
+	Recurring *bool    `json:"recurring,omitempty"`
+	// On create: the initial links. On update: replaces all links when given.
+	Links []*TodoLinkInput `json:"links,omitempty"`
+}
+
+type TodoLink struct {
+	Kind TodoLinkKind `json:"kind"`
+	Key  string       `json:"key"`
+	// Display text, resolved on read (the key if the target no longer exists).
+	Label string `json:"label"`
+	// Where the GUI should link to, if anywhere (a GUI path or an external URL).
+	Href *string `json:"href,omitempty"`
+}
+
+type TodoLinkCount struct {
+	Key   string `json:"key"`
+	Count int    `json:"count"`
+}
+
+type TodoLinkInput struct {
+	Kind TodoLinkKind `json:"kind"`
+	Key  string       `json:"key"`
+}
+
 // UnplacedExamReason is the reason a single exam ended up unplaced in a generation run.
 type UnplacedExamReason struct {
 	Ancode int    `json:"ancode"`
@@ -2287,6 +2336,144 @@ func (e *SlotTimeConstraintMode) UnmarshalJSON(b []byte) error {
 }
 
 func (e SlotTimeConstraintMode) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type TodoLinkKind string
+
+const (
+	// key: phase key, e.g. phase1
+	TodoLinkKindPhase TodoLinkKind = "PHASE"
+	// key: planning condition key, e.g. roomPlanPublished
+	TodoLinkKindCondition TodoLinkKind = "CONDITION"
+	// key: ancode
+	TodoLinkKindExam TodoLinkKind = "EXAM"
+	// key: ZPA person id
+	TodoLinkKindTeacher TodoLinkKind = "TEACHER"
+	// key: room name
+	TodoLinkKindRoom TodoLinkKind = "ROOM"
+	// key: study program shortname
+	TodoLinkKindStudyProgram TodoLinkKind = "STUDY_PROGRAM"
+	// key: ISO date, e.g. 2026-07-13
+	TodoLinkKindDay TodoLinkKind = "DAY"
+	// key: mtknr
+	TodoLinkKindNta TodoLinkKind = "NTA"
+	// key: http(s) URL
+	TodoLinkKindURL TodoLinkKind = "URL"
+	// key: Jira issue key, e.g. PLEX-42
+	TodoLinkKindJira TodoLinkKind = "JIRA"
+)
+
+var AllTodoLinkKind = []TodoLinkKind{
+	TodoLinkKindPhase,
+	TodoLinkKindCondition,
+	TodoLinkKindExam,
+	TodoLinkKindTeacher,
+	TodoLinkKindRoom,
+	TodoLinkKindStudyProgram,
+	TodoLinkKindDay,
+	TodoLinkKindNta,
+	TodoLinkKindURL,
+	TodoLinkKindJira,
+}
+
+func (e TodoLinkKind) IsValid() bool {
+	switch e {
+	case TodoLinkKindPhase, TodoLinkKindCondition, TodoLinkKindExam, TodoLinkKindTeacher, TodoLinkKindRoom, TodoLinkKindStudyProgram, TodoLinkKindDay, TodoLinkKindNta, TodoLinkKindURL, TodoLinkKindJira:
+		return true
+	}
+	return false
+}
+
+func (e TodoLinkKind) String() string {
+	return string(e)
+}
+
+func (e *TodoLinkKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TodoLinkKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TodoLinkKind", str)
+	}
+	return nil
+}
+
+func (e TodoLinkKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TodoLinkKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TodoLinkKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type TodoPriority string
+
+const (
+	TodoPriorityLow    TodoPriority = "LOW"
+	TodoPriorityNormal TodoPriority = "NORMAL"
+	TodoPriorityHigh   TodoPriority = "HIGH"
+)
+
+var AllTodoPriority = []TodoPriority{
+	TodoPriorityLow,
+	TodoPriorityNormal,
+	TodoPriorityHigh,
+}
+
+func (e TodoPriority) IsValid() bool {
+	switch e {
+	case TodoPriorityLow, TodoPriorityNormal, TodoPriorityHigh:
+		return true
+	}
+	return false
+}
+
+func (e TodoPriority) String() string {
+	return string(e)
+}
+
+func (e *TodoPriority) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TodoPriority(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TodoPriority", str)
+	}
+	return nil
+}
+
+func (e TodoPriority) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TodoPriority) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TodoPriority) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

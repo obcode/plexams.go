@@ -128,12 +128,12 @@ func StartServer(plexams *plexams.Plexams, port string) {
 			if user := UserFromContext(ctx); user != nil && !roleCanWrite(user.Role) && isDataChangingOperation(oc) {
 				return graphql.OneShot(graphql.ErrorResponse(ctx, "forbidden: your role is read-only"))
 			}
-			if op == ast.Mutation && !plexams.WritesAllowed() {
+			if op == ast.Mutation && !plexams.WritesAllowed() && !isTodoOnlyOperation(oc) {
 				return graphql.OneShot(graphql.ErrorResponse(ctx, "writes are blocked while a validation is running"))
 			}
 			// read-only database: reject data-changing operations, but allow queries,
-			// validations, switching the semester and toggling read-only.
-			if plexams.IsReadOnly() && isDataChangingOperation(oc) {
+			// validations, switching the semester, toggling read-only and todos.
+			if plexams.IsReadOnly() && isDataChangingOperation(oc) && !isTodoOnlyOperation(oc) {
 				return graphql.OneShot(graphql.ErrorResponse(ctx, "semester is read-only"))
 			}
 		}

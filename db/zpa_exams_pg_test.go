@@ -179,6 +179,26 @@ func TestCacheZPAExamsWithNoExams(t *testing.T) {
 	}
 }
 
+// Most ZPA exams carry no duration (term papers, presentations, oral exams, or
+// simply not entered yet). The import must store them, not fail on them.
+func TestCacheZPAExamsWithoutDuration(t *testing.T) {
+	pg := pgtest.NewDB(t)
+
+	seedPrimussFixtures(t, pg, "IF-B")
+	noDuration := testZPAExam(100, "Seminar")
+	noDuration.Duration = 0
+	if err := pg.CacheZPAExams([]*model.ZPAExam{noDuration}); err != nil {
+		t.Fatalf("CacheZPAExams with duration 0: %v", err)
+	}
+	got, err := pg.GetZpaExamByAncode(t.Context(), 100)
+	if err != nil {
+		t.Fatalf("GetZpaExamByAncode: %v", err)
+	}
+	if got.Duration != 0 {
+		t.Errorf("Duration = %d, want 0", got.Duration)
+	}
+}
+
 // The Primuss ancodes ZPA delivers were an array inside the exam document; here
 // they are rows, refreshed by the import. -1 means "no Primuss exam yet" and is
 // the absence of a link, not a link to ancode -1.

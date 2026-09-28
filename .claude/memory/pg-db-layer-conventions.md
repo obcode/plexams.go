@@ -134,6 +134,11 @@ Feldnamen stimmen fast immer überein.
   konsistente Wert. Eine Dauer ≠ 0 wäre hier der Fehler, nicht die 0. Ein Check,
   der nicht schlechte Daten fängt, sondern einen Erzeugungslauf scheitern lässt,
   ist schlimmer als keiner.
+  **Dritter Fall (2026-09-28): `exam.duration_min > 0`** (`exam_duration_positive`)
+  ließ den ersten ZPA-Import für 2026-WS scheitern — ZPA liefert bei rund zwei Dritteln
+  der Prüfungen Dauer 0 (195/296 in 2026-WS, 216/324 in 2026-SS: Modularbeiten,
+  Präsentationen, mündlich, extern, noch nicht eingetragen). Migration 00010
+  macht daraus `>= 0`. Tabellen, die ZPA spiegeln, bekommen keine Plausibilitäts-Checks.
 - **Nie eine Spalte in den Schlüssel nehmen, die eine Methode ändert.**
   `room_request` war über `valid_from` verschlüsselt, und
   `UpdateRoomRequestTime` schreibt genau darauf. Beim Entwurf jedes Schlüssels

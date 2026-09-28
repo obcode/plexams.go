@@ -139,6 +139,13 @@ Feldnamen stimmen fast immer überein.
   der Prüfungen Dauer 0 (195/296 in 2026-WS, 216/324 in 2026-SS: Modularbeiten,
   Präsentationen, mündlich, extern, noch nicht eingetragen). Migration 00010
   macht daraus `>= 0`. Tabellen, die ZPA spiegeln, bekommen keine Plausibilitäts-Checks.
+- **Ein FK nur dort, wo die Spalte wirklich *unseren* Schlüssel enthält.** Direkt danach
+  (2026-09-28) scheiterte derselbe Import an `exam_primuss_ancode.program → study_program`:
+  die `zpa`-Zeilen speichern ZPAs Rohcode (`IF`, `DC`, `DHB`, `ZD`), aufgelöst auf `IF-B`
+  usw. wird erst beim Lesen (`programResolver`), weil die Auflösung vom später laufenden
+  Primuss-Import abhängt. Migration 00011 entfernt den FK. Die Tests hatten ZPA mit
+  internen Kürzeln gefüttert (`{Program: "IF-B"}`) und den Fehler so verdeckt —
+  **Fixtures externer Quellen müssen deren echtes Format haben**, nicht unseres.
 - **Nie eine Spalte in den Schlüssel nehmen, die eine Methode ändert.**
   `room_request` war über `valid_from` verschlüsselt, und
   `UpdateRoomRequestTime` schreibt genau darauf. Beim Entwurf jedes Schlüssels

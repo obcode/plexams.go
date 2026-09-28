@@ -244,6 +244,34 @@ func TestZPAExamPrimussAncodes(t *testing.T) {
 	}
 }
 
+// ZPA delivers its own two-letter program codes ("IF"), not our shortnames
+// ("IF-B"), and codes of other faculties we have no program for. The import
+// stores them raw; the read maps them onto the program the study group resolves to.
+func TestZPAExamPrimussAncodesWithRawZPACodes(t *testing.T) {
+	pg := pgtest.NewDB(t)
+	ctx := t.Context()
+
+	seedPrimussFixtures(t, pg, "IF-B")
+	seedPrimussExam(t, pg, "IF-B", 100, "Analysis")
+
+	exam := testZPAExam(100, "Analysis", "IF4B")
+	exam.PrimussAncodes = []model.ZPAPrimussAncodes{
+		{Program: "IF", Ancode: 100},
+		{Program: "ZD", Ancode: 7}, // another faculty's program
+	}
+	if err := pg.CacheZPAExams([]*model.ZPAExam{exam}); err != nil {
+		t.Fatalf("CacheZPAExams with raw ZPA codes: %v", err)
+	}
+
+	got, err := pg.GetZpaExamByAncode(ctx, 100)
+	if err != nil {
+		t.Fatalf("GetZpaExamByAncode: %v", err)
+	}
+	if len(got.PrimussAncodes) != 1 || got.PrimussAncodes[0].Program != "IF-B" || got.PrimussAncodes[0].Ancode != 100 {
+		t.Errorf("PrimussAncodes = %+v, want [{IF-B 100}]", got.PrimussAncodes)
+	}
+}
+
 // A manually added mapping is folded in on read and must survive a re-import --
 // it is hand-entered and carries source 'added', which the import does not touch.
 func TestZPAExamAddedAncodesSurviveAReimport(t *testing.T) {

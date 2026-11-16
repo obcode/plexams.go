@@ -7,7 +7,9 @@ package graph
 
 import (
 	"context"
+	"errors"
 
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
@@ -63,7 +65,12 @@ func (r *queryResolver) ZpaExamsPlaningStatusUnknown(ctx context.Context) ([]*mo
 
 // ZpaExam is the resolver for the zpaExam field.
 func (r *queryResolver) ZpaExam(ctx context.Context, ancode int) (*model.ZPAExam, error) {
-	return r.plexams.GetZpaExamByAncode(ctx, ancode)
+	exam, err := r.plexams.GetZpaExamByAncode(ctx, ancode)
+	// An unknown ancode is null, not an error; the field is nullable.
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return exam, err
 }
 
 // ZpaAnCodes is the resolver for the zpaAnCodes field.

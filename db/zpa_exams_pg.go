@@ -2,9 +2,11 @@ package db
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/obcode/plexams.go/db/sqlc"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -126,6 +128,10 @@ func (db *PG) GetZpaExamByAncode(ctx context.Context, ancode int) (*model.ZPAExa
 		SemesterID: db.semesterID,
 		Ancode:     ancode,
 	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		log.Debug().Int("ancode", ancode).Msg("cannot find ZPA exam")
+		return nil, err
+	}
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("cannot find ZPA exam")
 		return nil, err

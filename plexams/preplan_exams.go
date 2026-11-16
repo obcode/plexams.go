@@ -69,6 +69,13 @@ func (p *Plexams) UpdatePreplanExam(ctx context.Context, id int, input *model.Pr
 	preplanExam.ID = existing.ID
 	preplanExam.PlannedStarttime = existing.PlannedStarttime
 	preplanExam.Ancode = existing.Ancode
+	// Set by their own mutations (setPreplanExamConstraints, …NotSameSlot,
+	// …CanShareSlot, …Fixed); ReplacePreplanExam writes the whole record, so
+	// dropping them here wiped them on every edit of the form fields.
+	preplanExam.IsFixed = existing.IsFixed
+	preplanExam.NotSameSlot = existing.NotSameSlot
+	preplanExam.CanShareSlot = existing.CanShareSlot
+	preplanExam.Constraints = existing.Constraints
 
 	if _, err := p.dbClient.ReplacePreplanExam(ctx, preplanExam); err != nil {
 		return nil, err

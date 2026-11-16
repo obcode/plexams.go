@@ -74,6 +74,9 @@ haben einen echten Stack und behalten die Standardgruppierung.
 GlitchTip lokal aus `obcode/monitoring` (privat), im DevContainer unter Docker-in-Docker:
 `glitchtip/.env` aus `.env.example` mit `GLITCHTIP_DOMAIN=http://localhost:8000`,
 `EMAIL_URL=consolemail://`, `ENABLE_USER_REGISTRATION=true`, dann `docker compose up -d`.
+**Seit 2026-11-16 läuft Docker als rootless Sidecar `dind`**, nicht mehr im DevContainer
+selbst: Vom Backend aus ist GlitchTip `http://dind:8000` (DSN-Host entsprechend umschreiben),
+im Browser am Mac weiter `localhost:8000` über die VS-Code-Weiterleitung (`dind:8000`).
 Projekt und DSN ohne UI über `docker compose exec -T web ./manage.py shell`
 (`apps.organizations_ext.models`, `apps.projects.models`, `ProjectKey.get_dsn()`).
 

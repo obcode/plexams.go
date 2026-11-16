@@ -17,7 +17,7 @@ REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOURCE="$REPO/.claude/memory"
 
 # Claude Code derives the project slug from the workspace path (every non-alphanumeric
-# character becomes a dash), e.g. /workspace/plexams.go -> -workspace-plexams-go.
+# character becomes a dash), e.g. /plexams/plexams.go -> -plexams-plexams-go.
 SLUG="$(printf '%s' "$REPO" | sed 's/[^a-zA-Z0-9]/-/g')"
 TARGET="$HOME/.claude/projects/$SLUG/memory"
 

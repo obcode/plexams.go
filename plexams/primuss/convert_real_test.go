@@ -14,7 +14,7 @@ import (
 // files contain Matrikelnummern and names and must not live in this (public)
 // repository. Point it at a semester in the `semester` repo:
 //
-//	PLEXAMS_TEST_SAMMELLISTEN=/workspace/semester/past/2026-SS/Sammellisten \
+//	PLEXAMS_TEST_SAMMELLISTEN=/plexams/semester/past/2026-SS/Sammellisten \
 //	    go test ./plexams/primuss/ -run RealSammellisten -v
 //
 // This is the check that the header mapping matches what Primuss actually

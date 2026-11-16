@@ -30,7 +30,7 @@ Zwei Dinge, die beim Backen aufgefallen sind und bei einer Wiederholung Zeit spa
 
 Wegwerf-Instanz auf **:5433** (nicht 5432, damit ein späterer Compose-Service nicht
 kollidiert). Startskript liegt versioniert in
-**`/workspace/plexams.dev/scripts/pg-dev.sh`**:
+**`/plexams/plexams.dev/scripts/pg-dev.sh`**:
 
 ```
 scripts/pg-dev.sh start|stop|status|reset|psql

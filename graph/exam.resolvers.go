@@ -7,8 +7,10 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	pgx "github.com/jackc/pgx/v5"
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
@@ -55,7 +57,13 @@ func (r *queryResolver) AssembledExams(ctx context.Context) ([]*model.AssembledE
 
 // AssembledExam is the resolver for the assembledExam field.
 func (r *queryResolver) AssembledExam(ctx context.Context, ancode int) (*model.AssembledExam, error) {
-	return r.plexams.AssembledExam(ctx, ancode)
+	exam, err := r.plexams.AssembledExam(ctx, ancode)
+	// Not assembled (yet) is a normal state, e.g. before the first assembly of a
+	// semester; the field is nullable. The plexams callers keep the error.
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return exam, err
 }
 
 // PlannedExams is the resolver for the plannedExams field.

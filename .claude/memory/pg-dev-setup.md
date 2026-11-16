@@ -36,8 +36,9 @@ kollidiert). Startskript liegt versioniert in
 scripts/pg-dev.sh start|stop|status|reset|psql
 ```
 
-Das Cluster liegt unter `~/.local/share/plexams-pgdev` (überschreibbar via
-`PLEXAMS_PGDEV_HOME`), also außerhalb des Repos — es ist Maschinenzustand, kein Quelltext.
+Das Cluster liegt unter `$PLEXAMS_PGDEV_HOME`, im DevContainer seit 2026-11-16 ein Volume
+unter `/var/lib/plexams-pgdev` (ohne die Variable `~/.local/share/plexams-pgdev`), also
+außerhalb des Repos — es ist Maschinenzustand, kein Quelltext.
 **`reset`** legt die Datenbank neu an; das braucht man, solange Migrationen noch editiert
 werden, weil `goose down` dann den *neuen* Down-Abschnitt gegen das *alte* Schema fährt und
 scheitert.

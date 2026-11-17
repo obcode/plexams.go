@@ -11436,7 +11436,7 @@ extend type Query {
   the UI cosmetically; it is NEVER a security boundary (enforcement is in the backend).
   """
   me: User!
-  "All known users (the authorization allow-list). Admin view for managing who may log in."
+  "All known users (the authorization allow-list). Admin view for managing who may log in. Requires role ADMIN."
   users: [User!]!
 }
 

@@ -38,5 +38,8 @@ func (r *queryResolver) Me(ctx context.Context) (*model.User, error) {
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
 	return r.plexams.GetUsers(ctx)
 }

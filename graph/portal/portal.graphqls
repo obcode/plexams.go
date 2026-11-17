@@ -1,0 +1,92 @@
+# The examiner portal API.
+#
+# Served twice: at /query/portal for a signed-in session (the GUI), and at /query/token
+# for a personal access token (scripts, Claude). Same schema, same resolvers; what a
+# token may not do is refused with a fixed code in extensions.code.
+#
+# Every field answers for the caller only. Nothing here takes the person to act on from
+# an argument without checking it against the login.
+#
+# Changes are additive. Something going away is announced with @deprecated first.
+
+scalar Time
+
+enum TokenScope {
+  "may read"
+  READ
+  "may read and enter data"
+  WRITE
+}
+
+enum GrantLevel {
+  READ
+  PLAN
+}
+
+"A ZPA person."
+type Teacher {
+  id: Int!
+  fullname: String!
+  shortname: String!
+}
+
+type ProgramGrant {
+  program: String!
+  level: GrantLevel!
+}
+
+"Set when a request was authenticated with a personal access token."
+type TokenInfo {
+  "The public half of the token."
+  id: String!
+  scope: TokenScope!
+}
+
+"Who the caller is, in portal terms."
+type Session {
+  "The login (e-mail address)."
+  email: String!
+  name: String!
+  "true when the login also has a role in the planning interface (never with a token)."
+  isStaff: Boolean!
+  "The ZPA persons this login is -- normally exactly one."
+  teachers: [Teacher!]!
+  "The ZPA persons this login may act for (delegations)."
+  actsFor: [Teacher!]!
+  "Study programs this login may see or plan."
+  programs: [ProgramGrant!]!
+  token: TokenInfo
+}
+
+"A personal access token. The secret is never shown again after creation."
+type AccessToken {
+  id: String!
+  description: String!
+  scope: TokenScope!
+  createdAt: Time!
+  expiresAt: Time!
+  lastUsedAt: Time
+  revokedAt: Time
+}
+
+type NewAccessToken {
+  token: AccessToken!
+  "The whole token. Shown exactly this once; store it like a password."
+  secret: String!
+}
+
+type Query {
+  session: Session!
+  "The caller's personal access tokens, newest first. Only when signed in, not with a token."
+  accessTokens: [AccessToken!]!
+}
+
+type Mutation {
+  """
+  Create a personal access token for the caller. Only when signed in, not with a
+  token. expiresInDays defaults to 90, at most 365.
+  """
+  createAccessToken(description: String!, scope: TokenScope!, expiresInDays: Int): NewAccessToken!
+  "Revoke one of the caller's tokens. Only when signed in, not with a token."
+  revokeAccessToken(id: String!): Boolean!
+}

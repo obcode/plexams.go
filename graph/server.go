@@ -21,6 +21,7 @@ import (
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/obs"
 	"github.com/obcode/plexams.go/plexams"
+	"github.com/obcode/plexams.go/plexams/portal"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -203,7 +204,7 @@ func restRoutesOf(p *plexams.Plexams) restRoutes {
 
 // newRouter mounts the middleware chain, /query, the health check and the REST routes.
 // It is separate from StartServer so the chain can be exercised with httptest.
-func newRouter(auth authProvider, state gateState, graphQL http.Handler, rest restRoutes, origins []string, production bool) chi.Router {
+func newRouter(auth authProvider, state gateState, graphQL http.Handler, rest restRoutes, origins []string, production bool, portalRoutes *portalMount) chi.Router {
 	router := chi.NewRouter()
 
 	// FIRST, before everything else. It clones a Sentry hub onto every request
@@ -240,6 +241,11 @@ func newRouter(auth authProvider, state gateState, graphQL http.Handler, rest re
 		router.With(requireStaffRole).Handle("/", playground.Handler("GraphQL playground", "/query"))
 	}
 	router.With(requireStaffRole).Handle("/query", graphQL)
+
+	// The examiner portal: only when portal.enabled is set (graph/portal_server.go).
+	if portalRoutes != nil {
+		mountPortal(router, portalRoutes)
+	}
 
 	// Liveness for the container health check, which is what makes a deploy fail
 	// loudly instead of quietly: the server migrates the schema at startup and
@@ -328,7 +334,16 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	// Mark the prepared student regs stale when an input changes (for the GUI banner).
 	srv.AroundFields(studentRegsDirtyMiddleware(plexams))
 
-	router := newRouter(plexams, plexams, srv, restRoutesOf(plexams), origins, production)
+	var portalRoutes *portalMount
+	if viper.GetBool("portal.enabled") {
+		portalRoutes = &portalMount{
+			service: portal.New(plexams.PortalStore()),
+			tokens:  viper.GetBool("portal.tokens"),
+		}
+		log.Info().Bool("tokens", portalRoutes.tokens).Msg("examiner portal enabled")
+	}
+
+	router := newRouter(plexams, plexams, srv, restRoutesOf(plexams), origins, production, portalRoutes)
 
 	server := &http.Server{Addr: fmt.Sprintf(":%s", port), Handler: router}
 	defer func() {

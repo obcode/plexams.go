@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/obcode/plexams.go/db"
+	"github.com/obcode/plexams.go/plexams/portal"
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -142,4 +143,9 @@ func (p *Plexams) LocalDevUser() *model.User {
 		name = email
 	}
 	return &model.User{Email: email, Name: name, Role: model.RoleAdmin}
+}
+
+// PortalStore is the database view the examiner portal service works on.
+func (p *Plexams) PortalStore() portal.Store {
+	return p.dbClient
 }

@@ -56,7 +56,7 @@ func TestRESTRoutesAreGated(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			state := fakeGateState{writes: true, readOnly: c.req.readOnly}
-			router := newRouter(auth, state, http.NotFoundHandler(), stubRoutes(), origins, true)
+			router := newRouter(auth, state, http.NotFoundHandler(), stubRoutes(), origins, true, nil)
 			r := httptest.NewRequest(c.req.method, "http://example.com"+c.req.path, nil)
 			r.Header.Set("X-Remote-User", c.req.user)
 			if c.req.origin != "" {

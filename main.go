@@ -1,4 +1,5 @@
 //go:generate go run github.com/99designs/gqlgen generate --verbose
+//go:generate go run github.com/99designs/gqlgen generate --config gqlgen.portal.yml
 package main
 
 import (

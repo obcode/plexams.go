@@ -1,0 +1,23 @@
+# The examiner portal's API, served at /query/portal (session) and /query/token
+# (personal access token). A schema and an executable of its own, separate from the
+# planner API in gqlgen.yml: no planner type is reachable from here by construction,
+# and none of the planner's middlewares hangs on this server.
+schema:
+  - graph/portal/*.graphqls
+exec:
+  filename: graph/portal/generated/generated.go
+  package: generated
+model:
+  filename: graph/portal/model/models_gen.go
+  package: model
+resolver:
+  layout: follow-schema
+  dir: graph/portal
+  package: portalgraph
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int

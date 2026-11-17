@@ -123,7 +123,7 @@ func TestStudentOnly(t *testing.T) {
 func TestPortalOnlyLoginIsShutOutOfThePlannerAPI(t *testing.T) {
 	withConfig(t, map[string]any{"auth.enabled": true, "portal.enabled": true})
 	graphQL := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-	router := newRouter(portalTestAuth(), fakeGateState{writes: true}, graphQL, stubRoutes(), nil, true)
+	router := newRouter(portalTestAuth(), fakeGateState{writes: true}, graphQL, stubRoutes(), nil, true, nil)
 
 	for _, c := range []struct{ method, path string }{
 		{"POST", "/query"}, {"GET", "/query"}, {"GET", "/download/pdf/draft-fs"},

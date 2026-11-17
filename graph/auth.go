@@ -84,6 +84,12 @@ func authMiddleware(p authProvider) func(http.Handler) http.Handler {
 			// deploy/Caddyfile) so the deploy check and the uptime monitor can ask
 			// which build is answering -- this server once ran seventeen days on a
 			// stale image without anything noticing.
+			// The token door authenticates itself and must not accept X-Remote-User:
+			// that route is the one with no proxy in front verifying the header.
+			if r.URL.Path == tokenPath {
+				next.ServeHTTP(w, r)
+				return
+			}
 			if r.URL.Path == healthPath {
 				next.ServeHTTP(w, r)
 				return

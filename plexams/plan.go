@@ -54,7 +54,9 @@ func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, slottime ti
 				Msg("error while trying to get constraints")
 			return false, err
 		}
-		if !constraints.NotPlannedByMe {
+		// No constraints row means nobody marked the exam as planned elsewhere --
+		// the same answer as an explicit false, not a nil dereference.
+		if constraints == nil || !constraints.NotPlannedByMe {
 			err := fmt.Errorf("add exam to slot time is only allowed for exams not planned by me")
 			return false, err
 		}

@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/principal"
 	"sort"
 
 	"github.com/obcode/plexams.go/db"
@@ -19,8 +20,19 @@ func (p *Plexams) GetTeacherIdByRegex(ctx context.Context, name string) (int, er
 	return p.dbClient.GetTeacherIdByRegex(ctx, name)
 }
 
+// mayRefreshFromZPA reports whether a read may refresh the mirror from ZPA on the
+// way: that rewrites the stored teachers, exams or invigilator requirements, so it
+// needs a writing role. Without a principal (internal callers such as the nightly
+// sync) the refresh stays allowed.
+func mayRefreshFromZPA(ctx context.Context) bool {
+	user := principal.UserFromContext(ctx)
+	return user == nil || user.Role == model.RolePlaner || user.Role == model.RoleAdmin
+}
+
+// GetTeachers returns the teachers. With fromZpa it refreshes the mirror from ZPA
+// first -- only for a writing role; anyone else reads the stored mirror.
 func (p *Plexams) GetTeachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error) {
-	if fromZpa != nil && *fromZpa {
+	if fromZpa != nil && *fromZpa && mayRefreshFromZPA(ctx) {
 		if err := p.SetZPA(); err != nil {
 			return nil, err
 		}
@@ -44,7 +56,14 @@ func (p *Plexams) GetInvigilators(ctx context.Context) ([]*model.ZPAInvigilator,
 		return nil, err
 	}
 
-	supervisorReqs, err := p.GetSupervisorRequirements(ctx)
+	// Fetching the requirements from ZPA replaces the stored ones; a read-only
+	// role sees the stored state instead.
+	var supervisorReqs []*zpa.SupervisorRequirements
+	if mayRefreshFromZPA(ctx) {
+		supervisorReqs, err = p.GetSupervisorRequirements(ctx)
+	} else {
+		supervisorReqs, err = p.dbClient.AllInvigilatorRequirements(ctx)
+	}
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get supervisor requirements")
 		return nil, err
@@ -99,8 +118,10 @@ func (p *Plexams) GetFk07programs(ctx context.Context) ([]*model.FK07Program, er
 	return programs, nil
 }
 
+// GetZPAExams returns the ZPA exams. With fromZpa it refreshes the mirror from ZPA
+// first -- only for a writing role; anyone else reads the stored mirror.
 func (p *Plexams) GetZPAExams(ctx context.Context, fromZpa *bool) ([]*model.ZPAExam, error) {
-	if fromZpa != nil && *fromZpa {
+	if fromZpa != nil && *fromZpa && mayRefreshFromZPA(ctx) {
 		if err := p.SetZPA(); err != nil {
 			return nil, err
 		}

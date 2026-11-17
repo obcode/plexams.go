@@ -109,7 +109,13 @@ func operationGate(state gateState) graphql.OperationMiddleware {
 			// Authorization: a read-only role (VIEWER) may query and run validations
 			// but must not perform any data-changing operation. Enforced in the backend
 			// — the GUI is never the security boundary.
-			if user := UserFromContext(ctx); user != nil && !roleCanWrite(user.Role) && isDataChangingOperation(oc) {
+			// No principal means the request did not pass the auth middleware: fail
+			// closed instead of skipping the role check.
+			user := UserFromContext(ctx)
+			if user == nil {
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "forbidden: no authenticated user"))
+			}
+			if !roleCanWrite(user.Role) && isWriteOperation(oc) {
 				return graphql.OneShot(graphql.ErrorResponse(ctx, "forbidden: your role is read-only"))
 			}
 			if op == ast.Mutation && !state.WritesAllowed() && !isTodoOnlyOperation(oc) {

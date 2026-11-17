@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -73,8 +74,8 @@ func TestFragmentWrappedOperationsAreDataChanging(t *testing.T) {
 		`mutation { ...F } fragment F on Mutation { removeUser(email: "a") }`,
 		`subscription { ... on Subscription { sendEmailExaHM(run: false) { text } } }`,
 	} {
-		if !isDataChangingOperation(parsedOpCtx(t, doc, nil)) {
-			t.Errorf("%s must count as data-changing", doc)
+		if !isWriteOperation(parsedOpCtx(t, doc, nil)) {
+			t.Errorf("%s must count as a write", doc)
 		}
 	}
 	// A todo mutation hidden next to a planning one must not pass as todo-only.
@@ -123,5 +124,96 @@ func TestViewerCannotRunAFragmentWrappedMutation(t *testing.T) {
 	}
 	if n := reached.Load(); n != 0 {
 		t.Errorf("a root field was reached %d times", n)
+	}
+}
+
+func TestWriteOperationKnowsNoExemptions(t *testing.T) {
+	cases := []struct {
+		doc               string
+		write, semesterRW bool
+	}{
+		{`query { me { email } }`, false, false},
+		{`mutation { setSemester(name: "2026-WS") { id } }`, true, false},
+		{`mutation { setSemesterReadOnly(readOnly: true) { id } }`, true, false},
+		{`mutation { removeUser(email: "a") }`, true, false},
+		{`mutation($i: SemesterConfigInputData!) { createSemester(semester: "2027-SS", input: $i) { ok } }`, true, false},
+		{`mutation { setMyShortname(shortname: "x") { email } }`, true, false},
+		{`mutation { deleteTodo(id: 1) }`, true, true},
+		{`subscription { validateConflicts(onlyPlannedByMe: true, ancode: 0) { text } }`, false, false},
+		{`subscription { sendEmailExaHM(run: false) { text } }`, true, true},
+	}
+	for _, c := range cases {
+		oc := parsedOpCtx(t, c.doc, nil)
+		if got := isWriteOperation(oc); got != c.write {
+			t.Errorf("isWriteOperation(%s) = %v, want %v", c.doc, got, c.write)
+		}
+		if got := isDataChangingOperation(oc); got != c.semesterRW {
+			t.Errorf("isDataChangingOperation(%s) = %v, want %v", c.doc, got, c.semesterRW)
+		}
+	}
+}
+
+// postQuery sends one GraphQL document through the gate with the given principal
+// (nil = none) and returns the response body. The tripwire counts fields reached.
+func postQuery(t *testing.T, state gateState, user *model.User, doc string) (string, int32) {
+	t.Helper()
+	var reached atomic.Int32
+	srv := newGraphQLServer(generated.NewExecutableSchema(generated.Config{}), state, nil, true)
+	srv.AroundFields(func(ctx context.Context, next graphql.Resolver) (any, error) {
+		reached.Add(1)
+		return nil, nil
+	})
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if user != nil {
+			r = r.WithContext(principal.WithUser(r.Context(), user))
+		}
+		srv.ServeHTTP(w, r)
+	})
+	payload, _ := json.Marshal(map[string]string{"query": doc})
+	req := httptest.NewRequest(http.MethodPost, "/query", strings.NewReader(string(payload)))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec.Body.String(), reached.Load()
+}
+
+func TestGate(t *testing.T) {
+	viewer := &model.User{Email: "v@example.test", Role: model.RoleViewer}
+	planer := &model.User{Email: "p@example.test", Role: model.RolePlaner}
+	open := fakeGateState{writes: true}
+
+	cases := []struct {
+		name  string
+		state gateState
+		user  *model.User
+		doc   string
+		want  string // substring of the error; "" = must reach the field
+	}{
+		{"no principal, query", open, nil, `query { me { email } }`, "no authenticated user"},
+		{"viewer may query", open, viewer, `query { me { email } }`, ""},
+		{"viewer may validate", open, viewer, `subscription { validateConflicts(onlyPlannedByMe: true, ancode: 0) { text } }`, ""},
+		{"viewer may not switch semester", open, viewer, `mutation { setSemester(name: "2026-WS") { id } }`, "read-only"},
+		{"viewer may not set own shortname", open, viewer, `mutation { setMyShortname(shortname: "x") { email } }`, "read-only"},
+		{"planer may switch semester", open, planer, `mutation { setSemester(name: "2026-WS") { id } }`, ""},
+		{"protected semester blocks planning", fakeGateState{writes: true, readOnly: true}, planer,
+			`mutation { removeUser(email: "a") ... on Mutation { deleteTodo(id: 1) } }`, "semester is read-only"},
+		{"protected semester allows user admin", fakeGateState{writes: true, readOnly: true}, planer,
+			`mutation { removeUser(email: "a") }`, ""},
+		{"protected semester blocks a fragment-wrapped write", fakeGateState{writes: true, readOnly: true}, planer,
+			`subscription { ... on Subscription { sendEmailExaHM(run: false) { text } } }`, "semester is read-only"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			body, reached := postQuery(t, c.state, c.user, c.doc)
+			if c.want == "" {
+				if reached == 0 {
+					t.Errorf("want the field to run, got %s", body)
+				}
+				return
+			}
+			if !strings.Contains(body, c.want) || reached != 0 {
+				t.Errorf("want %q and no field reached, got %s (reached %d)", c.want, body, reached)
+			}
+		})
 	}
 }

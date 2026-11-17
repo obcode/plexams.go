@@ -7,13 +7,23 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-// readOnlyExemptMutations are mutations allowed even on a read-only semester: they
-// don't change the active semester's data — only which semester is active, its
-// protection, or they create a separate new one.
+// readOnlyExemptMutations are mutations allowed even on a read-only semester because
+// they do not change the active semester's data: which semester is active, its
+// protection, a separate new semester, and the global user and account settings.
+//
+// This list answers ONLY the read-only question. It used to double as the VIEWER
+// exemption, which let a read-only role switch the semester for everybody; the role
+// check now asks isWriteOperation, which knows no exemptions.
 var readOnlyExemptMutations = map[string]bool{
 	"setSemester":         true,
 	"setSemesterReadOnly": true,
 	"createSemester":      true, // writes into a new, separate semester
+	// global, not semester data (app_user / user_secret)
+	"setUser":           true,
+	"removeUser":        true,
+	"setMyShortname":    true,
+	"setMyJiraToken":    true,
+	"removeMyJiraToken": true,
 }
 
 // todoMutations change only the todo list, never planning data. They stay allowed
@@ -51,14 +61,24 @@ func isTodoOnlyOperation(oc *graphql.OperationContext) bool {
 	return true
 }
 
-// isDataChangingOperation reports whether the operation would change the semester's
-// data: any mutation (except the read-only-exempt ones) and any subscription that
-// is not a read-only validation (validate*). Queries never change data.
-//
-// A mutation or subscription whose root fields cannot be determined counts as
-// data-changing: the gate must fail closed.
+// isWriteOperation reports whether the operation writes anything at all: every
+// mutation and every subscription that is not a read-only validation (validate*).
+// This is the question the role check asks; it has no exemptions.
+func isWriteOperation(oc *graphql.OperationContext) bool {
+	return changesData(oc, nil)
+}
+
+// isDataChangingOperation reports whether the operation would change the active
+// semester's data: any mutation except the read-only-exempt ones, and any
+// subscription that is not a read-only validation. Queries never change data.
 func isDataChangingOperation(oc *graphql.OperationContext) bool {
-	if oc.Operation == nil {
+	return changesData(oc, readOnlyExemptMutations)
+}
+
+// changesData is the shared core. A mutation or subscription whose root fields
+// cannot be determined counts as changing data: the gate must fail closed.
+func changesData(oc *graphql.OperationContext, exempt map[string]bool) bool {
+	if oc == nil || oc.Operation == nil {
 		return false
 	}
 	switch oc.Operation.Operation {
@@ -68,7 +88,7 @@ func isDataChangingOperation(oc *graphql.OperationContext) bool {
 			return true
 		}
 		for _, name := range names {
-			if !readOnlyExemptMutations[name] {
+			if !exempt[name] {
 				return true
 			}
 		}

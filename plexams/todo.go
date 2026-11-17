@@ -235,7 +235,7 @@ func (p *Plexams) DeleteTodo(ctx context.Context, id int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if user := principal.UserFromContext(ctx); user != nil &&
+	if user := principal.UserFromContext(ctx); user == nil ||
 		user.Role != model.RoleAdmin && user.Email != todo.CreatedBy {
 		return false, fmt.Errorf("forbidden: only the creator or an ADMIN may delete a todo")
 	}

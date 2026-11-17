@@ -154,16 +154,26 @@ func (db *PG) getTeachers(ctx context.Context, predicate func(model.Teacher) boo
 func (db *PG) CacheTeachers(teachers []*model.Teacher, semester string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	if err := db.CacheTeachersFor(ctx, db.semesterID, teachers); err != nil {
+		return err
+	}
+	log.Debug().Str("semester", semester).Int("teachers", len(teachers)).Msg("cached teachers")
+	return nil
+}
 
+// CacheTeachersFor replaces the teacher mirror of the NAMED semester. The examiner portal
+// needs this: it keeps the mirror of a semester with an open inquiry fresh while another
+// semester is active.
+func (db *PG) CacheTeachersFor(ctx context.Context, semesterID string, teachers []*model.Teacher) error {
 	return db.InTransaction(ctx, func(ctx context.Context) error {
-		if err := db.q(ctx).DeleteTeachers(ctx, db.semesterID); err != nil {
-			log.Error().Err(err).Msg("cannot clear the teachers")
+		if err := db.q(ctx).DeleteTeachers(ctx, semesterID); err != nil {
+			log.Error().Err(err).Str("semester", semesterID).Msg("cannot clear the teachers")
 			return err
 		}
 
 		for _, teacher := range teachers {
 			err := db.q(ctx).InsertTeacher(ctx, sqlc.InsertTeacherParams{
-				SemesterID:   db.semesterID,
+				SemesterID:   semesterID,
 				ID:           teacher.ID,
 				Shortname:    teacher.Shortname,
 				Fullname:     teacher.Fullname,
@@ -181,8 +191,6 @@ func (db *PG) CacheTeachers(teachers []*model.Teacher, semester string) error {
 				return err
 			}
 		}
-
-		log.Debug().Str("semester", semester).Int("teachers", len(teachers)).Msg("cached teachers")
 		return nil
 	})
 }

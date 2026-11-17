@@ -3,6 +3,7 @@ package inquiry
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -305,4 +306,23 @@ func (s *Service) NewestOpen(ctx context.Context, kind Kind, from string) (*Inqu
 		}
 	}
 	return best, nil
+}
+
+// OpenSemestersAfter lists the semesters later than `after` with an open inquiry of any
+// kind, ascending.
+func (s *Service) OpenSemestersAfter(ctx context.Context, after string) ([]string, error) {
+	rows, err := s.store.Q(ctx).ListVisibleInquiries(ctx, 0)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	out := []string{}
+	for _, r := range rows {
+		if r.State == StateOpen && r.SemesterID > after && !seen[r.SemesterID] {
+			seen[r.SemesterID] = true
+			out = append(out, r.SemesterID)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
 }

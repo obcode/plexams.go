@@ -162,7 +162,18 @@ func (p *Plexams) RunScheduledSync(ctx context.Context, cfg ScheduledSyncConfig,
 	}
 
 	run(cfg.Teachers, "zpa-import-teachers", "Lehrende (ZPA)", "Lehrende", func() (int, error) {
-		return p.ImportTeachersFromZPA(ctx, reporter)
+		n, err := p.ImportTeachersFromZPA(ctx, reporter)
+		if err != nil {
+			return n, err
+		}
+		// The portal's inquiry of the coming semester needs the same, fresh mirror.
+		if semesters, err := p.refreshInquiryTeachers(ctx); err != nil {
+			reporter.Warnf("Lehrende für das Portal nicht übernommen: %v", err)
+			log.Error().Err(err).Msg("scheduled sync: cannot refresh the teachers of open inquiries")
+		} else if len(semesters) > 0 {
+			reporter.Printf("Lehrende auch für %s übernommen (offene Abfrage im Portal)", strings.Join(semesters, ", "))
+		}
+		return n, nil
 	})
 	run(cfg.Exams, "zpa-import-exams", "Prüfungen (ZPA)", "Prüfungen", func() (int, error) {
 		return p.ImportExamsFromZPA(ctx, reporter)

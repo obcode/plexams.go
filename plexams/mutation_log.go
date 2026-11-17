@@ -76,8 +76,8 @@ func (p *Plexams) MutationLogNames(ctx context.Context) ([]string, error) {
 // actorID is the identity stamped on an audit entry: the authenticated user from the
 // request, falling back to the local operator config when there is none.
 func (p *Plexams) actorID(ctx context.Context) *string {
-	if user := principal.UserFromContext(ctx); user != nil && user.Email != "" {
-		email := user.Email
+	if pr := principal.From(ctx); pr != nil && pr.Email != "" {
+		email := pr.Email
 		return &email
 	}
 	return p.OperatorID()

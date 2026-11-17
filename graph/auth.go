@@ -143,8 +143,8 @@ func requireAdmin(ctx context.Context) error {
 // operator.* config when no principal is present (so nothing is lost if a write path
 // bypasses the auth middleware).
 func auditUser(ctx context.Context, p *plexams.Plexams) *string {
-	if user := UserFromContext(ctx); user != nil && user.Email != "" {
-		email := user.Email
+	if pr := principal.From(ctx); pr != nil && pr.Email != "" {
+		email := pr.Email
 		return &email
 	}
 	return p.OperatorID()

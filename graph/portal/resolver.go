@@ -7,18 +7,20 @@ import (
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/portal/model"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"github.com/obcode/plexams.go/plexams/portal"
 )
 
 // Resolver is the root resolver. It holds the portal service and nothing else -- in
 // particular no *plexams.Plexams.
 type Resolver struct {
-	service *portal.Service
+	service   *portal.Service
+	inquiries *inquiry.Service
 }
 
 // NewResolver builds the root resolver.
-func NewResolver(service *portal.Service) *Resolver {
-	return &Resolver{service: service}
+func NewResolver(service *portal.Service, inquiries *inquiry.Service) *Resolver {
+	return &Resolver{service: service, inquiries: inquiries}
 }
 
 func toTeachers(in []*portal.Teacher) []*model.Teacher {
@@ -58,4 +60,39 @@ func toAccessToken(t *db.PortalToken) *model.AccessToken {
 		LastUsedAt:  t.LastUsedAt,
 		RevokedAt:   t.RevokedAt,
 	}
+}
+
+func toInquiry(i *inquiry.PortalInquiry) *model.Inquiry {
+	state := model.InquiryStateOpen
+	if !i.Open() {
+		state = model.InquiryStateClosed
+	}
+	return &model.Inquiry{
+		Semester: i.Semester, Kind: model.InquiryKind(i.Kind), State: state, Open: i.Open(),
+		Deadline: i.Deadline, Intro: i.Intro, Affected: i.Affected, NothingToReport: i.NothingToReport,
+	}
+}
+
+func toPreplanSubmission(s *inquiry.Submission) *model.PreplanSubmission {
+	out := &model.PreplanSubmission{
+		ID:          int(s.ID),
+		Revision:    s.Revision,
+		Teacher:     &model.Teacher{ID: s.TeacherID, Fullname: s.TeacherName},
+		CreatedBy:   s.CreatedBy,
+		SubmittedBy: s.SubmittedBy,
+		SubmittedAt: s.SubmittedAt,
+		Withdrawn:   s.Withdrawn,
+		Review:      model.ReviewState(s.ReviewState),
+		ReviewNote:  s.ReviewNote,
+		Programs:    []string{},
+	}
+	if p := s.Preplan; p != nil {
+		out.ExamKind = model.ExamKind(p.ExamKind)
+		out.Module = p.Module
+		out.Programs = p.Programs
+		out.ExpectedStudents = p.ExpectedStudents
+		out.DurationMin = p.DurationMin
+		out.Remark = p.Remark
+	}
+	return out
 }

@@ -559,6 +559,68 @@ type ComplexityRoot struct {
 		Programs         func(childComplexity int) int
 	}
 
+	Inquiry struct {
+		ClosedAt        func(childComplexity int) int
+		ClosedBy        func(childComplexity int) int
+		Deadline        func(childComplexity int) int
+		Intro           func(childComplexity int) int
+		Kind            func(childComplexity int) int
+		NothingToReport func(childComplexity int) int
+		OpenSubmissions func(childComplexity int) int
+		OpenedAt        func(childComplexity int) int
+		OpenedBy        func(childComplexity int) int
+		Semester        func(childComplexity int) int
+		State           func(childComplexity int) int
+		Submissions     func(childComplexity int) int
+	}
+
+	InquiryActivity struct {
+		Action       func(childComplexity int) int
+		Actor        func(childComplexity int) int
+		At           func(childComplexity int) int
+		Changes      func(childComplexity int) int
+		Channel      func(childComplexity int) int
+		ID           func(childComplexity int) int
+		Kind         func(childComplexity int) int
+		Label        func(childComplexity int) int
+		Revision     func(childComplexity int) int
+		Semester     func(childComplexity int) int
+		SubmissionID func(childComplexity int) int
+		TeacherID    func(childComplexity int) int
+		TeacherName  func(childComplexity int) int
+	}
+
+	InquiryActivityChange struct {
+		Field func(childComplexity int) int
+		New   func(childComplexity int) int
+		Old   func(childComplexity int) int
+	}
+
+	InquiryInboxEntry struct {
+		Kind     func(childComplexity int) int
+		Open     func(childComplexity int) int
+		Semester func(childComplexity int) int
+	}
+
+	InquirySubmission struct {
+		Channel          func(childComplexity int) int
+		CreatedBy        func(childComplexity int) int
+		ID               func(childComplexity int) int
+		Kind             func(childComplexity int) int
+		Preplan          func(childComplexity int) int
+		PreplanExamID    func(childComplexity int) int
+		Review           func(childComplexity int) int
+		ReviewNote       func(childComplexity int) int
+		ReviewedPreplan  func(childComplexity int) int
+		ReviewedRevision func(childComplexity int) int
+		Revision         func(childComplexity int) int
+		SubmittedAt      func(childComplexity int) int
+		SubmittedBy      func(childComplexity int) int
+		TeacherID        func(childComplexity int) int
+		TeacherName      func(childComplexity int) int
+		Withdrawn        func(childComplexity int) int
+	}
+
 	Invigilation struct {
 		Duration           func(childComplexity int) int
 		InvigilatorID      func(childComplexity int) int
@@ -770,6 +832,7 @@ type ComplexityRoot struct {
 		BlockRoomAtTimes              func(childComplexity int, room string, starttimes []*time.Time, reason *string) int
 		CarryOverTodos                func(childComplexity int, fromSemester string) int
 		ClearEmailAttachments         func(childComplexity int, kind string) int
+		CloseInquiry                  func(childComplexity int, kind model.InquiryKind) int
 		ConnectPreplanExamToAncode    func(childComplexity int, id int, ancode int) int
 		CreateJiraIssue               func(childComplexity int, project *string, issueType *string, summary string, description *string) int
 		CreateSemester                func(childComplexity int, semester string, input model.SemesterConfigInputData) int
@@ -790,8 +853,10 @@ type ComplexityRoot struct {
 		GenerateStudentRegs           func(childComplexity int) int
 		ImportJointExams              func(childComplexity int, csv string) int
 		Lab                           func(childComplexity int, ancode int) int
+		MarkInquiryActivitySeen       func(childComplexity int, upTo int) int
 		NotPlannedByMe                func(childComplexity int, ancode int, inFk *string) int
 		Online                        func(childComplexity int, ancode int) int
+		OpenInquiry                   func(childComplexity int, kind model.InquiryKind) int
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, starttime time.Time, roomName *string) int
 		PrePlanInvigilationAt         func(childComplexity int, starttime time.Time, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
@@ -819,6 +884,7 @@ type ComplexityRoot struct {
 		ResetPrimussData              func(childComplexity int) int
 		ResetRoomsForExams            func(childComplexity int) int
 		ResetSemesterPlaner           func(childComplexity int) int
+		ReviewInquirySubmission       func(childComplexity int, id int, revision int, state model.InquiryReviewState, note *string) int
 		RevokePortalAccessToken       func(childComplexity int, id string) int
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
 		Seb                           func(childComplexity int, ancode int) int
@@ -831,10 +897,12 @@ type ComplexityRoot struct {
 		SetExamsCanShareSlot          func(childComplexity int, ancode1 int, ancode2 int) int
 		SetExternalExamTime           func(childComplexity int, ancode int, date string, time string) int
 		SetGenerationConfig           func(childComplexity int, input model.GenerationConfigInput) int
+		SetInquiry                    func(childComplexity int, kind model.InquiryKind, input model.InquiryInput) int
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetJointZpaLink               func(childComplexity int, program string, primussAncode int, zpaAncode int) int
 		SetLoginAlias                 func(childComplexity int, email string, teacherID int, note *string) int
 		SetMyJiraToken                func(childComplexity int, token string) int
+		SetMyNotificationMode         func(childComplexity int, mode model.NotificationMode) int
 		SetMyShortname                func(childComplexity int, shortname string) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string, validFrom *string, validUntil *string) int
@@ -924,6 +992,12 @@ type ComplexityRoot struct {
 	NTAWithRegsByExamAndTeacher struct {
 		Exams   func(childComplexity int) int
 		Teacher func(childComplexity int) int
+	}
+
+	NotificationSetting struct {
+		Mode     func(childComplexity int) int
+		SeenUpTo func(childComplexity int) int
+		Unseen   func(childComplexity int) int
 	}
 
 	NtaRoomAloneWaiver struct {
@@ -1090,6 +1164,15 @@ type ComplexityRoot struct {
 		Seats      func(childComplexity int) int
 		Starttimes func(childComplexity int) int
 		Until      func(childComplexity int) int
+	}
+
+	PreplanEntry struct {
+		DurationMin      func(childComplexity int) int
+		ExamKind         func(childComplexity int) int
+		ExpectedStudents func(childComplexity int) int
+		Module           func(childComplexity int) int
+		Programs         func(childComplexity int) int
+		Remark           func(childComplexity int) int
 	}
 
 	PreplanExam struct {
@@ -1264,6 +1347,10 @@ type ComplexityRoot struct {
 		ExamsWithoutSlot              func(childComplexity int) int
 		Fk07programs                  func(childComplexity int) int
 		GenerationConfig              func(childComplexity int) int
+		Inquiries                     func(childComplexity int) int
+		InquiryActivity               func(childComplexity int, semester *string, kind *model.InquiryKind, teacherID *int, before *int, first *int) int
+		InquiryInboxSummary           func(childComplexity int) int
+		InquirySubmissions            func(childComplexity int, kind model.InquiryKind, onlyOpen *bool) int
 		Invigilator                   func(childComplexity int, room string, starttime time.Time) int
 		InvigilatorCandidates         func(childComplexity int) int
 		InvigilatorConstraints        func(childComplexity int) int
@@ -1285,6 +1372,7 @@ type ComplexityRoot struct {
 		MutationLog                   func(childComplexity int, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, user *string, since *time.Time, until *time.Time, limit *int) int
 		MutationLogNames              func(childComplexity int) int
 		MyAccount                     func(childComplexity int) int
+		MyNotificationSetting         func(childComplexity int) int
 		NewSemesterConfigDefaults     func(childComplexity int) int
 		Nta                           func(childComplexity int, mtknr string) int
 		NtaRoomAloneWaivers           func(childComplexity int) int
@@ -1814,6 +1902,11 @@ type ComplexityRoot struct {
 		Reason func(childComplexity int) int
 	}
 
+	UnseenActivity struct {
+		Count    func(childComplexity int) int
+		Semester func(childComplexity int) int
+	}
+
 	User struct {
 		Email     func(childComplexity int) int
 		Name      func(childComplexity int) int
@@ -1974,6 +2067,12 @@ type MutationResolver interface {
 	UnfixExamRoomsPhase(ctx context.Context) (bool, error)
 	ResetExamSchedule(ctx context.Context) (int, error)
 	SetGenerationConfig(ctx context.Context, input model.GenerationConfigInput) (*model.GenerationConfig, error)
+	SetInquiry(ctx context.Context, kind model.InquiryKind, input model.InquiryInput) (*model.Inquiry, error)
+	OpenInquiry(ctx context.Context, kind model.InquiryKind) (*model.Inquiry, error)
+	CloseInquiry(ctx context.Context, kind model.InquiryKind) (*model.Inquiry, error)
+	ReviewInquirySubmission(ctx context.Context, id int, revision int, state model.InquiryReviewState, note *string) (bool, error)
+	SetMyNotificationMode(ctx context.Context, mode model.NotificationMode) (*model.NotificationSetting, error)
+	MarkInquiryActivitySeen(ctx context.Context, upTo int) (bool, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, starttime time.Time, roomName *string) (bool, error)
 	RemovePrePlannedInvigilation(ctx context.Context, starttime time.Time, roomName *string) (bool, error)
 	PrePlanInvigilationAt(ctx context.Context, starttime time.Time, roomName *string) (bool, error)
@@ -2105,6 +2204,11 @@ type QueryResolver interface {
 	ExamScheduleConstraints(ctx context.Context) ([]*model.OptimizerConstraint, error)
 	ExamRoomsPhaseState(ctx context.Context) (*model.ExamRoomsPhaseState, error)
 	GenerationConfig(ctx context.Context) (*model.GenerationConfig, error)
+	Inquiries(ctx context.Context) ([]*model.Inquiry, error)
+	InquiryInboxSummary(ctx context.Context) ([]*model.InquiryInboxEntry, error)
+	InquirySubmissions(ctx context.Context, kind model.InquiryKind, onlyOpen *bool) ([]*model.InquirySubmission, error)
+	InquiryActivity(ctx context.Context, semester *string, kind *model.InquiryKind, teacherID *int, before *int, first *int) ([]*model.InquiryActivity, error)
+	MyNotificationSetting(ctx context.Context) (*model.NotificationSetting, error)
 	InvigilatorTodos(ctx context.Context) (*model.InvigilationTodos, error)
 	InvigilatorsWithReq(ctx context.Context) ([]*model.Invigilator, error)
 	InvigilatorsExcludedByConfig(ctx context.Context) ([]*model.Invigilator, error)
@@ -4426,6 +4530,293 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ImportJointResult.Programs(childComplexity), true
 
+	case "Inquiry.closedAt":
+		if e.ComplexityRoot.Inquiry.ClosedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.ClosedAt(childComplexity), true
+	case "Inquiry.closedBy":
+		if e.ComplexityRoot.Inquiry.ClosedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.ClosedBy(childComplexity), true
+	case "Inquiry.deadline":
+		if e.ComplexityRoot.Inquiry.Deadline == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.Deadline(childComplexity), true
+	case "Inquiry.intro":
+		if e.ComplexityRoot.Inquiry.Intro == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.Intro(childComplexity), true
+	case "Inquiry.kind":
+		if e.ComplexityRoot.Inquiry.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.Kind(childComplexity), true
+	case "Inquiry.nothingToReport":
+		if e.ComplexityRoot.Inquiry.NothingToReport == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.NothingToReport(childComplexity), true
+	case "Inquiry.openSubmissions":
+		if e.ComplexityRoot.Inquiry.OpenSubmissions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.OpenSubmissions(childComplexity), true
+	case "Inquiry.openedAt":
+		if e.ComplexityRoot.Inquiry.OpenedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.OpenedAt(childComplexity), true
+	case "Inquiry.openedBy":
+		if e.ComplexityRoot.Inquiry.OpenedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.OpenedBy(childComplexity), true
+	case "Inquiry.semester":
+		if e.ComplexityRoot.Inquiry.Semester == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.Semester(childComplexity), true
+	case "Inquiry.state":
+		if e.ComplexityRoot.Inquiry.State == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.State(childComplexity), true
+	case "Inquiry.submissions":
+		if e.ComplexityRoot.Inquiry.Submissions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Inquiry.Submissions(childComplexity), true
+
+	case "InquiryActivity.action":
+		if e.ComplexityRoot.InquiryActivity.Action == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.Action(childComplexity), true
+	case "InquiryActivity.actor":
+		if e.ComplexityRoot.InquiryActivity.Actor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.Actor(childComplexity), true
+	case "InquiryActivity.at":
+		if e.ComplexityRoot.InquiryActivity.At == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.At(childComplexity), true
+	case "InquiryActivity.changes":
+		if e.ComplexityRoot.InquiryActivity.Changes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.Changes(childComplexity), true
+	case "InquiryActivity.channel":
+		if e.ComplexityRoot.InquiryActivity.Channel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.Channel(childComplexity), true
+	case "InquiryActivity.id":
+		if e.ComplexityRoot.InquiryActivity.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.ID(childComplexity), true
+	case "InquiryActivity.kind":
+		if e.ComplexityRoot.InquiryActivity.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.Kind(childComplexity), true
+	case "InquiryActivity.label":
+		if e.ComplexityRoot.InquiryActivity.Label == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.Label(childComplexity), true
+	case "InquiryActivity.revision":
+		if e.ComplexityRoot.InquiryActivity.Revision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.Revision(childComplexity), true
+	case "InquiryActivity.semester":
+		if e.ComplexityRoot.InquiryActivity.Semester == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.Semester(childComplexity), true
+	case "InquiryActivity.submissionID":
+		if e.ComplexityRoot.InquiryActivity.SubmissionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.SubmissionID(childComplexity), true
+	case "InquiryActivity.teacherID":
+		if e.ComplexityRoot.InquiryActivity.TeacherID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.TeacherID(childComplexity), true
+	case "InquiryActivity.teacherName":
+		if e.ComplexityRoot.InquiryActivity.TeacherName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivity.TeacherName(childComplexity), true
+
+	case "InquiryActivityChange.field":
+		if e.ComplexityRoot.InquiryActivityChange.Field == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivityChange.Field(childComplexity), true
+	case "InquiryActivityChange.new":
+		if e.ComplexityRoot.InquiryActivityChange.New == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivityChange.New(childComplexity), true
+	case "InquiryActivityChange.old":
+		if e.ComplexityRoot.InquiryActivityChange.Old == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryActivityChange.Old(childComplexity), true
+
+	case "InquiryInboxEntry.kind":
+		if e.ComplexityRoot.InquiryInboxEntry.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryInboxEntry.Kind(childComplexity), true
+	case "InquiryInboxEntry.open":
+		if e.ComplexityRoot.InquiryInboxEntry.Open == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryInboxEntry.Open(childComplexity), true
+	case "InquiryInboxEntry.semester":
+		if e.ComplexityRoot.InquiryInboxEntry.Semester == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquiryInboxEntry.Semester(childComplexity), true
+
+	case "InquirySubmission.channel":
+		if e.ComplexityRoot.InquirySubmission.Channel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.Channel(childComplexity), true
+	case "InquirySubmission.createdBy":
+		if e.ComplexityRoot.InquirySubmission.CreatedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.CreatedBy(childComplexity), true
+	case "InquirySubmission.id":
+		if e.ComplexityRoot.InquirySubmission.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.ID(childComplexity), true
+	case "InquirySubmission.kind":
+		if e.ComplexityRoot.InquirySubmission.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.Kind(childComplexity), true
+	case "InquirySubmission.preplan":
+		if e.ComplexityRoot.InquirySubmission.Preplan == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.Preplan(childComplexity), true
+	case "InquirySubmission.preplanExamID":
+		if e.ComplexityRoot.InquirySubmission.PreplanExamID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.PreplanExamID(childComplexity), true
+	case "InquirySubmission.review":
+		if e.ComplexityRoot.InquirySubmission.Review == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.Review(childComplexity), true
+	case "InquirySubmission.reviewNote":
+		if e.ComplexityRoot.InquirySubmission.ReviewNote == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.ReviewNote(childComplexity), true
+	case "InquirySubmission.reviewedPreplan":
+		if e.ComplexityRoot.InquirySubmission.ReviewedPreplan == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.ReviewedPreplan(childComplexity), true
+	case "InquirySubmission.reviewedRevision":
+		if e.ComplexityRoot.InquirySubmission.ReviewedRevision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.ReviewedRevision(childComplexity), true
+	case "InquirySubmission.revision":
+		if e.ComplexityRoot.InquirySubmission.Revision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.Revision(childComplexity), true
+	case "InquirySubmission.submittedAt":
+		if e.ComplexityRoot.InquirySubmission.SubmittedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.SubmittedAt(childComplexity), true
+	case "InquirySubmission.submittedBy":
+		if e.ComplexityRoot.InquirySubmission.SubmittedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.SubmittedBy(childComplexity), true
+	case "InquirySubmission.teacherID":
+		if e.ComplexityRoot.InquirySubmission.TeacherID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.TeacherID(childComplexity), true
+	case "InquirySubmission.teacherName":
+		if e.ComplexityRoot.InquirySubmission.TeacherName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.TeacherName(childComplexity), true
+	case "InquirySubmission.withdrawn":
+		if e.ComplexityRoot.InquirySubmission.Withdrawn == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InquirySubmission.Withdrawn(childComplexity), true
+
 	case "Invigilation.duration":
 		if e.ComplexityRoot.Invigilation.Duration == nil {
 			break
@@ -5363,6 +5754,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ClearEmailAttachments(childComplexity, args["kind"].(string)), true
+	case "Mutation.closeInquiry":
+		if e.ComplexityRoot.Mutation.CloseInquiry == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_closeInquiry_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CloseInquiry(childComplexity, args["kind"].(model.InquiryKind)), true
 	case "Mutation.connectPreplanExamToAncode":
 		if e.ComplexityRoot.Mutation.ConnectPreplanExamToAncode == nil {
 			break
@@ -5563,6 +5965,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.Lab(childComplexity, args["ancode"].(int)), true
+	case "Mutation.markInquiryActivitySeen":
+		if e.ComplexityRoot.Mutation.MarkInquiryActivitySeen == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_markInquiryActivitySeen_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.MarkInquiryActivitySeen(childComplexity, args["upTo"].(int)), true
 	case "Mutation.notPlannedByMe":
 		if e.ComplexityRoot.Mutation.NotPlannedByMe == nil {
 			break
@@ -5585,6 +5998,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.Online(childComplexity, args["ancode"].(int)), true
+	case "Mutation.openInquiry":
+		if e.ComplexityRoot.Mutation.OpenInquiry == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_openInquiry_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.OpenInquiry(childComplexity, args["kind"].(model.InquiryKind)), true
 	case "Mutation.prePlanInvigilation":
 		if e.ComplexityRoot.Mutation.PrePlanInvigilation == nil {
 			break
@@ -5837,6 +6261,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ResetSemesterPlaner(childComplexity), true
+	case "Mutation.reviewInquirySubmission":
+		if e.ComplexityRoot.Mutation.ReviewInquirySubmission == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_reviewInquirySubmission_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ReviewInquirySubmission(childComplexity, args["id"].(int), args["revision"].(int), args["state"].(model.InquiryReviewState), args["note"].(*string)), true
 	case "Mutation.revokePortalAccessToken":
 		if e.ComplexityRoot.Mutation.RevokePortalAccessToken == nil {
 			break
@@ -5964,6 +6399,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetGenerationConfig(childComplexity, args["input"].(model.GenerationConfigInput)), true
+	case "Mutation.setInquiry":
+		if e.ComplexityRoot.Mutation.SetInquiry == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setInquiry_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetInquiry(childComplexity, args["kind"].(model.InquiryKind), args["input"].(model.InquiryInput)), true
 	case "Mutation.setInvigilatorConstraints":
 		if e.ComplexityRoot.Mutation.SetInvigilatorConstraints == nil {
 			break
@@ -6008,6 +6454,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetMyJiraToken(childComplexity, args["token"].(string)), true
+	case "Mutation.setMyNotificationMode":
+		if e.ComplexityRoot.Mutation.SetMyNotificationMode == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setMyNotificationMode_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetMyNotificationMode(childComplexity, args["mode"].(model.NotificationMode)), true
 	case "Mutation.setMyShortname":
 		if e.ComplexityRoot.Mutation.SetMyShortname == nil {
 			break
@@ -6583,6 +7040,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.NTAWithRegsByExamAndTeacher.Teacher(childComplexity), true
+
+	case "NotificationSetting.mode":
+		if e.ComplexityRoot.NotificationSetting.Mode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NotificationSetting.Mode(childComplexity), true
+	case "NotificationSetting.seenUpTo":
+		if e.ComplexityRoot.NotificationSetting.SeenUpTo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NotificationSetting.SeenUpTo(childComplexity), true
+	case "NotificationSetting.unseen":
+		if e.ComplexityRoot.NotificationSetting.Unseen == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NotificationSetting.Unseen(childComplexity), true
 
 	case "NtaRoomAloneWaiver.ancode":
 		if e.ComplexityRoot.NtaRoomAloneWaiver.Ancode == nil {
@@ -7256,6 +7732,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PreplanBookingSuggestion.Until(childComplexity), true
+
+	case "PreplanEntry.durationMin":
+		if e.ComplexityRoot.PreplanEntry.DurationMin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PreplanEntry.DurationMin(childComplexity), true
+	case "PreplanEntry.examKind":
+		if e.ComplexityRoot.PreplanEntry.ExamKind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PreplanEntry.ExamKind(childComplexity), true
+	case "PreplanEntry.expectedStudents":
+		if e.ComplexityRoot.PreplanEntry.ExpectedStudents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PreplanEntry.ExpectedStudents(childComplexity), true
+	case "PreplanEntry.module":
+		if e.ComplexityRoot.PreplanEntry.Module == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PreplanEntry.Module(childComplexity), true
+	case "PreplanEntry.programs":
+		if e.ComplexityRoot.PreplanEntry.Programs == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PreplanEntry.Programs(childComplexity), true
+	case "PreplanEntry.remark":
+		if e.ComplexityRoot.PreplanEntry.Remark == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PreplanEntry.Remark(childComplexity), true
 
 	case "PreplanExam.ancode":
 		if e.ComplexityRoot.PreplanExam.Ancode == nil {
@@ -8061,6 +8574,40 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GenerationConfig(childComplexity), true
+	case "Query.inquiries":
+		if e.ComplexityRoot.Query.Inquiries == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.Inquiries(childComplexity), true
+	case "Query.inquiryActivity":
+		if e.ComplexityRoot.Query.InquiryActivity == nil {
+			break
+		}
+
+		args, err := ec.field_Query_inquiryActivity_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.InquiryActivity(childComplexity, args["semester"].(*string), args["kind"].(*model.InquiryKind), args["teacherID"].(*int), args["before"].(*int), args["first"].(*int)), true
+	case "Query.inquiryInboxSummary":
+		if e.ComplexityRoot.Query.InquiryInboxSummary == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.InquiryInboxSummary(childComplexity), true
+	case "Query.inquirySubmissions":
+		if e.ComplexityRoot.Query.InquirySubmissions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_inquirySubmissions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.InquirySubmissions(childComplexity, args["kind"].(model.InquiryKind), args["onlyOpen"].(*bool)), true
 
 	case "Query.invigilator":
 		if e.ComplexityRoot.Query.Invigilator == nil {
@@ -8233,6 +8780,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MyAccount(childComplexity), true
+	case "Query.myNotificationSetting":
+		if e.ComplexityRoot.Query.MyNotificationSetting == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.MyNotificationSetting(childComplexity), true
 	case "Query.newSemesterConfigDefaults":
 		if e.ComplexityRoot.Query.NewSemesterConfigDefaults == nil {
 			break
@@ -10904,6 +11457,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.UnplacedExamReason.Reason(childComplexity), true
 
+	case "UnseenActivity.count":
+		if e.ComplexityRoot.UnseenActivity.Count == nil {
+			break
+		}
+
+		return e.ComplexityRoot.UnseenActivity.Count(childComplexity), true
+	case "UnseenActivity.semester":
+		if e.ComplexityRoot.UnseenActivity.Semester == nil {
+			break
+		}
+
+		return e.ComplexityRoot.UnseenActivity.Semester(childComplexity), true
+
 	case "User.email":
 		if e.ComplexityRoot.User.Email == nil {
 			break
@@ -11364,6 +11930,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputConstraintsInput,
 		ec.unmarshalInputEmailsInput,
 		ec.unmarshalInputGenerationConfigInput,
+		ec.unmarshalInputInquiryInput,
 		ec.unmarshalInputInvigilationTimeWindowInput,
 		ec.unmarshalInputInvigilatorConstraintsInput,
 		ec.unmarshalInputJointProgramTimesInput,
@@ -12778,6 +13345,163 @@ input GenerationConfigInput {
   roomHeatFloor: Float!
   roomChurn: Float!
   roomHeatBaselineHour: Float!
+}
+`, BuiltIn: false},
+	{Name: "../inquiry.graphqls", Input: `# Inquiries of the examiner portal, the planners' side. Works on the ACTIVE semester like
+# every planner page, except inquiryInboxSummary and inquiryActivity, which span all
+# semesters so that nothing waits unseen in a semester nobody has switched to.
+#
+# The examiners' side is the portal API (graph/portal/portal.graphqls).
+
+enum InquiryKind {
+  PREPLAN
+  EXAMS_TO_PLAN
+  CONSTRAINTS
+  DRAFT_FEEDBACK
+  INVIGILATION
+}
+
+enum InquiryState {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum InquiryReviewState {
+  "new or changed since a planner last looked at it"
+  OPEN
+  APPLIED
+  APPLIED_MODIFIED
+  REJECTED
+  DONE
+}
+
+enum NotificationMode {
+  OFF
+  IMMEDIATE
+  DAILY
+}
+
+type Inquiry {
+  semester: String!
+  kind: InquiryKind!
+  state: InquiryState!
+  deadline: Time
+  intro: String!
+  openedAt: Time
+  openedBy: String
+  closedAt: Time
+  closedBy: String
+  "Number of submissions, and of those not yet looked at."
+  submissions: Int!
+  openSubmissions: Int!
+  "Examiners who said there is nothing to report."
+  nothingToReport: Int!
+}
+
+"The content of an EXaHM/SEB entry."
+type PreplanEntry {
+  examKind: String!
+  module: String!
+  programs: [String!]!
+  expectedStudents: Int!
+  durationMin: Int
+  remark: String!
+}
+
+type InquirySubmission {
+  id: Int!
+  kind: InquiryKind!
+  revision: Int!
+  teacherID: Int!
+  teacherName: String!
+  createdBy: String!
+  submittedBy: String!
+  submittedAt: Time!
+  "WEB or TOKEN."
+  channel: String!
+  withdrawn: Boolean!
+  "The pre-exam the entry became; null when the planners deleted it."
+  preplanExamID: Int
+  review: InquiryReviewState!
+  reviewNote: String!
+  reviewedRevision: Int
+  preplan: PreplanEntry
+  "The entry as a planner last reviewed it -- for the comparison."
+  reviewedPreplan: PreplanEntry
+}
+
+type InquiryInboxEntry {
+  semester: String!
+  kind: InquiryKind!
+  open: Int!
+}
+
+type InquiryActivityChange {
+  field: String!
+  old: String!
+  new: String!
+}
+
+type InquiryActivity {
+  id: Int!
+  semester: String!
+  at: Time!
+  actor: String!
+  channel: String!
+  teacherID: Int!
+  teacherName: String!
+  kind: InquiryKind!
+  action: String!
+  submissionID: Int
+  revision: Int
+  label: String!
+  changes: [InquiryActivityChange!]!
+}
+
+type UnseenActivity {
+  semester: String!
+  count: Int!
+}
+
+type NotificationSetting {
+  mode: NotificationMode!
+  "The last change shown in the overview."
+  seenUpTo: Int!
+  unseen: [UnseenActivity!]!
+}
+
+input InquiryInput {
+  deadline: Time
+  intro: String!
+}
+
+extend type Query {
+  "Every kind of inquiry in the active semester; kinds not set up yet come back as DRAFT."
+  inquiries: [Inquiry!]!
+  "Submissions not looked at yet, per semester and kind -- all semesters."
+  inquiryInboxSummary: [InquiryInboxEntry!]!
+  "Submissions of a kind in the active semester."
+  inquirySubmissions(kind: InquiryKind!, onlyOpen: Boolean): [InquirySubmission!]!
+  "Changes through the portal, newest first. All semesters unless filtered."
+  inquiryActivity(semester: String, kind: InquiryKind, teacherID: Int, before: Int, first: Int): [InquiryActivity!]!
+  myNotificationSetting: NotificationSetting!
+}
+
+extend type Mutation {
+  "Create or update an inquiry of the active semester (deadline, introduction)."
+  setInquiry(kind: InquiryKind!, input: InquiryInput!): Inquiry!
+  openInquiry(kind: InquiryKind!): Inquiry!
+  closeInquiry(kind: InquiryKind!): Inquiry!
+  """
+  Mark a submission revision as looked at (APPLIED, APPLIED_MODIFIED, DONE) or reject
+  it (REJECTED, note required). Fails when a newer revision arrived in the meantime.
+  """
+  reviewInquirySubmission(id: Int!, revision: Int!, state: InquiryReviewState!, note: String): Boolean!
+  "How the caller hears about portal changes: OFF, IMMEDIATE or DAILY (default)."
+  setMyNotificationMode(mode: NotificationMode!): NotificationSetting!
+  "Mark the overview as read up to the given change."
+  markInquiryActivitySeen(upTo: Int!): Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../invigilation.graphqls", Input: `extend type Query {
@@ -16182,6 +16906,130 @@ func (ec *executionContext) childFields_ImportJointResult(ctx context.Context, f
 	return nil, fmt.Errorf("no field named %q was found under type ImportJointResult", field.Name)
 }
 
+func (ec *executionContext) childFields_Inquiry(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "semester":
+		return ec.fieldContext_Inquiry_semester(ctx, field)
+	case "kind":
+		return ec.fieldContext_Inquiry_kind(ctx, field)
+	case "state":
+		return ec.fieldContext_Inquiry_state(ctx, field)
+	case "deadline":
+		return ec.fieldContext_Inquiry_deadline(ctx, field)
+	case "intro":
+		return ec.fieldContext_Inquiry_intro(ctx, field)
+	case "openedAt":
+		return ec.fieldContext_Inquiry_openedAt(ctx, field)
+	case "openedBy":
+		return ec.fieldContext_Inquiry_openedBy(ctx, field)
+	case "closedAt":
+		return ec.fieldContext_Inquiry_closedAt(ctx, field)
+	case "closedBy":
+		return ec.fieldContext_Inquiry_closedBy(ctx, field)
+	case "submissions":
+		return ec.fieldContext_Inquiry_submissions(ctx, field)
+	case "openSubmissions":
+		return ec.fieldContext_Inquiry_openSubmissions(ctx, field)
+	case "nothingToReport":
+		return ec.fieldContext_Inquiry_nothingToReport(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Inquiry", field.Name)
+}
+
+func (ec *executionContext) childFields_InquiryActivity(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_InquiryActivity_id(ctx, field)
+	case "semester":
+		return ec.fieldContext_InquiryActivity_semester(ctx, field)
+	case "at":
+		return ec.fieldContext_InquiryActivity_at(ctx, field)
+	case "actor":
+		return ec.fieldContext_InquiryActivity_actor(ctx, field)
+	case "channel":
+		return ec.fieldContext_InquiryActivity_channel(ctx, field)
+	case "teacherID":
+		return ec.fieldContext_InquiryActivity_teacherID(ctx, field)
+	case "teacherName":
+		return ec.fieldContext_InquiryActivity_teacherName(ctx, field)
+	case "kind":
+		return ec.fieldContext_InquiryActivity_kind(ctx, field)
+	case "action":
+		return ec.fieldContext_InquiryActivity_action(ctx, field)
+	case "submissionID":
+		return ec.fieldContext_InquiryActivity_submissionID(ctx, field)
+	case "revision":
+		return ec.fieldContext_InquiryActivity_revision(ctx, field)
+	case "label":
+		return ec.fieldContext_InquiryActivity_label(ctx, field)
+	case "changes":
+		return ec.fieldContext_InquiryActivity_changes(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type InquiryActivity", field.Name)
+}
+
+func (ec *executionContext) childFields_InquiryActivityChange(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "field":
+		return ec.fieldContext_InquiryActivityChange_field(ctx, field)
+	case "old":
+		return ec.fieldContext_InquiryActivityChange_old(ctx, field)
+	case "new":
+		return ec.fieldContext_InquiryActivityChange_new(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type InquiryActivityChange", field.Name)
+}
+
+func (ec *executionContext) childFields_InquiryInboxEntry(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "semester":
+		return ec.fieldContext_InquiryInboxEntry_semester(ctx, field)
+	case "kind":
+		return ec.fieldContext_InquiryInboxEntry_kind(ctx, field)
+	case "open":
+		return ec.fieldContext_InquiryInboxEntry_open(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type InquiryInboxEntry", field.Name)
+}
+
+func (ec *executionContext) childFields_InquirySubmission(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_InquirySubmission_id(ctx, field)
+	case "kind":
+		return ec.fieldContext_InquirySubmission_kind(ctx, field)
+	case "revision":
+		return ec.fieldContext_InquirySubmission_revision(ctx, field)
+	case "teacherID":
+		return ec.fieldContext_InquirySubmission_teacherID(ctx, field)
+	case "teacherName":
+		return ec.fieldContext_InquirySubmission_teacherName(ctx, field)
+	case "createdBy":
+		return ec.fieldContext_InquirySubmission_createdBy(ctx, field)
+	case "submittedBy":
+		return ec.fieldContext_InquirySubmission_submittedBy(ctx, field)
+	case "submittedAt":
+		return ec.fieldContext_InquirySubmission_submittedAt(ctx, field)
+	case "channel":
+		return ec.fieldContext_InquirySubmission_channel(ctx, field)
+	case "withdrawn":
+		return ec.fieldContext_InquirySubmission_withdrawn(ctx, field)
+	case "preplanExamID":
+		return ec.fieldContext_InquirySubmission_preplanExamID(ctx, field)
+	case "review":
+		return ec.fieldContext_InquirySubmission_review(ctx, field)
+	case "reviewNote":
+		return ec.fieldContext_InquirySubmission_reviewNote(ctx, field)
+	case "reviewedRevision":
+		return ec.fieldContext_InquirySubmission_reviewedRevision(ctx, field)
+	case "preplan":
+		return ec.fieldContext_InquirySubmission_preplan(ctx, field)
+	case "reviewedPreplan":
+		return ec.fieldContext_InquirySubmission_reviewedPreplan(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type InquirySubmission", field.Name)
+}
+
 func (ec *executionContext) childFields_Invigilation(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "roomName":
@@ -16670,6 +17518,18 @@ func (ec *executionContext) childFields_NTAWithRegsByExam(ctx context.Context, f
 	return nil, fmt.Errorf("no field named %q was found under type NTAWithRegsByExam", field.Name)
 }
 
+func (ec *executionContext) childFields_NotificationSetting(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "mode":
+		return ec.fieldContext_NotificationSetting_mode(ctx, field)
+	case "seenUpTo":
+		return ec.fieldContext_NotificationSetting_seenUpTo(ctx, field)
+	case "unseen":
+		return ec.fieldContext_NotificationSetting_unseen(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type NotificationSetting", field.Name)
+}
+
 func (ec *executionContext) childFields_NtaRoomAloneWaiver(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "mtknr":
@@ -17000,6 +17860,24 @@ func (ec *executionContext) childFields_PreplanBookingSuggestion(ctx context.Con
 		return ec.fieldContext_PreplanBookingSuggestion_kinds(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PreplanBookingSuggestion", field.Name)
+}
+
+func (ec *executionContext) childFields_PreplanEntry(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "examKind":
+		return ec.fieldContext_PreplanEntry_examKind(ctx, field)
+	case "module":
+		return ec.fieldContext_PreplanEntry_module(ctx, field)
+	case "programs":
+		return ec.fieldContext_PreplanEntry_programs(ctx, field)
+	case "expectedStudents":
+		return ec.fieldContext_PreplanEntry_expectedStudents(ctx, field)
+	case "durationMin":
+		return ec.fieldContext_PreplanEntry_durationMin(ctx, field)
+	case "remark":
+		return ec.fieldContext_PreplanEntry_remark(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PreplanEntry", field.Name)
 }
 
 func (ec *executionContext) childFields_PreplanExam(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -18036,6 +18914,16 @@ func (ec *executionContext) childFields_UnplacedExamReason(ctx context.Context, 
 	return nil, fmt.Errorf("no field named %q was found under type UnplacedExamReason", field.Name)
 }
 
+func (ec *executionContext) childFields_UnseenActivity(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "semester":
+		return ec.fieldContext_UnseenActivity_semester(ctx, field)
+	case "count":
+		return ec.fieldContext_UnseenActivity_count(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type UnseenActivity", field.Name)
+}
+
 func (ec *executionContext) childFields_User(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "email":
@@ -18754,6 +19642,20 @@ func (ec *executionContext) field_Mutation_clearEmailAttachments_args(ctx contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_closeInquiry_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (model.InquiryKind, error) {
+			return ec.unmarshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_connectPreplanExamToAncode_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19042,6 +19944,20 @@ func (ec *executionContext) field_Mutation_lab_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_markInquiryActivitySeen_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "upTo",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["upTo"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_notPlannedByMe_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19075,6 +19991,20 @@ func (ec *executionContext) field_Mutation_online_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["ancode"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_openInquiry_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (model.InquiryKind, error) {
+			return ec.unmarshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
 	return args, nil
 }
 
@@ -19490,6 +20420,44 @@ func (ec *executionContext) field_Mutation_resetEmailTemplate_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_reviewInquirySubmission_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "revision",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["revision"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "state",
+		func(ctx context.Context, v any) (model.InquiryReviewState, error) {
+			return ec.unmarshalNInquiryReviewState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryReviewState(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["state"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "note",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["note"] = arg3
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_revokePortalAccessToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19692,6 +20660,28 @@ func (ec *executionContext) field_Mutation_setGenerationConfig_args(ctx context.
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setInquiry_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (model.InquiryKind, error) {
+			return ec.unmarshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.InquiryInput, error) {
+			return ec.unmarshalNInquiryInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setInvigilatorConstraints_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19777,6 +20767,20 @@ func (ec *executionContext) field_Mutation_setMyJiraToken_args(ctx context.Conte
 		return nil, err
 	}
 	args["token"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setMyNotificationMode_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "mode",
+		func(ctx context.Context, v any) (model.NotificationMode, error) {
+			return ec.unmarshalNNotificationMode2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNotificationMode(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["mode"] = arg0
 	return args, nil
 }
 
@@ -20691,6 +21695,74 @@ func (ec *executionContext) field_Query_examsAt_args(ctx context.Context, rawArg
 		return nil, err
 	}
 	args["starttime"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_inquiryActivity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "semester",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["semester"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (*model.InquiryKind, error) {
+			return ec.unmarshalOInquiryKind2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "teacherID",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["teacherID"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "before",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["before"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "first",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg4
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_inquirySubmissions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (model.InquiryKind, error) {
+			return ec.unmarshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "onlyOpen",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["onlyOpen"] = arg1
 	return args, nil
 }
 
@@ -30517,6 +31589,1114 @@ func (ec *executionContext) fieldContext_ImportJointResult_examsRemoved(_ contex
 	return graphql.NewScalarFieldContext("ImportJointResult", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
+func (ec *executionContext) _Inquiry_semester(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_semester(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Semester, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_semester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_kind(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InquiryKind) graphql.Marshaler {
+			return ec.marshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type InquiryKind does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_state(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_state(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.State, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InquiryState) graphql.Marshaler {
+			return ec.marshalNInquiryState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type InquiryState does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_deadline(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_deadline(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Deadline, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_deadline(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_intro(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_intro(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Intro, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_intro(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_openedAt(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_openedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OpenedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_openedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_openedBy(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_openedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OpenedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_openedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_closedAt(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_closedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ClosedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_closedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_closedBy(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_closedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ClosedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_closedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_submissions(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_submissions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Submissions, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_submissions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_openSubmissions(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_openSubmissions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OpenSubmissions, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_openSubmissions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Inquiry_nothingToReport(ctx context.Context, field graphql.CollectedField, obj *model.Inquiry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Inquiry_nothingToReport(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NothingToReport, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Inquiry_nothingToReport(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Inquiry", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_id(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_semester(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_semester(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Semester, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_semester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_at(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_at(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.At, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_at(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_actor(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_actor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Actor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_actor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_channel(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_channel(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Channel, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_teacherID(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_teacherID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TeacherID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_teacherID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_teacherName(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_teacherName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TeacherName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_teacherName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_kind(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InquiryKind) graphql.Marshaler {
+			return ec.marshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type InquiryKind does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_action(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_action(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Action, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_action(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_submissionID(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_submissionID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubmissionID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_submissionID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_revision(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_revision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Revision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_revision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_label(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_label(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivity", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivity_changes(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivity_changes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Changes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.InquiryActivityChange) graphql.Marshaler {
+			return ec.marshalNInquiryActivityChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryActivityChangeᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivity_changes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InquiryActivity",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_InquiryActivityChange(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InquiryActivityChange_field(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivityChange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivityChange_field(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Field, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivityChange_field(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivityChange", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivityChange_old(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivityChange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivityChange_old(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Old, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivityChange_old(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivityChange", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryActivityChange_new(ctx context.Context, field graphql.CollectedField, obj *model.InquiryActivityChange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryActivityChange_new(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.New, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryActivityChange_new(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryActivityChange", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryInboxEntry_semester(ctx context.Context, field graphql.CollectedField, obj *model.InquiryInboxEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryInboxEntry_semester(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Semester, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryInboxEntry_semester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryInboxEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryInboxEntry_kind(ctx context.Context, field graphql.CollectedField, obj *model.InquiryInboxEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryInboxEntry_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InquiryKind) graphql.Marshaler {
+			return ec.marshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryInboxEntry_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryInboxEntry", field, false, false, errors.New("field of type InquiryKind does not have child fields"))
+}
+
+func (ec *executionContext) _InquiryInboxEntry_open(ctx context.Context, field graphql.CollectedField, obj *model.InquiryInboxEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquiryInboxEntry_open(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Open, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquiryInboxEntry_open(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquiryInboxEntry", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_id(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_kind(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InquiryKind) graphql.Marshaler {
+			return ec.marshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type InquiryKind does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_revision(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_revision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Revision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_revision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_teacherID(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_teacherID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TeacherID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_teacherID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_teacherName(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_teacherName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TeacherName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_teacherName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_createdBy(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_createdBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_createdBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_submittedBy(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_submittedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubmittedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_submittedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_submittedAt(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_submittedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubmittedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_submittedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_channel(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_channel(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Channel, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_withdrawn(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_withdrawn(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Withdrawn, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_withdrawn(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_preplanExamID(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_preplanExamID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PreplanExamID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_preplanExamID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_review(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_review(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Review, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.InquiryReviewState) graphql.Marshaler {
+			return ec.marshalNInquiryReviewState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryReviewState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_review(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type InquiryReviewState does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_reviewNote(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_reviewNote(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReviewNote, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_reviewNote(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_reviewedRevision(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_reviewedRevision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReviewedRevision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_reviewedRevision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InquirySubmission", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _InquirySubmission_preplan(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_preplan(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Preplan, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.PreplanEntry) graphql.Marshaler {
+			return ec.marshalOPreplanEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanEntry(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_preplan(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InquirySubmission",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PreplanEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InquirySubmission_reviewedPreplan(ctx context.Context, field graphql.CollectedField, obj *model.InquirySubmission) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InquirySubmission_reviewedPreplan(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReviewedPreplan, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.PreplanEntry) graphql.Marshaler {
+			return ec.marshalOPreplanEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanEntry(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InquirySubmission_reviewedPreplan(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InquirySubmission",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PreplanEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Invigilation_roomName(ctx context.Context, field graphql.CollectedField, obj *model.Invigilation) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -35099,6 +37279,270 @@ func (ec *executionContext) fieldContext_Mutation_setGenerationConfig(ctx contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setInquiry(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setInquiry(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetInquiry(ctx, fc.Args["kind"].(model.InquiryKind), fc.Args["input"].(model.InquiryInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Inquiry) graphql.Marshaler {
+			return ec.marshalNInquiry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiry(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setInquiry(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Inquiry(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setInquiry_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_openInquiry(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_openInquiry(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().OpenInquiry(ctx, fc.Args["kind"].(model.InquiryKind))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Inquiry) graphql.Marshaler {
+			return ec.marshalNInquiry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiry(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_openInquiry(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Inquiry(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_openInquiry_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_closeInquiry(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_closeInquiry(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CloseInquiry(ctx, fc.Args["kind"].(model.InquiryKind))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Inquiry) graphql.Marshaler {
+			return ec.marshalNInquiry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiry(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_closeInquiry(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Inquiry(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_closeInquiry_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_reviewInquirySubmission(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_reviewInquirySubmission(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ReviewInquirySubmission(ctx, fc.Args["id"].(int), fc.Args["revision"].(int), fc.Args["state"].(model.InquiryReviewState), fc.Args["note"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_reviewInquirySubmission(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_reviewInquirySubmission_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setMyNotificationMode(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setMyNotificationMode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetMyNotificationMode(ctx, fc.Args["mode"].(model.NotificationMode))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.NotificationSetting) graphql.Marshaler {
+			return ec.marshalNNotificationSetting2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNotificationSetting(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setMyNotificationMode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NotificationSetting(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setMyNotificationMode_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_markInquiryActivitySeen(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_markInquiryActivitySeen(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().MarkInquiryActivitySeen(ctx, fc.Args["upTo"].(int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_markInquiryActivitySeen(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_markInquiryActivitySeen_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_prePlanInvigilation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -39246,6 +41690,84 @@ func (ec *executionContext) fieldContext_NTAWithRegsByExamAndTeacher_exams(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _NotificationSetting_mode(ctx context.Context, field graphql.CollectedField, obj *model.NotificationSetting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NotificationSetting_mode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Mode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.NotificationMode) graphql.Marshaler {
+			return ec.marshalNNotificationMode2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNotificationMode(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NotificationSetting_mode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NotificationSetting", field, false, false, errors.New("field of type NotificationMode does not have child fields"))
+}
+
+func (ec *executionContext) _NotificationSetting_seenUpTo(ctx context.Context, field graphql.CollectedField, obj *model.NotificationSetting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NotificationSetting_seenUpTo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SeenUpTo, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NotificationSetting_seenUpTo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NotificationSetting", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _NotificationSetting_unseen(ctx context.Context, field graphql.CollectedField, obj *model.NotificationSetting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NotificationSetting_unseen(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Unseen, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.UnseenActivity) graphql.Marshaler {
+			return ec.marshalNUnseenActivity2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnseenActivityᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NotificationSetting_unseen(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NotificationSetting",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_UnseenActivity(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _NtaRoomAloneWaiver_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.NtaRoomAloneWaiver) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -41913,6 +44435,144 @@ func (ec *executionContext) _PreplanBookingSuggestion_kinds(ctx context.Context,
 }
 func (ec *executionContext) fieldContext_PreplanBookingSuggestion_kinds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("PreplanBookingSuggestion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PreplanEntry_examKind(ctx context.Context, field graphql.CollectedField, obj *model.PreplanEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PreplanEntry_examKind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExamKind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PreplanEntry_examKind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PreplanEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PreplanEntry_module(ctx context.Context, field graphql.CollectedField, obj *model.PreplanEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PreplanEntry_module(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Module, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PreplanEntry_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PreplanEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PreplanEntry_programs(ctx context.Context, field graphql.CollectedField, obj *model.PreplanEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PreplanEntry_programs(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Programs, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PreplanEntry_programs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PreplanEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PreplanEntry_expectedStudents(ctx context.Context, field graphql.CollectedField, obj *model.PreplanEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PreplanEntry_expectedStudents(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExpectedStudents, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PreplanEntry_expectedStudents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PreplanEntry", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _PreplanEntry_durationMin(ctx context.Context, field graphql.CollectedField, obj *model.PreplanEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PreplanEntry_durationMin(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DurationMin, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PreplanEntry_durationMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PreplanEntry", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _PreplanEntry_remark(ctx context.Context, field graphql.CollectedField, obj *model.PreplanEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PreplanEntry_remark(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Remark, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PreplanEntry_remark(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PreplanEntry", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _PreplanExam_id(ctx context.Context, field graphql.CollectedField, obj *model.PreplanExam) (ret graphql.Marshaler) {
@@ -45416,6 +48076,190 @@ func (ec *executionContext) fieldContext_Query_generationConfig(_ context.Contex
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_GenerationConfig(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_inquiries(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_inquiries(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().Inquiries(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Inquiry) graphql.Marshaler {
+			return ec.marshalNInquiry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_inquiries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Inquiry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_inquiryInboxSummary(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_inquiryInboxSummary(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().InquiryInboxSummary(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.InquiryInboxEntry) graphql.Marshaler {
+			return ec.marshalNInquiryInboxEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryInboxEntryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_inquiryInboxSummary(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_InquiryInboxEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_inquirySubmissions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_inquirySubmissions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().InquirySubmissions(ctx, fc.Args["kind"].(model.InquiryKind), fc.Args["onlyOpen"].(*bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.InquirySubmission) graphql.Marshaler {
+			return ec.marshalNInquirySubmission2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquirySubmissionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_inquirySubmissions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_InquirySubmission(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_inquirySubmissions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_inquiryActivity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_inquiryActivity(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().InquiryActivity(ctx, fc.Args["semester"].(*string), fc.Args["kind"].(*model.InquiryKind), fc.Args["teacherID"].(*int), fc.Args["before"].(*int), fc.Args["first"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.InquiryActivity) graphql.Marshaler {
+			return ec.marshalNInquiryActivity2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryActivityᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_inquiryActivity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_InquiryActivity(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_inquiryActivity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_myNotificationSetting(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myNotificationSetting(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().MyNotificationSetting(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.NotificationSetting) graphql.Marshaler {
+			return ec.marshalNNotificationSetting2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNotificationSetting(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myNotificationSetting(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NotificationSetting(ctx, field)
 		},
 	}
 	return fc, nil
@@ -57244,6 +60088,52 @@ func (ec *executionContext) fieldContext_UnplacedExamReason_reason(_ context.Con
 	return graphql.NewScalarFieldContext("UnplacedExamReason", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _UnseenActivity_semester(ctx context.Context, field graphql.CollectedField, obj *model.UnseenActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_UnseenActivity_semester(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Semester, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_UnseenActivity_semester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("UnseenActivity", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _UnseenActivity_count(ctx context.Context, field graphql.CollectedField, obj *model.UnseenActivity) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_UnseenActivity_count(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Count, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_UnseenActivity_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("UnseenActivity", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
 func (ec *executionContext) _User_email(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -60754,6 +63644,43 @@ func (ec *executionContext) unmarshalInputGenerationConfigInput(ctx context.Cont
 				return it, err
 			}
 			it.RoomHeatBaselineHour = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputInquiryInput(ctx context.Context, obj any) (model.InquiryInput, error) {
+	var it model.InquiryInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"deadline", "intro"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "deadline":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deadline"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Deadline = data
+		case "intro":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("intro"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Intro = data
 		}
 	}
 	return it, nil
@@ -65216,6 +68143,406 @@ func (ec *executionContext) _ImportJointResult(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var inquiryImplementors = []string{"Inquiry"}
+
+func (ec *executionContext) _Inquiry(ctx context.Context, sel ast.SelectionSet, obj *model.Inquiry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, inquiryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Inquiry")
+		case "semester":
+			out.Values[i] = ec._Inquiry_semester(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kind":
+			out.Values[i] = ec._Inquiry_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "state":
+			out.Values[i] = ec._Inquiry_state(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deadline":
+			out.Values[i] = ec._Inquiry_deadline(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "intro":
+			out.Values[i] = ec._Inquiry_intro(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "openedAt":
+			out.Values[i] = ec._Inquiry_openedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "openedBy":
+			out.Values[i] = ec._Inquiry_openedBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "closedAt":
+			out.Values[i] = ec._Inquiry_closedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "closedBy":
+			out.Values[i] = ec._Inquiry_closedBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "submissions":
+			out.Values[i] = ec._Inquiry_submissions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "openSubmissions":
+			out.Values[i] = ec._Inquiry_openSubmissions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nothingToReport":
+			out.Values[i] = ec._Inquiry_nothingToReport(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var inquiryActivityImplementors = []string{"InquiryActivity"}
+
+func (ec *executionContext) _InquiryActivity(ctx context.Context, sel ast.SelectionSet, obj *model.InquiryActivity) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, inquiryActivityImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InquiryActivity")
+		case "id":
+			out.Values[i] = ec._InquiryActivity_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "semester":
+			out.Values[i] = ec._InquiryActivity_semester(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "at":
+			out.Values[i] = ec._InquiryActivity_at(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "actor":
+			out.Values[i] = ec._InquiryActivity_actor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channel":
+			out.Values[i] = ec._InquiryActivity_channel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teacherID":
+			out.Values[i] = ec._InquiryActivity_teacherID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teacherName":
+			out.Values[i] = ec._InquiryActivity_teacherName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kind":
+			out.Values[i] = ec._InquiryActivity_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "action":
+			out.Values[i] = ec._InquiryActivity_action(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "submissionID":
+			out.Values[i] = ec._InquiryActivity_submissionID(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "revision":
+			out.Values[i] = ec._InquiryActivity_revision(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._InquiryActivity_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "changes":
+			out.Values[i] = ec._InquiryActivity_changes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var inquiryActivityChangeImplementors = []string{"InquiryActivityChange"}
+
+func (ec *executionContext) _InquiryActivityChange(ctx context.Context, sel ast.SelectionSet, obj *model.InquiryActivityChange) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, inquiryActivityChangeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InquiryActivityChange")
+		case "field":
+			out.Values[i] = ec._InquiryActivityChange_field(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "old":
+			out.Values[i] = ec._InquiryActivityChange_old(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "new":
+			out.Values[i] = ec._InquiryActivityChange_new(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var inquiryInboxEntryImplementors = []string{"InquiryInboxEntry"}
+
+func (ec *executionContext) _InquiryInboxEntry(ctx context.Context, sel ast.SelectionSet, obj *model.InquiryInboxEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, inquiryInboxEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InquiryInboxEntry")
+		case "semester":
+			out.Values[i] = ec._InquiryInboxEntry_semester(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kind":
+			out.Values[i] = ec._InquiryInboxEntry_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "open":
+			out.Values[i] = ec._InquiryInboxEntry_open(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var inquirySubmissionImplementors = []string{"InquirySubmission"}
+
+func (ec *executionContext) _InquirySubmission(ctx context.Context, sel ast.SelectionSet, obj *model.InquirySubmission) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, inquirySubmissionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InquirySubmission")
+		case "id":
+			out.Values[i] = ec._InquirySubmission_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kind":
+			out.Values[i] = ec._InquirySubmission_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revision":
+			out.Values[i] = ec._InquirySubmission_revision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teacherID":
+			out.Values[i] = ec._InquirySubmission_teacherID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teacherName":
+			out.Values[i] = ec._InquirySubmission_teacherName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdBy":
+			out.Values[i] = ec._InquirySubmission_createdBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "submittedBy":
+			out.Values[i] = ec._InquirySubmission_submittedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "submittedAt":
+			out.Values[i] = ec._InquirySubmission_submittedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channel":
+			out.Values[i] = ec._InquirySubmission_channel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "withdrawn":
+			out.Values[i] = ec._InquirySubmission_withdrawn(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "preplanExamID":
+			out.Values[i] = ec._InquirySubmission_preplanExamID(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "review":
+			out.Values[i] = ec._InquirySubmission_review(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reviewNote":
+			out.Values[i] = ec._InquirySubmission_reviewNote(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reviewedRevision":
+			out.Values[i] = ec._InquirySubmission_reviewedRevision(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "preplan":
+			out.Values[i] = ec._InquirySubmission_preplan(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "reviewedPreplan":
+			out.Values[i] = ec._InquirySubmission_reviewedPreplan(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var invigilationImplementors = []string{"Invigilation"}
 
 func (ec *executionContext) _Invigilation(ctx context.Context, sel ast.SelectionSet, obj *model.Invigilation) graphql.Marshaler {
@@ -66892,6 +70219,48 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setInquiry":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setInquiry(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "openInquiry":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_openInquiry(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "closeInquiry":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_closeInquiry(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reviewInquirySubmission":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_reviewInquirySubmission(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setMyNotificationMode":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setMyNotificationMode(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "markInquiryActivitySeen":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_markInquiryActivitySeen(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "prePlanInvigilation":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_prePlanInvigilation(ctx, field)
@@ -67842,6 +71211,54 @@ func (ec *executionContext) _NTAWithRegsByExamAndTeacher(ctx context.Context, se
 		case "exams":
 			out.Values[i] = ec._NTAWithRegsByExamAndTeacher_exams(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var notificationSettingImplementors = []string{"NotificationSetting"}
+
+func (ec *executionContext) _NotificationSetting(ctx context.Context, sel ast.SelectionSet, obj *model.NotificationSetting) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, notificationSettingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NotificationSetting")
+		case "mode":
+			out.Values[i] = ec._NotificationSetting_mode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "seenUpTo":
+			out.Values[i] = ec._NotificationSetting_seenUpTo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unseen":
+			out.Values[i] = ec._NotificationSetting_unseen(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		default:
@@ -69079,6 +72496,69 @@ func (ec *executionContext) _PreplanBookingSuggestion(ctx context.Context, sel a
 			}
 		case "kinds":
 			out.Values[i] = ec._PreplanBookingSuggestion_kinds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var preplanEntryImplementors = []string{"PreplanEntry"}
+
+func (ec *executionContext) _PreplanEntry(ctx context.Context, sel ast.SelectionSet, obj *model.PreplanEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, preplanEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PreplanEntry")
+		case "examKind":
+			out.Values[i] = ec._PreplanEntry_examKind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._PreplanEntry_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "programs":
+			out.Values[i] = ec._PreplanEntry_programs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expectedStudents":
+			out.Values[i] = ec._PreplanEntry_expectedStudents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "durationMin":
+			out.Values[i] = ec._PreplanEntry_durationMin(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "remark":
+			out.Values[i] = ec._PreplanEntry_remark(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -71039,6 +74519,116 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_generationConfig(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "inquiries":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_inquiries(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "inquiryInboxSummary":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_inquiryInboxSummary(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "inquirySubmissions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_inquirySubmissions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "inquiryActivity":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_inquiryActivity(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myNotificationSetting":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myNotificationSetting(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -76038,6 +79628,49 @@ func (ec *executionContext) _UnplacedExamReason(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var unseenActivityImplementors = []string{"UnseenActivity"}
+
+func (ec *executionContext) _UnseenActivity(ctx context.Context, sel ast.SelectionSet, obj *model.UnseenActivity) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, unseenActivityImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UnseenActivity")
+		case "semester":
+			out.Values[i] = ec._UnseenActivity_semester(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._UnseenActivity_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var userImplementors = []string{"User"}
 
 func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model.User) graphql.Marshaler {
@@ -78382,6 +82015,175 @@ func (ec *executionContext) marshalNImportJointResult2ᚖgithubᚗcomᚋobcode�
 	return ec._ImportJointResult(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNInquiry2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiry(ctx context.Context, sel ast.SelectionSet, v model.Inquiry) graphql.Marshaler {
+	return ec._Inquiry(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNInquiry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Inquiry) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNInquiry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiry(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInquiry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiry(ctx context.Context, sel ast.SelectionSet, v *model.Inquiry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Inquiry(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNInquiryActivity2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryActivityᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InquiryActivity) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNInquiryActivity2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryActivity(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInquiryActivity2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryActivity(ctx context.Context, sel ast.SelectionSet, v *model.InquiryActivity) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InquiryActivity(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNInquiryActivityChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryActivityChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InquiryActivityChange) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNInquiryActivityChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryActivityChange(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInquiryActivityChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryActivityChange(ctx context.Context, sel ast.SelectionSet, v *model.InquiryActivityChange) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InquiryActivityChange(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNInquiryInboxEntry2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryInboxEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InquiryInboxEntry) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNInquiryInboxEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryInboxEntry(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInquiryInboxEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryInboxEntry(ctx context.Context, sel ast.SelectionSet, v *model.InquiryInboxEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InquiryInboxEntry(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNInquiryInput2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryInput(ctx context.Context, v any) (model.InquiryInput, error) {
+	res, err := ec.unmarshalInputInquiryInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx context.Context, v any) (model.InquiryKind, error) {
+	var res model.InquiryKind
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInquiryKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx context.Context, sel ast.SelectionSet, v model.InquiryKind) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNInquiryReviewState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryReviewState(ctx context.Context, v any) (model.InquiryReviewState, error) {
+	var res model.InquiryReviewState
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInquiryReviewState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryReviewState(ctx context.Context, sel ast.SelectionSet, v model.InquiryReviewState) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNInquiryState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryState(ctx context.Context, v any) (model.InquiryState, error) {
+	var res model.InquiryState
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInquiryState2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryState(ctx context.Context, sel ast.SelectionSet, v model.InquiryState) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNInquirySubmission2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquirySubmissionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.InquirySubmission) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNInquirySubmission2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquirySubmission(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInquirySubmission2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquirySubmission(ctx context.Context, sel ast.SelectionSet, v *model.InquirySubmission) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InquirySubmission(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -78981,6 +82783,30 @@ func (ec *executionContext) marshalNNTAWithRegsByExam2ᚖgithubᚗcomᚋobcode�
 		return graphql.Null
 	}
 	return ec._NTAWithRegsByExam(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNNotificationMode2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNotificationMode(ctx context.Context, v any) (model.NotificationMode, error) {
+	var res model.NotificationMode
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNNotificationMode2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNotificationMode(ctx context.Context, sel ast.SelectionSet, v model.NotificationMode) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNNotificationSetting2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNotificationSetting(ctx context.Context, sel ast.SelectionSet, v model.NotificationSetting) graphql.Marshaler {
+	return ec._NotificationSetting(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNNotificationSetting2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNotificationSetting(ctx context.Context, sel ast.SelectionSet, v *model.NotificationSetting) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._NotificationSetting(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNNtaRoomAloneWaiver2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNtaRoomAloneWaiver(ctx context.Context, sel ast.SelectionSet, v model.NtaRoomAloneWaiver) graphql.Marshaler {
@@ -80980,6 +84806,32 @@ func (ec *executionContext) marshalNUnplacedExamReason2ᚖgithubᚗcomᚋobcode�
 	return ec._UnplacedExamReason(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNUnseenActivity2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnseenActivityᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.UnseenActivity) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNUnseenActivity2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnseenActivity(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNUnseenActivity2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUnseenActivity(ctx context.Context, sel ast.SelectionSet, v *model.UnseenActivity) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UnseenActivity(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNUser2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {
 	return ec._User(ctx, sel, &v)
 }
@@ -81564,6 +85416,22 @@ func (ec *executionContext) marshalOExamerInPlan2ᚕᚖgithubᚗcomᚋobcodeᚋp
 	return ret
 }
 
+func (ec *executionContext) unmarshalOInquiryKind2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx context.Context, v any) (*model.InquiryKind, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.InquiryKind)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInquiryKind2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐInquiryKind(ctx context.Context, sel ast.SelectionSet, v *model.InquiryKind) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOInt2ᚕintᚄ(ctx context.Context, v any) ([]int, error) {
 	if v == nil {
 		return nil, nil
@@ -81891,6 +85759,13 @@ func (ec *executionContext) marshalOPreExam2ᚕᚖgithubᚗcomᚋobcodeᚋplexam
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOPreplanEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanEntry(ctx context.Context, sel ast.SelectionSet, v *model.PreplanEntry) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PreplanEntry(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPreplanExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreplanExam(ctx context.Context, sel ast.SelectionSet, v *model.PreplanExam) graphql.Marshaler {

@@ -1,0 +1,21 @@
+### {{ if .Daily }}Portal für Prüfende: Änderungen des Tages{{ else }}Portal für Prüfende: neue Eingaben{{ end }}
+
+{{ .Count }} {{ if eq .Count 1 }}Eingabe{{ else }}Eingaben{{ end }} über das Portal{{ if .Daily }} seit der letzten Tagesmail{{ end }}.
+{{ range .Semesters }}
+#### {{ .Semester }}
+{{ range .Items }}
+- **{{ .Time }}** · {{ .Kind }} · **{{ .Teacher }}**: {{ .Action }}{{ if .Label }} – {{ .Label }}{{ end }} _(von {{ .Actor }}{{ if .Token }}, per Token{{ end }})_
+{{- if .Hidden }}
+  - _Inhalt nur in Plexams einsehbar._
+{{- else }}{{ range .Changes }}
+  - {{ .Field }}: {{ if .Old }}{{ .Old }} → {{ end }}{{ .New }}
+{{- end }}{{ end }}
+{{- end }}
+{{ end }}
+{{ if .OverviewURL -}}
+[Zur Änderungsübersicht]({{ .OverviewURL }})
+{{- else -}}
+Die Änderungsübersicht steht in Plexams unter „Abfragen“.
+{{- end }}
+
+_Diese Mail kommt {{ if .Daily }}einmal täglich{{ else }}gebündelt kurz nach einer Eingabe{{ end }}. Einstellen unter „Mein Account“._

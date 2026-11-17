@@ -3,7 +3,9 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/logrusorgru/aurora"
@@ -52,6 +54,11 @@ type Plexams struct {
 	// loaded per database from the semester meta on boot/switch.
 	readOnly bool
 	guard    *opGuard
+
+	// inquiries is the examiner-portal inquiry service, built on first use. It is
+	// semester-explicit and shared by both APIs.
+	inquiryOnce sync.Once
+	inquiries   *inquiry.Service
 }
 
 type ZPA struct {

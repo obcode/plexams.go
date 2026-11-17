@@ -1,0 +1,156 @@
+# Inquiries of the examiner portal, the planners' side. Works on the ACTIVE semester like
+# every planner page, except inquiryInboxSummary and inquiryActivity, which span all
+# semesters so that nothing waits unseen in a semester nobody has switched to.
+#
+# The examiners' side is the portal API (graph/portal/portal.graphqls).
+
+enum InquiryKind {
+  PREPLAN
+  EXAMS_TO_PLAN
+  CONSTRAINTS
+  DRAFT_FEEDBACK
+  INVIGILATION
+}
+
+enum InquiryState {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum InquiryReviewState {
+  "new or changed since a planner last looked at it"
+  OPEN
+  APPLIED
+  APPLIED_MODIFIED
+  REJECTED
+  DONE
+}
+
+enum NotificationMode {
+  OFF
+  IMMEDIATE
+  DAILY
+}
+
+type Inquiry {
+  semester: String!
+  kind: InquiryKind!
+  state: InquiryState!
+  deadline: Time
+  intro: String!
+  openedAt: Time
+  openedBy: String
+  closedAt: Time
+  closedBy: String
+  "Number of submissions, and of those not yet looked at."
+  submissions: Int!
+  openSubmissions: Int!
+  "Examiners who said there is nothing to report."
+  nothingToReport: Int!
+}
+
+"The content of an EXaHM/SEB entry."
+type PreplanEntry {
+  examKind: String!
+  module: String!
+  programs: [String!]!
+  expectedStudents: Int!
+  durationMin: Int
+  remark: String!
+}
+
+type InquirySubmission {
+  id: Int!
+  kind: InquiryKind!
+  revision: Int!
+  teacherID: Int!
+  teacherName: String!
+  createdBy: String!
+  submittedBy: String!
+  submittedAt: Time!
+  "WEB or TOKEN."
+  channel: String!
+  withdrawn: Boolean!
+  "The pre-exam the entry became; null when the planners deleted it."
+  preplanExamID: Int
+  review: InquiryReviewState!
+  reviewNote: String!
+  reviewedRevision: Int
+  preplan: PreplanEntry
+  "The entry as a planner last reviewed it -- for the comparison."
+  reviewedPreplan: PreplanEntry
+}
+
+type InquiryInboxEntry {
+  semester: String!
+  kind: InquiryKind!
+  open: Int!
+}
+
+type InquiryActivityChange {
+  field: String!
+  old: String!
+  new: String!
+}
+
+type InquiryActivity {
+  id: Int!
+  semester: String!
+  at: Time!
+  actor: String!
+  channel: String!
+  teacherID: Int!
+  teacherName: String!
+  kind: InquiryKind!
+  action: String!
+  submissionID: Int
+  revision: Int
+  label: String!
+  changes: [InquiryActivityChange!]!
+}
+
+type UnseenActivity {
+  semester: String!
+  count: Int!
+}
+
+type NotificationSetting {
+  mode: NotificationMode!
+  "The last change shown in the overview."
+  seenUpTo: Int!
+  unseen: [UnseenActivity!]!
+}
+
+input InquiryInput {
+  deadline: Time
+  intro: String!
+}
+
+extend type Query {
+  "Every kind of inquiry in the active semester; kinds not set up yet come back as DRAFT."
+  inquiries: [Inquiry!]!
+  "Submissions not looked at yet, per semester and kind -- all semesters."
+  inquiryInboxSummary: [InquiryInboxEntry!]!
+  "Submissions of a kind in the active semester."
+  inquirySubmissions(kind: InquiryKind!, onlyOpen: Boolean): [InquirySubmission!]!
+  "Changes through the portal, newest first. All semesters unless filtered."
+  inquiryActivity(semester: String, kind: InquiryKind, teacherID: Int, before: Int, first: Int): [InquiryActivity!]!
+  myNotificationSetting: NotificationSetting!
+}
+
+extend type Mutation {
+  "Create or update an inquiry of the active semester (deadline, introduction)."
+  setInquiry(kind: InquiryKind!, input: InquiryInput!): Inquiry!
+  openInquiry(kind: InquiryKind!): Inquiry!
+  closeInquiry(kind: InquiryKind!): Inquiry!
+  """
+  Mark a submission revision as looked at (APPLIED, APPLIED_MODIFIED, DONE) or reject
+  it (REJECTED, note required). Fails when a newer revision arrived in the meantime.
+  """
+  reviewInquirySubmission(id: Int!, revision: Int!, state: InquiryReviewState!, note: String): Boolean!
+  "How the caller hears about portal changes: OFF, IMMEDIATE or DAILY (default)."
+  setMyNotificationMode(mode: NotificationMode!): NotificationSetting!
+  "Mark the overview as read up to the given change."
+  markInquiryActivitySeen(upTo: Int!): Boolean!
+}

@@ -23,6 +23,7 @@ Mutation.blockRoomAt PLANER
 Mutation.blockRoomAtTimes PLANER
 Mutation.carryOverTodos PLANER
 Mutation.clearEmailAttachments PLANER
+Mutation.closeInquiry PLANER
 Mutation.connectPreplanExamToAncode PLANER
 Mutation.createJiraIssue PLANER
 Mutation.createSemester PLANER
@@ -43,8 +44,10 @@ Mutation.generatePreplanAssignment PLANER
 Mutation.generateStudentRegs PLANER
 Mutation.importJointExams PLANER
 Mutation.lab PLANER
+Mutation.markInquiryActivitySeen PLANER
 Mutation.notPlannedByMe PLANER
 Mutation.online PLANER
+Mutation.openInquiry PLANER
 Mutation.prePlanInvigilation PLANER
 Mutation.prePlanInvigilationAt PLANER
 Mutation.prePlanRoom PLANER
@@ -72,6 +75,7 @@ Mutation.resetPreplanTimes PLANER
 Mutation.resetPrimussData PLANER
 Mutation.resetRoomsForExams PLANER
 Mutation.resetSemesterPlaner PLANER
+Mutation.reviewInquirySubmission PLANER
 Mutation.revokePortalAccessToken ADMIN
 Mutation.rmZpaExamFromPlan PLANER
 Mutation.seb PLANER
@@ -84,10 +88,12 @@ Mutation.setExamTime PLANER
 Mutation.setExamsCanShareSlot PLANER
 Mutation.setExternalExamTime PLANER
 Mutation.setGenerationConfig PLANER
+Mutation.setInquiry PLANER
 Mutation.setInvigilatorConstraints PLANER
 Mutation.setJointZpaLink PLANER
 Mutation.setLoginAlias ADMIN
 Mutation.setMyJiraToken PLANER
+Mutation.setMyNotificationMode PLANER
 Mutation.setMyShortname PLANER
 Mutation.setNTAActive PLANER
 Mutation.setPermanentNonInvigilator PLANER
@@ -162,6 +168,10 @@ Query.examsWithNtas VIEWER
 Query.examsWithoutSlot VIEWER
 Query.fk07programs VIEWER
 Query.generationConfig VIEWER
+Query.inquiries VIEWER
+Query.inquiryActivity VIEWER
+Query.inquiryInboxSummary VIEWER
+Query.inquirySubmissions VIEWER
 Query.invigilator VIEWER
 Query.invigilatorCandidates VIEWER
 Query.invigilatorConstraints VIEWER
@@ -183,6 +193,7 @@ Query.me VIEWER
 Query.mutationLog VIEWER
 Query.mutationLogNames VIEWER
 Query.myAccount VIEWER
+Query.myNotificationSetting VIEWER
 Query.newSemesterConfigDefaults VIEWER
 Query.nta VIEWER
 Query.ntaRoomAloneWaivers VIEWER

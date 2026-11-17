@@ -90,3 +90,117 @@ type Mutation {
   "Revoke one of the caller's tokens. Only when signed in, not with a token."
   revokeAccessToken(id: String!): Boolean!
 }
+
+# ---------------------------------------------------------------------------------
+# Inquiries (from M2). Every inquiry belongs to a semester ("2027-SS") and a kind;
+# operations name the semester explicitly.
+
+enum InquiryKind {
+  "EXaHM/SEB exams for the coming semester (Vorplanung)"
+  PREPLAN
+  EXAMS_TO_PLAN
+  CONSTRAINTS
+  DRAFT_FEEDBACK
+  INVIGILATION
+}
+
+enum InquiryState {
+  OPEN
+  CLOSED
+}
+
+"An inquiry of the planners, as it concerns the caller."
+type Inquiry {
+  semester: String!
+  kind: InquiryKind!
+  state: InquiryState!
+  "Answers are accepted while the inquiry is open."
+  open: Boolean!
+  deadline: Time
+  "Introduction by the planners (Markdown)."
+  intro: String!
+  "false: the inquiry does not concern the caller (no exam in the semester)."
+  affected: Boolean!
+  "The caller said there is nothing to report."
+  nothingToReport: Boolean!
+}
+
+enum ExamKind {
+  EXaHM
+  SEB
+}
+
+enum ReviewState {
+  "new or changed since the planners last looked at it"
+  OPEN
+  APPLIED
+  APPLIED_MODIFIED
+  REJECTED
+  DONE
+}
+
+"An EXaHM/SEB exam reported for the pre-planning."
+type PreplanSubmission {
+  id: Int!
+  "Increases with every change; pass it back as expectedRevision."
+  revision: Int!
+  "The examiner the entry is about."
+  teacher: Teacher!
+  "The login that created the entry."
+  createdBy: String!
+  "The login of the latest change."
+  submittedBy: String!
+  submittedAt: Time!
+  withdrawn: Boolean!
+  examKind: ExamKind!
+  module: String!
+  "Study program short names."
+  programs: [String!]!
+  expectedStudents: Int!
+  durationMin: Int
+  remark: String!
+  "Where the planners are with the entry."
+  review: ReviewState!
+  "The planners' note, e.g. why they rejected it."
+  reviewNote: String!
+}
+
+input PreplanInput {
+  examKind: ExamKind!
+  module: String!
+  "Study program short names, see studyPrograms."
+  programs: [String!]!
+  expectedStudents: Int!
+  durationMin: Int
+  "A note for the planners. Stays with the entry."
+  remark: String
+}
+
+type StudyProgram {
+  shortname: String!
+  name: String!
+}
+
+extend type Query {
+  "Open and recently closed inquiries of all semesters."
+  inquiries: [Inquiry!]!
+  "The caller's EXaHM/SEB entries in the semester (also those it made for somebody else)."
+  preplanSubmissions(semester: String!): [PreplanSubmission!]!
+  "Whom the caller may report EXaHM/SEB exams for in the semester."
+  preplanTeachers(semester: String!): [Teacher!]!
+  "The study programs an entry may name."
+  studyPrograms: [StudyProgram!]!
+}
+
+extend type Mutation {
+  """
+  Report a new EXaHM/SEB exam (id omitted) or change one (id and expectedRevision).
+  onBehalfOf names the examiner when the caller reports for somebody else; it is
+  ignored when changing. Saving an unchanged entry is not a change.
+  """
+  submitPreplan(semester: String!, id: Int, onBehalfOf: Int, expectedRevision: Int, input: PreplanInput!): PreplanSubmission!
+  "Withdraw an entry."
+  withdrawSubmission(semester: String!, id: Int!, expectedRevision: Int!): PreplanSubmission!
+  "Say (or take back) that there is nothing to report."
+  setNothingToReport(semester: String!, kind: InquiryKind!, value: Boolean!): Inquiry!
+}

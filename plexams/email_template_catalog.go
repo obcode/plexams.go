@@ -236,6 +236,33 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 		},
 	},
 
+	"portalActivityEmail.md.tmpl": {
+		Description: "An Planende: Eingaben der Prüfenden über das Portal – sofort (gebündelt) oder als Tagesmail, je nach Einstellung unter „Mein Account“. Versendet als „Plexams“ ohne Antwortadresse.",
+		Jira:        false,
+		Variables: []emailTemplateVar{
+			v("{{ .Daily }}", "Tagesmail (wahr) oder Sofortmail (falsch).", "false"),
+			v("{{ .Count }}", "Anzahl der Eingaben.", "2"),
+			v("{{ range .Semesters }}", "Schleife über die Semester (.Semester, .Items).", "1 Semester"),
+			v("{{ range .Items }}", "Schleife über die Eingaben: .Time, .Kind, .Teacher, .Actor, .Token, .Action, .Label, .Hidden, .Changes.", "2 Eingaben"),
+			v("{{ range .Changes }}", "Geänderte Felder: .Field, .Old, .New.", "1 Änderung"),
+			v("{{ .OverviewURL }}", "Link zur Änderungsübersicht (leer ohne server.publicurl).", "https://plexams.example/inquiries/activity"),
+		},
+		Sample: portalActivityView{
+			Daily: false, Count: 2, OverviewURL: "https://plexams.example/inquiries/activity",
+			Semesters: []portalActivitySemesterView{{
+				Semester: "2027-SS",
+				Items: []portalActivityItemView{
+					{Time: "21.01. 10:12", Kind: "EXaHM/SEB", Teacher: "Prof. Dr. Erika Mustermann", Actor: "erika.mustermann@hm.edu",
+						Action: "neu gemeldet", Label: "EXaHM Datenbanken",
+						Changes: []portalActivityChangeView{{Field: "Modul", New: "Datenbanken"}, {Field: "erwartete Teilnehmende", New: "80"}}},
+					{Time: "21.01. 10:30", Kind: "EXaHM/SEB", Teacher: "Max Beispiel", Actor: "erika.mustermann@hm.edu", Token: true,
+						Action: "geändert", Label: "SEB Webtechnologien",
+						Changes: []portalActivityChangeView{{Field: "erwartete Teilnehmende", Old: "40", New: "55"}}},
+				},
+			}},
+		},
+	},
+
 	"coverPageEmail.md.tmpl": {
 		Description: "An die/den Prüfende:n: die generierten Deckblätter für ihre/seine Prüfungen im Anhang.",
 		Jira:        false,

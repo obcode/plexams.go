@@ -30,6 +30,9 @@ var readOnlyExemptMutations = map[string]bool{
 	"setPortalLoginBlock":     true,
 	"removePortalLoginBlock":  true,
 	"revokePortalAccessToken": true,
+	// a planner's own notification preference and reading position: global
+	"setMyNotificationMode":   true,
+	"markInquiryActivitySeen": true,
 }
 
 // todoMutations change only the todo list, never planning data. They stay allowed

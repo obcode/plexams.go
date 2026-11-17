@@ -337,8 +337,9 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	var portalRoutes *portalMount
 	if viper.GetBool("portal.enabled") {
 		portalRoutes = &portalMount{
-			service: portal.New(plexams.PortalStore()),
-			tokens:  viper.GetBool("portal.tokens"),
+			service:   portal.New(plexams.PortalStore()),
+			inquiries: plexams.Inquiries(),
+			tokens:    viper.GetBool("portal.tokens"),
 		}
 		log.Info().Bool("tokens", portalRoutes.tokens).Msg("examiner portal enabled")
 	}
@@ -360,6 +361,8 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	sched := startScheduledSync(schedulerCtx, plexams)
 	// A second, independent scheduler for the daily admin-overview digest (nil when disabled).
 	digestSched := startAdminDigestMail(schedulerCtx, plexams)
+	// The planners' notification about portal changes (nil without the portal).
+	changeSched := startPortalNotifications(schedulerCtx, plexams)
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -386,6 +389,13 @@ func StartServer(plexams *plexams.Plexams, port string) {
 		drainCtx, cancelDrain := context.WithTimeout(context.Background(), 30*time.Second)
 		if err := digestSched.Shutdown(drainCtx); err != nil {
 			log.Warn().Err(err).Msg("admin digest did not drain within grace period")
+		}
+		cancelDrain()
+	}
+	if changeSched != nil {
+		drainCtx, cancelDrain := context.WithTimeout(context.Background(), 30*time.Second)
+		if err := changeSched.Shutdown(drainCtx); err != nil {
+			log.Warn().Err(err).Msg("portal daily mail did not drain within grace period")
 		}
 		cancelDrain()
 	}

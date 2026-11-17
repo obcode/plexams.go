@@ -11,19 +11,21 @@ import (
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/internal/pgtest"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"github.com/obcode/plexams.go/plexams/portal"
 )
 
 type portalHarness struct {
 	t      *testing.T
 	router http.Handler
+	pg     *db.PG
 }
 
 func newPortalHarness(t *testing.T, mount bool, tokens bool) *portalHarness {
 	t.Helper()
 	pg := pgtest.NewDBWithSemester(t)
 	if err := pg.CacheTeachers([]*model.Teacher{
-		{ID: 10, Fullname: "Person A", Shortname: "A", Email: "teacher@example.test"},
+		{ID: 10, Fullname: "Person A", Shortname: "A", Email: "teacher@example.test", IsProf: true, FK: "FK07", IsActive: true},
 	}, "2026 WS"); err != nil {
 		t.Fatal(err)
 	}
@@ -38,10 +40,10 @@ func newPortalHarness(t *testing.T, mount bool, tokens bool) *portalHarness {
 
 	var m *portalMount
 	if mount {
-		m = &portalMount{service: service, tokens: tokens}
+		m = &portalMount{service: service, inquiries: inquiry.New(inquiry.NewStore(pg)), tokens: tokens}
 	}
 	planner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-	return &portalHarness{t: t, router: newRouter(auth, fakeGateState{writes: true}, planner, stubRoutes(), nil, true, m)}
+	return &portalHarness{t: t, pg: pg, router: newRouter(auth, fakeGateState{writes: true}, planner, stubRoutes(), nil, true, m)}
 }
 
 // dbPortalAuth answers ResolvePortalLogin from the real tables.
@@ -194,5 +196,60 @@ func TestRateLimiter(t *testing.T) {
 	}
 	if !l.allow("other") {
 		t.Error("keys are independent")
+	}
+}
+
+func TestPortalPreplanThroughBothDoors(t *testing.T) {
+	h := newPortalHarness(t, true, true)
+	ctx := context.Background()
+	if err := h.pg.UpsertStudyProgram(ctx, &model.StudyProgram{Shortname: "IF", Name: "Informatik", Category: "fk07"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.pg.EnsureSemester(ctx, "2027-SS", db.CurrentSchemaVersion); err != nil {
+		t.Fatal(err)
+	}
+	svc := inquiry.New(inquiry.NewStore(h.pg))
+	if _, err := svc.SetInquiry(ctx, "2027-SS", inquiry.KindPreplan, nil, "Bitte melden"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.OpenInquiry(ctx, "2027-SS", inquiry.KindPreplan, "planer@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	teacher := map[string]string{"X-Remote-User": "teacher@example.test"}
+
+	res := h.post(portalPath, teacher, `{ inquiries { semester kind open affected } studyPrograms { shortname } }`, nil)
+	if len(res.Errors) != 0 {
+		t.Fatalf("inquiries: %+v", res.Errors)
+	}
+	inqs := res.Data["inquiries"].([]any)
+	if len(inqs) != 1 || inqs[0].(map[string]any)["affected"] != true {
+		t.Errorf("unexpected inquiries %+v", inqs)
+	}
+
+	const submit = `mutation($in: PreplanInput!) { submitPreplan(semester: "2027-SS", input: $in) { id revision module teacher { id } } }`
+	in := map[string]any{"in": map[string]any{"examKind": "SEB", "module": "Web", "programs": []string{"IF"}, "expectedStudents": 30}}
+	res = h.post(portalPath, teacher, submit, in)
+	if len(res.Errors) != 0 || res.Data["submitPreplan"].(map[string]any)["module"] != "Web" {
+		t.Fatalf("submit via session: %+v", res)
+	}
+
+	mint := func(scope string) map[string]string {
+		res := h.post(portalPath, teacher, createToken, map[string]any{"s": scope})
+		return map[string]string{"Authorization": "Bearer " + res.Data["createAccessToken"].(map[string]any)["secret"].(string)}
+	}
+	if res := h.post(tokenPath, mint("READ"), submit, in); res.code() != "READ_ONLY_TOKEN" {
+		t.Errorf("READ token submitting: want READ_ONLY_TOKEN, got %+v", res)
+	}
+	write := mint("WRITE")
+	if res := h.post(tokenPath, write, submit, in); len(res.Errors) != 0 {
+		t.Errorf("WRITE token submitting: %+v", res.Errors)
+	}
+	res = h.post(tokenPath, write, `{ preplanSubmissions(semester: "2027-SS") { id } }`, nil)
+	if len(res.Errors) != 0 || len(res.Data["preplanSubmissions"].([]any)) != 2 {
+		t.Errorf("listing via token: %+v", res)
+	}
+	bad := map[string]any{"in": map[string]any{"examKind": "SEB", "module": "Web", "programs": []string{"XX"}, "expectedStudents": 30}}
+	if res := h.post(portalPath, teacher, submit, bad); res.code() != "INVALID_INPUT" {
+		t.Errorf("unknown program: want INVALID_INPUT, got %+v", res)
 	}
 }

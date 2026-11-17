@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/obcode/plexams.go/db"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"github.com/obcode/plexams.go/plexams/portal"
 	"strings"
 
@@ -144,6 +145,15 @@ func (p *Plexams) LocalDevUser() *model.User {
 	}
 	return &model.User{Email: email, Name: name, Role: model.RoleAdmin}
 }
+
+// Inquiries is the inquiry service of the examiner portal.
+func (p *Plexams) Inquiries() *inquiry.Service {
+	p.inquiryOnce.Do(func() { p.inquiries = inquiry.New(inquiry.NewStore(p.dbClient)) })
+	return p.inquiries
+}
+
+// InquiryStore is the database view of the inquiry service, for the notifier.
+func (p *Plexams) InquiryStore() inquiry.Store { return inquiry.NewStore(p.dbClient) }
 
 // PortalStore is the database view the examiner portal service works on.
 func (p *Plexams) PortalStore() portal.Store {

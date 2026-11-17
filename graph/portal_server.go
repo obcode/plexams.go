@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"net"
 	"net/http"
 	"strings"
@@ -44,9 +45,9 @@ const (
 )
 
 // newPortalServer builds the portal's GraphQL server.
-func newPortalServer(service *portal.Service) *handler.Server {
+func newPortalServer(service *portal.Service, inquiries *inquiry.Service) *handler.Server {
 	srv := handler.New(portalgen.NewExecutableSchema(portalgen.Config{
-		Resolvers: portalgraph.NewResolver(service),
+		Resolvers: portalgraph.NewResolver(service, inquiries),
 	}))
 	// POST only: no websocket, no subscriptions, no GET with a query in the URL.
 	srv.AddTransport(transport.POST{})
@@ -209,7 +210,8 @@ func (l *rateLimiter) allow(key string) bool {
 // portalMount is what the router needs to serve the portal: nil when portal.enabled is
 // off, and then neither route exists.
 type portalMount struct {
-	service *portal.Service
+	service   *portal.Service
+	inquiries *inquiry.Service
 	// tokens mounts the token door. Off removes the route entirely -- an emergency stop
 	// that leaves no code path that could be wrong about whether it is engaged.
 	tokens bool
@@ -219,7 +221,7 @@ type portalMount struct {
 func mountPortal(router interface {
 	With(middlewares ...func(http.Handler) http.Handler) chi.Router
 }, m *portalMount) {
-	srv := newPortalServer(m.service)
+	srv := newPortalServer(m.service, m.inquiries)
 	router.With(limitBody(portalMaxBody), requirePortalAccess).Handle(portalPath, srv)
 	if m.tokens {
 		limiter := newRateLimiter(10, 30)

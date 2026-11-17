@@ -1,0 +1,18 @@
+### Portal für Prüfende: neue Eingaben
+
+2 Eingaben über das Portal.
+
+#### 2027-SS
+
+- **21.01. 10:12** · EXaHM/SEB · **Prof. Dr. Erika Mustermann**: neu gemeldet – EXaHM Datenbanken _(von erika.mustermann@hm.edu)_
+  - Modul: Datenbanken
+  - erwartete Teilnehmende: 80
+- **21.01. 10:30** · EXaHM/SEB · **Max Beispiel**: geändert – SEB Webtechnologien _(von erika.mustermann@hm.edu, per Token)_
+  - erwartete Teilnehmende: 40 → 55
+
+[Zur Änderungsübersicht](https://plexams.example/inquiries/activity)
+
+_Diese Mail kommt gebündelt kurz nach einer Eingabe. Einstellen unter „Mein Account“._
+
+--
+Diese E-Mail wurde generiert und gesendet von https://github.com/obcode/plexams.go

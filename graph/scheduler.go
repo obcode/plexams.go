@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"strings"
 	"time"
 
@@ -99,5 +100,31 @@ func startAdminDigestMail(ctx context.Context, p *plexams.Plexams) *scheduler.Sc
 		if err := p.SendAdminDigest(runCtx, true, plexams.NewLogReporter()); err != nil {
 			log.Error().Err(err).Msg("admin digest mail failed")
 		}
+	})
+}
+
+// startPortalNotifications runs the planners' notification about portal changes: the
+// immediate mails in a goroutine, the daily mail as its own scheduler at
+// scheduler.changemail.time (default 07:10). Only with the portal on -- without it
+// there are no portal changes. Returns the daily scheduler (nil when off).
+func startPortalNotifications(ctx context.Context, p *plexams.Plexams) *scheduler.Scheduler {
+	if !viper.GetBool("portal.enabled") {
+		return nil
+	}
+	notifier := inquiry.NewNotifier(p.InquiryStore(), p)
+	p.Inquiries().OnActivity(notifier.Wake)
+	go notifier.Run(ctx)
+
+	timeStr := strings.TrimSpace(viper.GetString("scheduler.changemail.time"))
+	if timeStr == "" {
+		timeStr = "07:10"
+	}
+	return scheduler.Start(ctx, scheduler.Config{Enabled: true, Time: timeStr}, func(runCtx context.Context, _ scheduler.Trigger) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error().Interface("panic", r).Msg("portal daily mail panicked")
+			}
+		}()
+		notifier.Daily(runCtx)
 	})
 }

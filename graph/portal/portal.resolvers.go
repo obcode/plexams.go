@@ -8,8 +8,10 @@ package portalgraph
 import (
 	"context"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/portal/generated"
 	"github.com/obcode/plexams.go/graph/portal/model"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"github.com/obcode/plexams.go/principal"
 )
 
@@ -25,6 +27,48 @@ func (r *mutationResolver) CreateAccessToken(ctx context.Context, description st
 // RevokeAccessToken is the resolver for the revokeAccessToken field.
 func (r *mutationResolver) RevokeAccessToken(ctx context.Context, id string) (bool, error) {
 	return r.service.RevokeAccessToken(ctx, id)
+}
+
+// SubmitPreplan is the resolver for the submitPreplan field.
+func (r *mutationResolver) SubmitPreplan(ctx context.Context, semester string, id *int, onBehalfOf *int, expectedRevision *int, input model.PreplanInput) (*model.PreplanSubmission, error) {
+	in := inquiry.SubmitPreplanInput{
+		OnBehalfOf:       onBehalfOf,
+		ExpectedRevision: expectedRevision,
+		Payload: db.PreplanPayload{
+			ExamKind: string(input.ExamKind), Module: input.Module, Programs: input.Programs,
+			ExpectedStudents: input.ExpectedStudents, DurationMin: input.DurationMin,
+		},
+	}
+	if input.Remark != nil {
+		in.Payload.Remark = *input.Remark
+	}
+	if id != nil {
+		id64 := int64(*id)
+		in.ID = &id64
+	}
+	sub, err := r.inquiries.SubmitPreplan(ctx, semester, in)
+	if err != nil {
+		return nil, err
+	}
+	return toPreplanSubmission(sub), nil
+}
+
+// WithdrawSubmission is the resolver for the withdrawSubmission field.
+func (r *mutationResolver) WithdrawSubmission(ctx context.Context, semester string, id int, expectedRevision int) (*model.PreplanSubmission, error) {
+	sub, err := r.inquiries.WithdrawSubmission(ctx, semester, int64(id), expectedRevision)
+	if err != nil {
+		return nil, err
+	}
+	return toPreplanSubmission(sub), nil
+}
+
+// SetNothingToReport is the resolver for the setNothingToReport field.
+func (r *mutationResolver) SetNothingToReport(ctx context.Context, semester string, kind model.InquiryKind, value bool) (*model.Inquiry, error) {
+	inq, err := r.inquiries.SetNothingToReport(ctx, semester, inquiry.Kind(kind), value)
+	if err != nil {
+		return nil, err
+	}
+	return toInquiry(inq), nil
 }
 
 // Session is the resolver for the session field.
@@ -45,6 +89,58 @@ func (r *queryResolver) AccessTokens(ctx context.Context) ([]*model.AccessToken,
 	out := make([]*model.AccessToken, 0, len(tokens))
 	for _, t := range tokens {
 		out = append(out, toAccessToken(t))
+	}
+	return out, nil
+}
+
+// Inquiries is the resolver for the inquiries field.
+func (r *queryResolver) Inquiries(ctx context.Context) ([]*model.Inquiry, error) {
+	list, err := r.inquiries.VisibleInquiries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.Inquiry, 0, len(list))
+	for _, i := range list {
+		out = append(out, toInquiry(i))
+	}
+	return out, nil
+}
+
+// PreplanSubmissions is the resolver for the preplanSubmissions field.
+func (r *queryResolver) PreplanSubmissions(ctx context.Context, semester string) ([]*model.PreplanSubmission, error) {
+	list, err := r.inquiries.PreplanSubmissions(ctx, semester)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.PreplanSubmission, 0, len(list))
+	for _, sub := range list {
+		out = append(out, toPreplanSubmission(sub))
+	}
+	return out, nil
+}
+
+// PreplanTeachers is the resolver for the preplanTeachers field.
+func (r *queryResolver) PreplanTeachers(ctx context.Context, semester string) ([]*model.Teacher, error) {
+	list, err := r.inquiries.PreplanTeachers(ctx, semester)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.Teacher, 0, len(list))
+	for _, t := range list {
+		out = append(out, &model.Teacher{ID: t.ID, Fullname: t.Fullname, Shortname: t.Shortname})
+	}
+	return out, nil
+}
+
+// StudyPrograms is the resolver for the studyPrograms field.
+func (r *queryResolver) StudyPrograms(ctx context.Context) ([]*model.StudyProgram, error) {
+	list, err := r.inquiries.StudyPrograms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.StudyProgram, 0, len(list))
+	for _, p := range list {
+		out = append(out, &model.StudyProgram{Shortname: p.Shortname, Name: p.Name})
 	}
 	return out, nil
 }

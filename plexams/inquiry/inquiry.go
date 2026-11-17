@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/db/sqlc"
+	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/principal"
 	"github.com/rs/zerolog/log"
@@ -155,7 +156,7 @@ type Store interface {
 	Q(ctx context.Context) Queries
 	InTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 	PortalTeachers(ctx context.Context, ids []int) (map[int]*db.PortalTeacher, error)
-	StudyProgramCodes(ctx context.Context) (map[string]bool, error)
+	StudyPrograms(ctx context.Context) ([]*model.StudyProgram, error)
 }
 
 // pgStore adapts *db.PG.
@@ -171,16 +172,8 @@ func (s pgStore) InTransaction(ctx context.Context, fn func(ctx context.Context)
 func (s pgStore) PortalTeachers(ctx context.Context, ids []int) (map[int]*db.PortalTeacher, error) {
 	return s.pg.PortalTeachers(ctx, ids)
 }
-func (s pgStore) StudyProgramCodes(ctx context.Context) (map[string]bool, error) {
-	programs, err := s.pg.StudyPrograms(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[string]bool, len(programs))
-	for _, p := range programs {
-		out[p.Shortname] = true
-	}
-	return out, nil
+func (s pgStore) StudyPrograms(ctx context.Context) ([]*model.StudyProgram, error) {
+	return s.pg.StudyPrograms(ctx)
 }
 
 // Service is the inquiry logic.
@@ -348,4 +341,38 @@ func (s *Service) teacherName(ctx context.Context, id int) string {
 		return t.Fullname
 	}
 	return ""
+}
+
+// Program is a study program an entry may name.
+type Program struct {
+	Shortname string
+	Name      string
+}
+
+// StudyPrograms lists the study programs, for the portal's picker.
+func (s *Service) StudyPrograms(ctx context.Context) ([]*Program, error) {
+	if _, err := portalCaller(ctx); err != nil {
+		return nil, err
+	}
+	programs, err := s.store.StudyPrograms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*Program, 0, len(programs))
+	for _, p := range programs {
+		out = append(out, &Program{Shortname: p.Shortname, Name: p.Name})
+	}
+	return out, nil
+}
+
+func (s *Service) studyProgramCodes(ctx context.Context) (map[string]bool, error) {
+	programs, err := s.store.StudyPrograms(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]bool, len(programs))
+	for _, p := range programs {
+		out[p.Shortname] = true
+	}
+	return out, nil
 }

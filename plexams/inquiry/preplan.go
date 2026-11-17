@@ -288,7 +288,7 @@ func (s *Service) normalizePreplan(ctx context.Context, p db.PreplanPayload) (db
 	if p.DurationMin != nil && (*p.DurationMin < 1 || *p.DurationMin > maxDuration) {
 		return p, apierr.WithDetail(ErrInvalidInput, fmt.Sprintf("durationMin must be between 1 and %d", maxDuration))
 	}
-	known, err := s.store.StudyProgramCodes(ctx)
+	known, err := s.studyProgramCodes(ctx)
 	if err != nil {
 		return p, err
 	}

@@ -21,6 +21,22 @@ type AccessToken struct {
 	RevokedAt   *time.Time `json:"revokedAt,omitempty"`
 }
 
+// An inquiry of the planners, as it concerns the caller.
+type Inquiry struct {
+	Semester string       `json:"semester"`
+	Kind     InquiryKind  `json:"kind"`
+	State    InquiryState `json:"state"`
+	// Answers are accepted while the inquiry is open.
+	Open     bool       `json:"open"`
+	Deadline *time.Time `json:"deadline,omitempty"`
+	// Introduction by the planners (Markdown).
+	Intro string `json:"intro"`
+	// false: the inquiry does not concern the caller (no exam in the semester).
+	Affected bool `json:"affected"`
+	// The caller said there is nothing to report.
+	NothingToReport bool `json:"nothingToReport"`
+}
+
 type Mutation struct {
 }
 
@@ -28,6 +44,43 @@ type NewAccessToken struct {
 	Token *AccessToken `json:"token"`
 	// The whole token. Shown exactly this once; store it like a password.
 	Secret string `json:"secret"`
+}
+
+type PreplanInput struct {
+	ExamKind ExamKind `json:"examKind"`
+	Module   string   `json:"module"`
+	// Study program short names, see studyPrograms.
+	Programs         []string `json:"programs"`
+	ExpectedStudents int      `json:"expectedStudents"`
+	DurationMin      *int     `json:"durationMin,omitempty"`
+	// A note for the planners. Stays with the entry.
+	Remark *string `json:"remark,omitempty"`
+}
+
+// An EXaHM/SEB exam reported for the pre-planning.
+type PreplanSubmission struct {
+	ID int `json:"id"`
+	// Increases with every change; pass it back as expectedRevision.
+	Revision int `json:"revision"`
+	// The examiner the entry is about.
+	Teacher *Teacher `json:"teacher"`
+	// The login that created the entry.
+	CreatedBy string `json:"createdBy"`
+	// The login of the latest change.
+	SubmittedBy string    `json:"submittedBy"`
+	SubmittedAt time.Time `json:"submittedAt"`
+	Withdrawn   bool      `json:"withdrawn"`
+	ExamKind    ExamKind  `json:"examKind"`
+	Module      string    `json:"module"`
+	// Study program short names.
+	Programs         []string `json:"programs"`
+	ExpectedStudents int      `json:"expectedStudents"`
+	DurationMin      *int     `json:"durationMin,omitempty"`
+	Remark           string   `json:"remark"`
+	// Where the planners are with the entry.
+	Review ReviewState `json:"review"`
+	// The planners' note, e.g. why they rejected it.
+	ReviewNote string `json:"reviewNote"`
 }
 
 type ProgramGrant struct {
@@ -54,6 +107,11 @@ type Session struct {
 	Token    *TokenInfo      `json:"token,omitempty"`
 }
 
+type StudyProgram struct {
+	Shortname string `json:"shortname"`
+	Name      string `json:"name"`
+}
+
 // A ZPA person.
 type Teacher struct {
 	ID        int    `json:"id"`
@@ -66,6 +124,61 @@ type TokenInfo struct {
 	// The public half of the token.
 	ID    string     `json:"id"`
 	Scope TokenScope `json:"scope"`
+}
+
+type ExamKind string
+
+const (
+	ExamKindEXaHm ExamKind = "EXaHM"
+	ExamKindSeb   ExamKind = "SEB"
+)
+
+var AllExamKind = []ExamKind{
+	ExamKindEXaHm,
+	ExamKindSeb,
+}
+
+func (e ExamKind) IsValid() bool {
+	switch e {
+	case ExamKindEXaHm, ExamKindSeb:
+		return true
+	}
+	return false
+}
+
+func (e ExamKind) String() string {
+	return string(e)
+}
+
+func (e *ExamKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ExamKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ExamKind", str)
+	}
+	return nil
+}
+
+func (e ExamKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ExamKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ExamKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type GrantLevel string
@@ -118,6 +231,185 @@ func (e *GrantLevel) UnmarshalJSON(b []byte) error {
 }
 
 func (e GrantLevel) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type InquiryKind string
+
+const (
+	// EXaHM/SEB exams for the coming semester (Vorplanung)
+	InquiryKindPreplan       InquiryKind = "PREPLAN"
+	InquiryKindExamsToPlan   InquiryKind = "EXAMS_TO_PLAN"
+	InquiryKindConstraints   InquiryKind = "CONSTRAINTS"
+	InquiryKindDraftFeedback InquiryKind = "DRAFT_FEEDBACK"
+	InquiryKindInvigilation  InquiryKind = "INVIGILATION"
+)
+
+var AllInquiryKind = []InquiryKind{
+	InquiryKindPreplan,
+	InquiryKindExamsToPlan,
+	InquiryKindConstraints,
+	InquiryKindDraftFeedback,
+	InquiryKindInvigilation,
+}
+
+func (e InquiryKind) IsValid() bool {
+	switch e {
+	case InquiryKindPreplan, InquiryKindExamsToPlan, InquiryKindConstraints, InquiryKindDraftFeedback, InquiryKindInvigilation:
+		return true
+	}
+	return false
+}
+
+func (e InquiryKind) String() string {
+	return string(e)
+}
+
+func (e *InquiryKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InquiryKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InquiryKind", str)
+	}
+	return nil
+}
+
+func (e InquiryKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *InquiryKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e InquiryKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type InquiryState string
+
+const (
+	InquiryStateOpen   InquiryState = "OPEN"
+	InquiryStateClosed InquiryState = "CLOSED"
+)
+
+var AllInquiryState = []InquiryState{
+	InquiryStateOpen,
+	InquiryStateClosed,
+}
+
+func (e InquiryState) IsValid() bool {
+	switch e {
+	case InquiryStateOpen, InquiryStateClosed:
+		return true
+	}
+	return false
+}
+
+func (e InquiryState) String() string {
+	return string(e)
+}
+
+func (e *InquiryState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InquiryState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InquiryState", str)
+	}
+	return nil
+}
+
+func (e InquiryState) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *InquiryState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e InquiryState) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ReviewState string
+
+const (
+	// new or changed since the planners last looked at it
+	ReviewStateOpen            ReviewState = "OPEN"
+	ReviewStateApplied         ReviewState = "APPLIED"
+	ReviewStateAppliedModified ReviewState = "APPLIED_MODIFIED"
+	ReviewStateRejected        ReviewState = "REJECTED"
+	ReviewStateDone            ReviewState = "DONE"
+)
+
+var AllReviewState = []ReviewState{
+	ReviewStateOpen,
+	ReviewStateApplied,
+	ReviewStateAppliedModified,
+	ReviewStateRejected,
+	ReviewStateDone,
+}
+
+func (e ReviewState) IsValid() bool {
+	switch e {
+	case ReviewStateOpen, ReviewStateApplied, ReviewStateAppliedModified, ReviewStateRejected, ReviewStateDone:
+		return true
+	}
+	return false
+}
+
+func (e ReviewState) String() string {
+	return string(e)
+}
+
+func (e *ReviewState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ReviewState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ReviewState", str)
+	}
+	return nil
+}
+
+func (e ReviewState) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ReviewState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ReviewState) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

@@ -101,6 +101,20 @@ func TestAdminDigestGolden(t *testing.T) {
 	assertGolden(t, "adminDigest.html", html)
 }
 
+// TestPortalActivityEmailGolden locks the planners' notification about portal changes.
+func TestPortalActivityEmailGolden(t *testing.T) {
+	data := emailTemplateCatalog["portalActivityEmail.md.tmpl"].Sample
+	text, html, err := email.New(nil, renderFuncs(), jiraURL).Render("portalActivityEmail.md.tmpl", false, data)
+	if err != nil {
+		t.Fatalf("render portal activity mail: %v", err)
+	}
+	if strings.Contains(string(text), "<no value>") {
+		t.Error("unfilled placeholder (<no value>)")
+	}
+	assertGolden(t, "portalActivity.txt", text)
+	assertGolden(t, "portalActivity.html", html)
+}
+
 // TestExahmEmailGolden locks the EXaHM/SEB request email (text + HTML) against a golden,
 // rendered through the production Markdown single-source path. First migrated email; the
 // rest follow the same pattern.

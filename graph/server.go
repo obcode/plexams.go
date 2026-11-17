@@ -89,17 +89,52 @@ func (o originCheckedWebsocket) Accept(
 	}.Accept(w, r, options)
 }
 
-func StartServer(plexams *plexams.Plexams, port string) {
-	plexamsResolver := NewResolver(plexams)
+// gateState is the slice of *plexams.Plexams the operation gate needs: whether a
+// validation or exclusive operation currently blocks writes, and whether the active
+// semester is protected. Narrowed to an interface so the gate can be driven through
+// the real executor in tests without a database.
+type gateState interface {
+	WritesAllowed() bool
+	IsReadOnly() bool
+}
 
-	origins := allowedOriginsFromConfig()
+// operationGate rejects operations before any field runs: a read-only role may not
+// change data, writes are blocked while a validation is running, and a protected
+// semester accepts no data-changing operation.
+func operationGate(state gateState) graphql.OperationMiddleware {
+	return func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+		oc := graphql.GetOperationContext(ctx)
+		if oc.Operation != nil {
+			op := oc.Operation.Operation
+			// Authorization: a read-only role (VIEWER) may query and run validations
+			// but must not perform any data-changing operation. Enforced in the backend
+			// — the GUI is never the security boundary.
+			if user := UserFromContext(ctx); user != nil && !roleCanWrite(user.Role) && isDataChangingOperation(oc) {
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "forbidden: your role is read-only"))
+			}
+			if op == ast.Mutation && !state.WritesAllowed() && !isTodoOnlyOperation(oc) {
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "writes are blocked while a validation is running"))
+			}
+			// read-only database: reject data-changing operations, but allow queries,
+			// validations, switching the semester, toggling read-only and todos.
+			if state.IsReadOnly() && isDataChangingOperation(oc) && !isTodoOnlyOperation(oc) {
+				return graphql.OneShot(graphql.ErrorResponse(ctx, "semester is read-only"))
+			}
+		}
+		return next(ctx)
+	}
+}
+
+// newGraphQLServer builds the gqlgen server with its transports, the recover function,
+// introspection (outside production) and the operation gate. It is separate from
+// StartServer so tests can run operations through the real executor.
+func newGraphQLServer(es graphql.ExecutableSchema, state gateState, origins []string, production bool) *handler.Server {
 	originSet := make(map[string]bool, len(origins))
 	for _, o := range origins {
 		originSet[o] = true
 	}
 
-	c := generated.Config{Resolvers: plexamsResolver}
-	srv := handler.New(generated.NewExecutableSchema(c))
+	srv := handler.New(es)
 	srv.AddTransport(transport.POST{})
 	// Websocket transport carries GraphQL subscriptions (e.g. the streamed
 	// output of long-running operations like invigilation generation).
@@ -111,47 +146,53 @@ func StartServer(plexams *plexams.Plexams, port string) {
 
 	// In production the GraphQL introspection is turned off (server.production=true);
 	// locally it stays on for the playground and tooling.
-	production := viper.GetBool("server.production")
 	if !production {
 		srv.Use(extension.Introspection{})
 	}
 
 	// Block write mutations while any validation subscription is running, so the
 	// GUI cannot mutate the plan underneath a running check.
-	srv.AroundOperations(func(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
-		oc := graphql.GetOperationContext(ctx)
-		if oc.Operation != nil {
-			op := oc.Operation.Operation
-			// Authorization: a read-only role (VIEWER) may query and run validations
-			// but must not perform any data-changing operation. Enforced in the backend
-			// — the GUI is never the security boundary.
-			if user := UserFromContext(ctx); user != nil && !roleCanWrite(user.Role) && isDataChangingOperation(oc) {
-				return graphql.OneShot(graphql.ErrorResponse(ctx, "forbidden: your role is read-only"))
-			}
-			if op == ast.Mutation && !plexams.WritesAllowed() && !isTodoOnlyOperation(oc) {
-				return graphql.OneShot(graphql.ErrorResponse(ctx, "writes are blocked while a validation is running"))
-			}
-			// read-only database: reject data-changing operations, but allow queries,
-			// validations, switching the semester, toggling read-only and todos.
-			if plexams.IsReadOnly() && isDataChangingOperation(oc) && !isTodoOnlyOperation(oc) {
-				return graphql.OneShot(graphql.ErrorResponse(ctx, "semester is read-only"))
-			}
-		}
-		return next(ctx)
-	})
+	srv.AroundOperations(operationGate(state))
 
-	// Log every mutating operation (mutations + data-changing subscriptions) to the
-	// per-semester mutation_log collection.
-	srv.AroundFields(mutationLogMiddleware(plexams))
+	return srv
+}
 
-	// Mark the cached assembled exams stale when an input changes (for the GUI banner).
-	srv.AroundFields(assembledExamsDirtyMiddleware(plexams))
+// restRoutes are the REST upload/download handlers mounted next to /query. Collected
+// in a struct so the router can be built with stubs in tests.
+type restRoutes struct {
+	uploadEmailAttachment     http.HandlerFunc
+	uploadEmailAttachmentsZip http.HandlerFunc
+	uploadPrimussZip          http.HandlerFunc
+	uploadJiraAttachment      http.HandlerFunc
+	uploadDatasetCSV          http.HandlerFunc
+	downloadPlannedRooms      http.HandlerFunc
+	downloadPDF               http.HandlerFunc
+	downloadCSVDraft          http.HandlerFunc
+	downloadICS               http.HandlerFunc
+	downloadDatasetCSV        http.HandlerFunc
+	downloadMyInputsCSV       http.HandlerFunc
+}
 
-	// Mark the prepared student regs stale when an input changes (for the GUI banner).
-	srv.AroundFields(studentRegsDirtyMiddleware(plexams))
+// restRoutesOf binds the REST routes to the real handlers.
+func restRoutesOf(p *plexams.Plexams) restRoutes {
+	return restRoutes{
+		uploadEmailAttachment:     p.HTTPUploadEmailAttachment,
+		uploadEmailAttachmentsZip: p.HTTPUploadEmailAttachmentsZip,
+		uploadPrimussZip:          p.HTTPUploadPrimussZip,
+		uploadJiraAttachment:      p.HTTPUploadJiraAttachment,
+		uploadDatasetCSV:          p.HTTPUploadDatasetCSV,
+		downloadPlannedRooms:      p.HTTPDownloadPlannedRooms,
+		downloadPDF:               p.HTTPDownloadPDF,
+		downloadCSVDraft:          p.HTTPDownloadCSVDraft,
+		downloadICS:               p.HTTPDownloadICS,
+		downloadDatasetCSV:        p.HTTPDownloadDatasetCSV,
+		downloadMyInputsCSV:       p.HTTPDownloadMyInputsCSV,
+	}
+}
 
-	// srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: plexamsResolver}))
-
+// newRouter mounts the middleware chain, /query, the health check and the REST routes.
+// It is separate from StartServer so the chain can be exercised with httptest.
+func newRouter(auth authProvider, graphQL http.Handler, rest restRoutes, origins []string, production bool) chi.Router {
 	router := chi.NewRouter()
 
 	// FIRST, before everything else. It clones a Sentry hub onto every request
@@ -177,14 +218,14 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	// Authenticate/authorize every request (GraphQL, websocket upgrade, REST routes)
 	// from the auth-proxy header, or inject a local dev user when auth is disabled.
 	// Runs after CORS so preflight OPTIONS are short-circuited before reaching it.
-	router.Use(authMiddleware(plexams))
+	router.Use(authMiddleware(auth))
 
 	// The GraphQL playground is a dev convenience; disabled in production (the GUI is
 	// served by the reverse proxy there, not by this backend).
 	if !production {
 		router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	}
-	router.Handle("/query", srv)
+	router.Handle("/query", graphQL)
 
 	// Liveness for the container health check, which is what makes a deploy fail
 	// loudly instead of quietly: the server migrates the schema at startup and
@@ -219,24 +260,48 @@ func StartServer(plexams *plexams.Plexams, port string) {
 
 	// Binary uploads (browser-generated PNGs, cover-page PDF ZIPs) for email
 	// attachments; the send subscriptions read them back from the DB.
-	router.Post("/upload/email-attachment", plexams.HTTPUploadEmailAttachment)
-	router.Post("/upload/email-attachments-zip", plexams.HTTPUploadEmailAttachmentsZip)
-	router.Post("/upload/primuss-zip", plexams.HTTPUploadPrimussZip)
+	router.Post("/upload/email-attachment", rest.uploadEmailAttachment)
+	router.Post("/upload/email-attachments-zip", rest.uploadEmailAttachmentsZip)
+	router.Post("/upload/primuss-zip", rest.uploadPrimussZip)
 	// Attach an uploaded file (PDF/CSV/…) to a Jira issue (multipart: key, file).
-	router.Post("/upload/jira-attachment", plexams.HTTPUploadJiraAttachment)
-	router.Get("/download/planned-rooms.json", plexams.HTTPDownloadPlannedRooms)
+	router.Post("/upload/jira-attachment", rest.uploadJiraAttachment)
+	router.Get("/download/planned-rooms.json", rest.downloadPlannedRooms)
 
 	// Generated documents (formerly the pdf/csv/ics CLI commands): draft plans and
 	// exports for the faculties/examers. Read-only, so no write gating.
-	router.Get("/download/pdf/{kind}", plexams.HTTPDownloadPDF)
-	router.Get("/download/csv/{kind}", plexams.HTTPDownloadCSVDraft)
-	router.Get("/download/ics/{program}", plexams.HTTPDownloadICS)
+	router.Get("/download/pdf/{kind}", rest.downloadPDF)
+	router.Get("/download/csv/{kind}", rest.downloadCSVDraft)
+	router.Get("/download/ics/{program}", rest.downloadICS)
 
 	// Human-readable CSV of the manually entered data (absolute date/time, robust
 	// against exam-period shifts): per-dataset and a combined "my inputs" ZIP.
-	router.Get("/download/dataset-csv", plexams.HTTPDownloadDatasetCSV)
-	router.Get("/download/my-inputs-csv.zip", plexams.HTTPDownloadMyInputsCSV)
-	router.Post("/upload/dataset-csv", plexams.HTTPUploadDatasetCSV)
+	router.Get("/download/dataset-csv", rest.downloadDatasetCSV)
+	router.Get("/download/my-inputs-csv.zip", rest.downloadMyInputsCSV)
+	router.Post("/upload/dataset-csv", rest.uploadDatasetCSV)
+
+	return router
+}
+
+func StartServer(plexams *plexams.Plexams, port string) {
+	plexamsResolver := NewResolver(plexams)
+
+	origins := allowedOriginsFromConfig()
+	production := viper.GetBool("server.production")
+
+	c := generated.Config{Resolvers: plexamsResolver}
+	srv := newGraphQLServer(generated.NewExecutableSchema(c), plexams, origins, production)
+
+	// Log every mutating operation (mutations + data-changing subscriptions) to the
+	// per-semester mutation_log collection.
+	srv.AroundFields(mutationLogMiddleware(plexams))
+
+	// Mark the cached assembled exams stale when an input changes (for the GUI banner).
+	srv.AroundFields(assembledExamsDirtyMiddleware(plexams))
+
+	// Mark the prepared student regs stale when an input changes (for the GUI banner).
+	srv.AroundFields(studentRegsDirtyMiddleware(plexams))
+
+	router := newRouter(plexams, srv, restRoutesOf(plexams), origins, production)
 
 	server := &http.Server{Addr: fmt.Sprintf(":%s", port), Handler: router}
 	defer func() {

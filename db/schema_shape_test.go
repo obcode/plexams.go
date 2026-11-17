@@ -30,6 +30,14 @@ var tablesWithoutSemesterID = []string{
 	"generation_config",
 	"aaspf_degree",
 
+	// Portal access: a login, its aliases, blocks, delegations, grants and tokens do not
+	// belong to a semester (migration 00012).
+	"login_alias",
+	"portal_login_block",
+	"portal_delegation",
+	"program_grant",
+	"portal_token",
+
 	// The registry itself -- its primary key IS the semester.
 	"semester",
 

@@ -291,6 +291,14 @@ type JointLink struct {
 	MainExamer    string
 }
 
+type LoginAlias struct {
+	Email     string
+	TeacherID int
+	Note      string
+	CreatedBy string
+	CreatedAt time.Time
+}
+
 type MutationLog struct {
 	ID         int64
 	SemesterID string
@@ -380,6 +388,35 @@ type PlanningState struct {
 	ConditionKey string
 }
 
+type PortalDelegation struct {
+	DelegateEmail string
+	TeacherID     int
+	ValidFrom     *time.Time
+	ValidUntil    *time.Time
+	Note          string
+	CreatedBy     string
+	CreatedAt     time.Time
+}
+
+type PortalLoginBlock struct {
+	Email     string
+	Reason    string
+	CreatedBy string
+	CreatedAt time.Time
+}
+
+type PortalToken struct {
+	TokenID     string
+	OwnerEmail  string
+	Description string
+	Scope       string
+	SecretHash  []byte
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+	LastUsedAt  *time.Time
+	RevokedAt   *time.Time
+}
+
 type PrePlannedInvigilation struct {
 	ID            int64
 	SemesterID    string
@@ -454,6 +491,16 @@ type PrimussExam struct {
 	ExamType   string
 	Presence   string
 	Raw        []byte
+}
+
+type ProgramGrant struct {
+	Email      string
+	Program    string
+	Level      string
+	ValidUntil *time.Time
+	Note       string
+	CreatedBy  string
+	CreatedAt  time.Time
 }
 
 type Room struct {

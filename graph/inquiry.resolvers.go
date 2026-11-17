@@ -49,6 +49,12 @@ func (r *mutationResolver) ReviewInquirySubmission(ctx context.Context, id int, 
 	return err == nil, err
 }
 
+// ReapplyInquirySubmission is the resolver for the reapplyInquirySubmission field.
+func (r *mutationResolver) ReapplyInquirySubmission(ctx context.Context, id int) (bool, error) {
+	err := r.plexams.Inquiries().Reapply(ctx, r.plexams.ActiveSemesterID(), int64(id), r.plexams.ActorEmail(ctx))
+	return err == nil, err
+}
+
 // SetMyNotificationMode is the resolver for the setMyNotificationMode field.
 func (r *mutationResolver) SetMyNotificationMode(ctx context.Context, mode model.NotificationMode) (*model.NotificationSetting, error) {
 	user := UserFromContext(ctx)

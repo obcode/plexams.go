@@ -46,6 +46,17 @@ func (p *Plexams) SendAdminDigest(ctx context.Context, run bool, reporter Report
 	}
 
 	view := newAdminDigestView(overview, recipients)
+	if inbox, err := p.Inquiries().InboxSummary(ctx); err != nil {
+		log.Error().Err(err).Msg("admin digest: cannot count the portal inbox")
+	} else {
+		for _, e := range inbox {
+			kind := inquiryKindLabel[e.Kind]
+			if kind == "" {
+				kind = string(e.Kind)
+			}
+			view.Portal = append(view.Portal, adminPortalView{Semester: e.Semester, Kind: kind, Open: e.Open})
+		}
+	}
 	subject := buildAdminDigestSubject(view)
 
 	text, html, err := p.mailRenderer().Render("adminDigest.md.tmpl", false, view)
@@ -129,7 +140,16 @@ type adminDigestView struct {
 	Live        adminLiveView
 	Semesters   []adminSemesterView
 	RecentSync  []adminSyncView
-	Recipients  string // comma-joined, for the mail footer
+	// Portal lists submissions of the examiner portal no planner has looked at yet, per
+	// semester and kind -- all semesters. Empty without any.
+	Portal     []adminPortalView
+	Recipients string // comma-joined, for the mail footer
+}
+
+type adminPortalView struct {
+	Semester string
+	Kind     string
+	Open     int
 }
 
 type adminServerView struct {

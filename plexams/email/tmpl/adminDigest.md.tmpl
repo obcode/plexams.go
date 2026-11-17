@@ -33,6 +33,13 @@ Häufigste Operationen (7 Tage):
 {{ range .RecentError }}- **{{ .Time }}** {{ .Name }}{{ if .User }} ({{ .User }}){{ end }}: {{ .Error }}
 {{ end }}{{- end }}
 
+{{ if .Portal -}}
+#### Portal für Prüfende
+
+Ungesichtete Meldungen:
+{{ range .Portal }}- **{{ .Semester }}** {{ .Kind }}: {{ .Open }}
+{{ end }}
+{{ end -}}
 #### Backup
 
 {{ if .Backup.HasUnsavedChanges -}}

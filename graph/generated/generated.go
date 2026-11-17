@@ -860,6 +860,7 @@ type ComplexityRoot struct {
 		PrePlanInvigilation           func(childComplexity int, invigilatorID int, starttime time.Time, roomName *string) int
 		PrePlanInvigilationAt         func(childComplexity int, starttime time.Time, roomName *string) int
 		PrePlanRoom                   func(childComplexity int, ancode int, roomName string, reserve bool, mtknr *string, seats *int) int
+		ReapplyInquirySubmission      func(childComplexity int, id int) int
 		RemoveExamDuration            func(childComplexity int, ancode int) int
 		RemoveExamsCanShareSlot       func(childComplexity int, ancode1 int, ancode2 int) int
 		RemoveJointLink               func(childComplexity int, program string, primussAncode int) int
@@ -2071,6 +2072,7 @@ type MutationResolver interface {
 	OpenInquiry(ctx context.Context, kind model.InquiryKind) (*model.Inquiry, error)
 	CloseInquiry(ctx context.Context, kind model.InquiryKind) (*model.Inquiry, error)
 	ReviewInquirySubmission(ctx context.Context, id int, revision int, state model.InquiryReviewState, note *string) (bool, error)
+	ReapplyInquirySubmission(ctx context.Context, id int) (bool, error)
 	SetMyNotificationMode(ctx context.Context, mode model.NotificationMode) (*model.NotificationSetting, error)
 	MarkInquiryActivitySeen(ctx context.Context, upTo int) (bool, error)
 	PrePlanInvigilation(ctx context.Context, invigilatorID int, starttime time.Time, roomName *string) (bool, error)
@@ -6042,6 +6044,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.PrePlanRoom(childComplexity, args["ancode"].(int), args["roomName"].(string), args["reserve"].(bool), args["mtknr"].(*string), args["seats"].(*int)), true
+	case "Mutation.reapplyInquirySubmission":
+		if e.ComplexityRoot.Mutation.ReapplyInquirySubmission == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_reapplyInquirySubmission_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ReapplyInquirySubmission(childComplexity, args["id"].(int)), true
 	case "Mutation.removeExamDuration":
 		if e.ComplexityRoot.Mutation.RemoveExamDuration == nil {
 			break
@@ -13498,6 +13511,12 @@ extend type Mutation {
   it (REJECTED, note required). Fails when a newer revision arrived in the meantime.
   """
   reviewInquirySubmission(id: Int!, revision: Int!, state: InquiryReviewState!, note: String): Boolean!
+  """
+  Write the current revision of an EXaHM/SEB submission into the pre-planning again (the
+  examiner's statement wins over later edits; a deleted pre-exam is created again) and mark
+  it as reviewed.
+  """
+  reapplyInquirySubmission(id: Int!): Boolean!
   "How the caller hears about portal changes: OFF, IMMEDIATE or DAILY (default)."
   setMyNotificationMode(mode: NotificationMode!): NotificationSetting!
   "Mark the overview as read up to the given change."
@@ -20103,6 +20122,20 @@ func (ec *executionContext) field_Mutation_prePlanRoom_args(ctx context.Context,
 		return nil, err
 	}
 	args["seats"] = arg4
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_reapplyInquirySubmission_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -37449,6 +37482,50 @@ func (ec *executionContext) fieldContext_Mutation_reviewInquirySubmission(ctx co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_reviewInquirySubmission_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_reapplyInquirySubmission(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_reapplyInquirySubmission(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ReapplyInquirySubmission(ctx, fc.Args["id"].(int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_reapplyInquirySubmission(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_reapplyInquirySubmission_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -70243,6 +70320,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "reviewInquirySubmission":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_reviewInquirySubmission(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reapplyInquirySubmission":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_reapplyInquirySubmission(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

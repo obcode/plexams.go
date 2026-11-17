@@ -29,6 +29,11 @@ Häufigste Operationen (7 Tage):
 - **21.07. 14:32** uploadExamsToZPA (oliver.braun@hm.edu): ZPA: 500 Internal Server Error
 
 
+#### Portal für Prüfende
+
+Ungesichtete Meldungen:
+- **2027-SS** EXaHM/SEB: 3
+
 #### Backup
 
 ⚠️ Änderungen seit dem letzten Dump — ein Backup ist fällig. Letzter Dump: 20.07.2026 18:00, letzte Änderung: 22.07.2026 05:12.

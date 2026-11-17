@@ -326,3 +326,63 @@ func (s *Service) OpenSemestersAfter(ctx context.Context, after string) ([]strin
 	sort.Strings(out)
 	return out, nil
 }
+
+// Reapply writes the current revision of a PREPLAN submission into the pre-planning
+// again, every stated field: the examiner's statement wins over later edits by the
+// planners. A pre-exam the planners deleted is created again. Marks the revision as
+// reviewed (APPLIED). A planner action -- no activity row, no notification.
+func (s *Service) Reapply(ctx context.Context, semester string, id int64, actor string) error {
+	return s.store.InTransaction(ctx, func(ctx context.Context) error {
+		q := s.store.Q(ctx)
+		head, err := q.GetSubmissionForUpdate(ctx, sqlc.GetSubmissionForUpdateParams{SemesterID: semester, ID: id})
+		if notFound(err) || (err == nil && head.Kind != string(KindPreplan)) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if head.State == SubmissionWithdrawn {
+			return apierr.WithDetail(ErrInvalidInput, "the submission is withdrawn")
+		}
+		rev, err := q.GetSubmissionRevision(ctx, sqlc.GetSubmissionRevisionParams{SemesterID: semester, SubmissionID: id, Revision: head.Revision})
+		if err != nil {
+			return err
+		}
+		p, err := payloadOf(rev)
+		if err != nil {
+			return err
+		}
+		examID := head.PreplanExamID
+		if examID != nil {
+			n, err := q.UpdatePreplanExamFromPortal(ctx, sqlc.UpdatePreplanExamFromPortalParams{
+				SemesterID: semester, ID: *examID,
+				SetKind: true, ExamKind: p.ExamKind, SetModule: true, Module: p.Module,
+				SetPrograms: true, Programs: p.Programs, SetStudents: true, ExpectedStudents: p.ExpectedStudents,
+				SetDuration: true, DurationMin: p.DurationMin,
+			})
+			if err != nil {
+				return err
+			}
+			if n == 0 {
+				examID = nil
+			}
+		}
+		if examID == nil {
+			created, err := s.insertPreplanExam(ctx, semester, head.TeacherID, head.TeacherName, *p)
+			if err != nil {
+				return err
+			}
+			examID = &created
+		}
+		if err := q.UpdateSubmissionHead(ctx, sqlc.UpdateSubmissionHeadParams{
+			SemesterID: semester, ID: id, State: head.State, Revision: head.Revision,
+			AppliedRevision: &head.Revision, PreplanExamID: examID, ReviewState: head.ReviewState,
+		}); err != nil {
+			return err
+		}
+		_, err = q.ReviewSubmission(ctx, sqlc.ReviewSubmissionParams{
+			SemesterID: semester, ID: id, Revision: head.Revision, ReviewState: ReviewApplied, Actor: actor, Note: head.ReviewNote,
+		})
+		return err
+	})
+}

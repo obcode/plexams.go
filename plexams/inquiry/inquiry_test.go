@@ -431,3 +431,50 @@ func TestNewestOpenFindsTheComingSemester(t *testing.T) {
 		t.Errorf("a closed inquiry must not count: %+v", inq)
 	}
 }
+
+func TestReapply(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	sub := f.submit(as("b@example.test", 20), SubmitPreplanInput{Payload: payload("Datenbanken", 40)})
+
+	// The planners change the module, then delete the pre-exam altogether.
+	q := f.pg.Queries(ctx)
+	exam, _ := f.preplanExam(next, *sub.PreplanID)
+	if err := q.UpsertPreplanExam(ctx, sqlc.UpsertPreplanExamParams{
+		SemesterID: next, ID: exam.ID, ExamKind: exam.ExamKind, ExamerID: exam.ExamerID, ExamerName: exam.ExamerName,
+		Module: "anders", Programs: exam.Programs, ExpectedStudents: 1, Notes: "bleibt", FormatVersion: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.Reapply(ctx, next, sub.ID, "planer@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	exam, _ = f.preplanExam(next, *sub.PreplanID)
+	if exam.Module != "Datenbanken" || exam.ExpectedStudents != 40 || exam.Notes != "bleibt" {
+		t.Errorf("reapply restores the statement, keeps the notes: %+v", exam)
+	}
+	subs, _ := f.svc.Submissions(ctx, next, KindPreplan, false)
+	if subs[0].ReviewState != ReviewApplied {
+		t.Errorf("reapply marks the revision as reviewed: %s", subs[0].ReviewState)
+	}
+
+	if _, err := q.DeleteUntouchedPreplanExam(ctx, sqlc.DeleteUntouchedPreplanExamParams{SemesterID: next, ID: exam.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.Reapply(ctx, next, sub.ID, "planer@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	subs, _ = f.svc.Submissions(ctx, next, KindPreplan, false)
+	if subs[0].PreplanID == nil {
+		t.Fatal("a deleted pre-exam is created again")
+	}
+	if _, err := f.preplanExam(next, *subs[0].PreplanID); err != nil {
+		t.Errorf("the new pre-exam exists: %v", err)
+	}
+	if err := f.svc.Reapply(ctx, next, 999999, "planer@example.test"); code(err) != "NOT_FOUND" {
+		t.Errorf("missing: want NOT_FOUND, got %v", err)
+	}
+	if n := len(f.activity()); n != 1 {
+		t.Errorf("a planner action writes no portal activity, got %d rows", n)
+	}
+}

@@ -51,6 +51,7 @@ Mutation.openInquiry PLANER
 Mutation.prePlanInvigilation PLANER
 Mutation.prePlanInvigilationAt PLANER
 Mutation.prePlanRoom PLANER
+Mutation.reapplyInquirySubmission PLANER
 Mutation.removeExamDuration PLANER
 Mutation.removeExamsCanShareSlot PLANER
 Mutation.removeJointLink PLANER

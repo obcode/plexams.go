@@ -198,6 +198,7 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 			v("{{ .Live.WritesAllowed }} / {{ .Live.ReadOnly }}", "Ob gerade geschrieben werden darf / Semester read-only.", "true / false"),
 			v("{{ range .Semesters }}", "Alle Semester (Name/Active/ReadOnly).", "2 Semester"),
 			v("{{ range .RecentSync }}", "Letzte externe Transfers (Zeit/System/Label/Summary/OK).", "3 Transfers"),
+			v("{{ range .Portal }}", "Ungesichtete Meldungen aus dem Portal je Semester und Art (.Semester/.Kind/.Open).", "1 Eintrag"),
 			v("{{ .Recipients }}", "Empfängerliste (für die Fußzeile).", "oliver.braun@hm.edu"),
 		},
 		Sample: adminDigestView{
@@ -232,6 +233,7 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 				{Time: "22.07. 03:00", System: "ZPA", Label: "Prüfungen", Summary: "3 geändert", OK: true},
 				{Time: "22.07. 03:00", System: "Anny", Label: "Buchungen", Summary: "keine Änderungen", OK: true},
 			},
+			Portal:     []adminPortalView{{Semester: "2027-SS", Kind: "EXaHM/SEB", Open: 3}},
 			Recipients: "oliver.braun@hm.edu",
 		},
 	},

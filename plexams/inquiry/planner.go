@@ -286,3 +286,23 @@ func (s *Service) SetNotificationMode(ctx context.Context, email, mode string) (
 func (s *Service) MarkSeen(ctx context.Context, email string, upTo int64) error {
 	return s.store.Q(ctx).SetNotificationSeenUpTo(ctx, sqlc.SetNotificationSeenUpToParams{Email: email, UpTo: upTo})
 }
+
+// NewestOpen returns the open inquiry of the kind in the given semester or a later one
+// (the newest), or nil. The invitation mail goes out while the previous semester is
+// still active, so it must find the inquiry of the coming one.
+func (s *Service) NewestOpen(ctx context.Context, kind Kind, from string) (*Inquiry, error) {
+	rows, err := s.store.Q(ctx).ListVisibleInquiries(ctx, 0)
+	if err != nil {
+		return nil, err
+	}
+	var best *Inquiry
+	for _, r := range rows {
+		if r.Kind != string(kind) || r.State != StateOpen || r.SemesterID < from {
+			continue
+		}
+		if best == nil || r.SemesterID > best.Semester {
+			best = toInquiry(r)
+		}
+	}
+	return best, nil
+}

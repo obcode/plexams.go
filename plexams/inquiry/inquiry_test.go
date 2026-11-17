@@ -413,3 +413,21 @@ func TestNotifier(t *testing.T) {
 		}
 	}
 }
+
+func TestNewestOpenFindsTheComingSemester(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	inq, err := f.svc.NewestOpen(ctx, KindPreplan, "2026-WS")
+	if err != nil || inq == nil || inq.Semester != next {
+		t.Fatalf("from the active semester: %+v %v", inq, err)
+	}
+	if inq, _ := f.svc.NewestOpen(ctx, KindPreplan, "2027-WS"); inq != nil {
+		t.Errorf("an older inquiry must not count: %+v", inq)
+	}
+	if _, err := f.svc.CloseInquiry(ctx, next, KindPreplan, "planer@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if inq, _ := f.svc.NewestOpen(ctx, KindPreplan, "2026-WS"); inq != nil {
+		t.Errorf("a closed inquiry must not count: %+v", inq)
+	}
+}

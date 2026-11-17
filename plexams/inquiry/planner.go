@@ -19,7 +19,7 @@ import (
 type PlannerInquiry struct {
 	*Inquiry
 	Submissions     int
-	Open            int
+	OpenSubmissions int
 	NothingToReport int
 }
 
@@ -50,7 +50,7 @@ func (s *Service) Inquiries(ctx context.Context, semester string) ([]*PlannerInq
 			pi.Submissions = len(subs)
 			for _, sub := range subs {
 				if sub.ReviewState == ReviewOpen {
-					pi.Open++
+					pi.OpenSubmissions++
 				}
 			}
 			if pi.NothingToReport, err = q.CountNothingToReport(ctx, sqlc.CountNothingToReportParams{SemesterID: semester, Kind: string(kind)}); err != nil {

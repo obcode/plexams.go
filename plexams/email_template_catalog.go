@@ -308,6 +308,21 @@ var emailTemplateCatalog = map[string]emailTemplateInfo{
 		Sample: map[string]any{"PlanerName": samplePlanerName},
 	},
 
+	"exahmPortalEmail.md.tmpl": {
+		Description: "An alle Prüfenden, solange die EXaHM/SEB-Abfrage des Semesters offen ist: Aufruf, EXaHM-/SEB-Prüfungen im Portal für Prüfende zu melden (Jira nur als Rückfallweg).",
+		Jira:        false,
+		Variables: []emailTemplateVar{
+			v("{{ .Semester }}", "Semester der Abfrage.", "2027-SS"),
+			v("{{ .PortalURL }}", "Link auf die Meldeseite im Portal.", "https://plexams.example/portal/2027-SS/exahm-seb"),
+			v("{{ .Deadline }}", "Frist der Abfrage (leer ohne Frist).", "05.02.2027"),
+			v("{{ .PlanerName }}", "Name der/des Planenden (Unterschrift).", samplePlanerName),
+		},
+		Sample: map[string]any{
+			"Semester": "2027-SS", "PortalURL": "https://plexams.example/portal/2027-SS/exahm-seb",
+			"Deadline": "05.02.2027", "PlanerName": samplePlanerName,
+		},
+	},
+
 	"examPlanningInfoEmail.md.tmpl": {
 		Description: "An die/den Prüfende:n: welche ihrer/seiner Prüfungen wir planen (oder keine), mit Bitte um Besonderheiten/Constraints.",
 		Jira:        true,

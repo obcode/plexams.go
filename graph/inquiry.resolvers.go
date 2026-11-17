@@ -25,7 +25,7 @@ func (r *mutationResolver) SetInquiry(ctx context.Context, kind model.InquiryKin
 
 // OpenInquiry is the resolver for the openInquiry field.
 func (r *mutationResolver) OpenInquiry(ctx context.Context, kind model.InquiryKind) (*model.Inquiry, error) {
-	if _, err := r.plexams.Inquiries().OpenInquiry(ctx, r.plexams.ActiveSemesterID(), inquiry.Kind(kind), r.plexams.ActorEmail(ctx)); err != nil {
+	if err := r.plexams.OpenInquiry(ctx, inquiry.Kind(kind)); err != nil {
 		return nil, err
 	}
 	return r.plannerInquiry(ctx, kind)
@@ -33,7 +33,7 @@ func (r *mutationResolver) OpenInquiry(ctx context.Context, kind model.InquiryKi
 
 // CloseInquiry is the resolver for the closeInquiry field.
 func (r *mutationResolver) CloseInquiry(ctx context.Context, kind model.InquiryKind) (*model.Inquiry, error) {
-	if _, err := r.plexams.Inquiries().CloseInquiry(ctx, r.plexams.ActiveSemesterID(), inquiry.Kind(kind), r.plexams.ActorEmail(ctx)); err != nil {
+	if err := r.plexams.CloseInquiry(ctx, inquiry.Kind(kind)); err != nil {
 		return nil, err
 	}
 	return r.plannerInquiry(ctx, kind)

@@ -19,3 +19,27 @@ func (p *Plexams) ActorEmail(ctx context.Context) string { return p.actorEmail(c
 func (p *Plexams) PlannerInquiries(ctx context.Context) ([]*inquiry.PlannerInquiry, error) {
 	return p.Inquiries().Inquiries(ctx, p.ActiveSemesterID())
 }
+
+// OpenInquiry opens an inquiry of the active semester. Reopening the PREPLAN inquiry
+// takes back "SEB/EXaHM demand entered".
+func (p *Plexams) OpenInquiry(ctx context.Context, kind inquiry.Kind) error {
+	if _, err := p.Inquiries().OpenInquiry(ctx, p.ActiveSemesterID(), kind, p.actorEmail(ctx)); err != nil {
+		return err
+	}
+	if kind == inquiry.KindPreplan {
+		p.unmarkCondition(ctx, condSebExahmDemandEntered)
+	}
+	return nil
+}
+
+// CloseInquiry closes an inquiry of the active semester. Closing the PREPLAN inquiry
+// marks "SEB/EXaHM demand entered": what came in is in the pre-planning already.
+func (p *Plexams) CloseInquiry(ctx context.Context, kind inquiry.Kind) error {
+	if _, err := p.Inquiries().CloseInquiry(ctx, p.ActiveSemesterID(), kind, p.actorEmail(ctx)); err != nil {
+		return err
+	}
+	if kind == inquiry.KindPreplan {
+		p.markCondition(ctx, condSebExahmDemandEntered)
+	}
+	return nil
+}

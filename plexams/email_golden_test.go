@@ -115,6 +115,20 @@ func TestPortalActivityEmailGolden(t *testing.T) {
 	assertGolden(t, "portalActivity.html", html)
 }
 
+// TestExahmPortalEmailGolden locks the portal invitation. The Jira one stays untouched.
+func TestExahmPortalEmailGolden(t *testing.T) {
+	data := emailTemplateCatalog["exahmPortalEmail.md.tmpl"].Sample
+	text, html, err := email.New(nil, renderFuncs(), jiraURL).Render("exahmPortalEmail.md.tmpl", false, data)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if strings.Contains(string(text), "<no value>") {
+		t.Error("unfilled placeholder (<no value>)")
+	}
+	assertGolden(t, "exahmPortal.txt", text)
+	assertGolden(t, "exahmPortal.html", html)
+}
+
 // TestExahmEmailGolden locks the EXaHM/SEB request email (text + HTML) against a golden,
 // rendered through the production Markdown single-source path. First migrated email; the
 // rest follow the same pattern.

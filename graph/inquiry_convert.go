@@ -27,7 +27,7 @@ func toPlannerInquiry(i *inquiry.PlannerInquiry) *model.Inquiry {
 		Semester: i.Semester, Kind: model.InquiryKind(i.Kind), State: model.InquiryState(i.State),
 		Deadline: i.Deadline, Intro: i.Intro, OpenedAt: i.OpenedAt, OpenedBy: i.OpenedBy,
 		ClosedAt: i.ClosedAt, ClosedBy: i.ClosedBy,
-		Submissions: i.Submissions, OpenSubmissions: i.Open, NothingToReport: i.NothingToReport,
+		Submissions: i.Submissions, OpenSubmissions: i.OpenSubmissions, NothingToReport: i.NothingToReport,
 	}
 }
 

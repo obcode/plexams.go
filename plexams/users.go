@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/db"
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -30,6 +31,20 @@ func (p *Plexams) GetUserByEmail(ctx context.Context, email string) (*model.User
 	}
 	return p.dbClient.GetUserByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
 }
+
+// ResolvePortalLogin returns what the portal tables say about a login: the ZPA persons it
+// is, delegations, grants, a block. Empty without a database.
+func (p *Plexams) ResolvePortalLogin(ctx context.Context, email string) (*db.PortalLogin, error) {
+	if p.dbClient == nil {
+		return &db.PortalLogin{}, nil
+	}
+	return p.dbClient.ResolvePortalLogin(ctx, strings.ToLower(strings.TrimSpace(email)), portalTeacherSnapshots)
+}
+
+// portalTeacherSnapshots is how many of the newest teacher mirrors a login's address is
+// matched against: identity must not follow the semester switch, and old mirrors keep
+// superseded addresses forever.
+const portalTeacherSnapshots = 3
 
 // SetUser upserts a user (email keyed, lower-cased). Admin surface for opening
 // access to a wider circle with restricted rights.

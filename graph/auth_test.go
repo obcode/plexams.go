@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/principal"
 	"github.com/spf13/viper"
@@ -13,13 +14,20 @@ import (
 
 // fakeAuthProvider implements authProvider without a database.
 type fakeAuthProvider struct {
-	dev   *model.User
-	users map[string]*model.User
+	dev    *model.User
+	users  map[string]*model.User
+	portal map[string]*db.PortalLogin
 }
 
 func (f *fakeAuthProvider) LocalDevUser() *model.User { return f.dev }
 func (f *fakeAuthProvider) GetUserByEmail(_ context.Context, email string) (*model.User, error) {
 	return f.users[email], nil
+}
+func (f *fakeAuthProvider) ResolvePortalLogin(_ context.Context, email string) (*db.PortalLogin, error) {
+	if login, ok := f.portal[email]; ok {
+		return login, nil
+	}
+	return &db.PortalLogin{}, nil
 }
 
 func TestRoleHierarchy(t *testing.T) {

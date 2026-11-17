@@ -233,10 +233,13 @@ func newRouter(auth authProvider, state gateState, graphQL http.Handler, rest re
 
 	// The GraphQL playground is a dev convenience; disabled in production (the GUI is
 	// served by the reverse proxy there, not by this backend).
+	// The planner API: a login without a planner role -- a portal-only login -- gets
+	// the same 403 as an unknown one. The operation gate would refuse it too, but with a
+	// 200 and a GraphQL error; the route is the clearer boundary.
 	if !production {
-		router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+		router.With(requireStaffRole).Handle("/", playground.Handler("GraphQL playground", "/query"))
 	}
-	router.Handle("/query", graphQL)
+	router.With(requireStaffRole).Handle("/query", graphQL)
 
 	// Liveness for the container health check, which is what makes a deploy fail
 	// loudly instead of quietly: the server migrates the schema at startup and

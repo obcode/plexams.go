@@ -9,13 +9,13 @@ package portal
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/obcode/plexams.go/db"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/plexams/pat"
 	"github.com/obcode/plexams.go/principal"
 	"github.com/rs/zerolog/log"
@@ -55,19 +55,12 @@ var (
 )
 
 // CodedError is an error with a stable machine-readable code.
-type CodedError struct {
-	Code    string
-	Message string
-}
+type CodedError = apierr.Error
 
-func (e *CodedError) Error() string { return e.Message }
-
-func coded(code, msg string) *CodedError { return &CodedError{Code: code, Message: msg} }
+func coded(code, msg string) *CodedError { return apierr.New(code, msg) }
 
 // withDetail keeps the code and adds a detail to the message.
-func withDetail(e *CodedError, detail string) error {
-	return &CodedError{Code: e.Code, Message: e.Message + ": " + detail}
-}
+func withDetail(e *CodedError, detail string) error { return apierr.WithDetail(e, detail) }
 
 // Service is the portal's business logic.
 type Service struct {
@@ -305,10 +298,4 @@ func (s *Service) markUsed(tokenID string) {
 }
 
 // AsCoded reports the code of a portal error, if it has one.
-func AsCoded(err error) (*CodedError, bool) {
-	var c *CodedError
-	if errors.As(err, &c) {
-		return c, true
-	}
-	return nil, false
-}
+func AsCoded(err error) (*CodedError, bool) { return apierr.As(err) }

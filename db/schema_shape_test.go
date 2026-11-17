@@ -37,6 +37,8 @@ var tablesWithoutSemesterID = []string{
 	"portal_delegation",
 	"program_grant",
 	"portal_token",
+	// A planner's notification preference (migration 00013).
+	"notification_setting",
 
 	// The registry itself -- its primary key IS the semester.
 	"semester",

@@ -26,6 +26,9 @@ var jsonbTypes = []struct {
 	// exam_constraint tables hold, stored as a document here because it hangs off
 	// a pre-exam, is read and written whole, and nothing joins it.
 	{"preplan_exam", model.Constraints{}},
+	// The examiner portal (migration 00013).
+	{"inquiry_submission_revision", PreplanPayload{}},
+	{"inquiry_activity", ActivityChange{}},
 }
 
 // knownJSONBOmissions lists fields that are deliberately not persisted, with the

@@ -213,6 +213,79 @@ type GenerationConfig struct {
 	FormatVersion int
 }
 
+type Inquiry struct {
+	SemesterID string
+	Kind       string
+	State      string
+	Deadline   *time.Time
+	Intro      string
+	OpenedAt   *time.Time
+	OpenedBy   *string
+	ClosedAt   *time.Time
+	ClosedBy   *string
+	UpdatedAt  time.Time
+}
+
+type InquiryActivity struct {
+	SemesterID   string
+	ID           int64
+	At           time.Time
+	Actor        string
+	Channel      string
+	TeacherID    int
+	TeacherName  string
+	Kind         string
+	Action       string
+	SubmissionID *int64
+	Revision     *int
+	Label        string
+	Changes      []byte
+}
+
+type InquiryResponse struct {
+	SemesterID        string
+	Kind              string
+	TeacherID         int
+	InvitedAt         *time.Time
+	RemindedAt        *time.Time
+	ReminderCount     int
+	NothingToReportAt *time.Time
+	NothingToReportBy *string
+}
+
+type InquirySubmission struct {
+	SemesterID       string
+	ID               int64
+	Kind             string
+	TeacherID        int
+	TeacherName      string
+	CreatedBy        string
+	Ancode           *int
+	PreplanExamID    *int
+	State            string
+	Revision         int
+	AppliedRevision  *int
+	ReviewState      string
+	ReviewedRevision *int
+	ReviewedBy       *string
+	ReviewedAt       *time.Time
+	ReviewNote       string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type InquirySubmissionRevision struct {
+	SemesterID    string
+	SubmissionID  int64
+	Revision      int
+	State         string
+	Payload       []byte
+	FormatVersion int
+	SubmittedBy   string
+	Channel       string
+	SubmittedAt   time.Time
+}
+
 type Invigilation struct {
 	ID                 int64
 	SemesterID         string
@@ -325,6 +398,14 @@ type NTARow struct {
 	ValidUntil           string
 	LastSemester         *string
 	Deactivated          bool
+}
+
+type NotificationSetting struct {
+	Email      string
+	Mode       string
+	MailedUpTo int64
+	SeenUpTo   int64
+	UpdatedAt  time.Time
 }
 
 type NtaRoomAloneWaiver struct {

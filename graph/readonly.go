@@ -39,7 +39,7 @@ func isTodoOnlyOperation(oc *graphql.OperationContext) bool {
 	if oc.Operation == nil || oc.Operation.Operation != ast.Mutation {
 		return false
 	}
-	names := rootFieldNames(oc.Operation.SelectionSet)
+	names := rootFieldNames(oc)
 	if len(names) == 0 {
 		return false
 	}
@@ -54,20 +54,31 @@ func isTodoOnlyOperation(oc *graphql.OperationContext) bool {
 // isDataChangingOperation reports whether the operation would change the semester's
 // data: any mutation (except the read-only-exempt ones) and any subscription that
 // is not a read-only validation (validate*). Queries never change data.
+//
+// A mutation or subscription whose root fields cannot be determined counts as
+// data-changing: the gate must fail closed.
 func isDataChangingOperation(oc *graphql.OperationContext) bool {
 	if oc.Operation == nil {
 		return false
 	}
 	switch oc.Operation.Operation {
 	case ast.Mutation:
-		for _, name := range rootFieldNames(oc.Operation.SelectionSet) {
+		names := rootFieldNames(oc)
+		if len(names) == 0 {
+			return true
+		}
+		for _, name := range names {
 			if !readOnlyExemptMutations[name] {
 				return true
 			}
 		}
 		return false
 	case ast.Subscription:
-		for _, name := range rootFieldNames(oc.Operation.SelectionSet) {
+		names := rootFieldNames(oc)
+		if len(names) == 0 {
+			return true
+		}
+		for _, name := range names {
 			if !strings.HasPrefix(name, "validate") {
 				return true
 			}
@@ -78,12 +89,32 @@ func isDataChangingOperation(oc *graphql.OperationContext) bool {
 	}
 }
 
-func rootFieldNames(set ast.SelectionSet) []string {
-	names := make([]string, 0, len(set))
-	for _, sel := range set {
-		if field, ok := sel.(*ast.Field); ok {
-			names = append(names, field.Name)
-		}
+// rootFieldNames returns the names of the root fields the executor will resolve.
+//
+// It must collect them exactly as the executor does: a field selected through an
+// inline fragment or a fragment spread (`mutation { ... on Mutation { addNTA } }`)
+// is executed all the same, so looking only at the direct *ast.Field selections
+// let such an operation slip past every check built on these names.
+// graphql.CollectFields is the function the generated executor itself uses.
+func rootFieldNames(oc *graphql.OperationContext) []string {
+	if oc == nil || oc.Operation == nil {
+		return nil
+	}
+	var typeName string
+	switch oc.Operation.Operation {
+	case ast.Query:
+		typeName = "Query"
+	case ast.Mutation:
+		typeName = "Mutation"
+	case ast.Subscription:
+		typeName = "Subscription"
+	default:
+		return nil
+	}
+	fields := graphql.CollectFields(oc, oc.Operation.SelectionSet, []string{typeName})
+	names := make([]string, 0, len(fields))
+	for _, f := range fields {
+		names = append(names, f.Name)
 	}
 	return names
 }

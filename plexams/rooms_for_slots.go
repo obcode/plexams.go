@@ -78,7 +78,7 @@ func (p *Plexams) computeRoomsForSlots(ctx context.Context, reporter Reporter) (
 			// every slot, which would show T-building rooms as free at times they are
 			// not booked.
 			if room.NeedsRequest || room.RequestWith == model.RoomRequestTypeAnny {
-				reporter.Warnf(aurora.Sprintf(aurora.Red("room %s needs request/booking, but no slot covered -> %s"),
+				reporter.Warnf("%s", aurora.Sprintf(aurora.Red("room %s needs request/booking, but no slot covered -> %s"),
 					aurora.Yellow(room.Name),
 					aurora.Green("room ignored")))
 				continue

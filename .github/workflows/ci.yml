@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26"
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -33,7 +33,7 @@ jobs:
           # Das Hochziehen ist damit eine bewusste Handlung. Dependabot kann diese Zeile nicht
           # bumpen (es kennt Actions und Images, keine Versionsstrings in Eingaben), also
           # gehört sie zu dem, was man beim Aufräumen ansieht.
-          version: v2.13.1
+          version: v2.14.0
           args: --timeout=10m
   test:
     name: test
@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26"
       - name: Test
         run: go test -v ./...
         env:
@@ -110,20 +110,18 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26"
       # govulncheck has no suppression mechanism, so the JSON output is filtered instead:
       # fail on every advisory reachable at symbol level (trace[0].function set -- the
       # same set the text mode reports) unless it is listed in IGNORED. -format json
       # always exits 0; the grep below is what fails the job.
       #
-      # IGNORED -- each entry needs a reason and a condition for removal:
-      #   GO-2026-6452 (excelize, negative shared-string index): fixed upstream in
-      #     f98df08 (GHSA-wcg2-648h-mhxq), which go.mod pins as a pseudo-version, but the
-      #     Go vulndb entry has no fixed version and so matches every release. Remove once
-      #     excelize tags a release with the fix and go.mod is back on a tag.
+      # IGNORED -- space-separated advisory ids; each entry needs a reason and a
+      # condition for removal in this comment. Currently none (GO-2026-6452 went away
+      # with excelize v2.11.1, the first tagged release carrying the fix).
       - name: govulncheck
         env:
-          IGNORED: GO-2026-6452
+          IGNORED: ""
         run: |
           go run golang.org/x/vuln/cmd/govulncheck@latest -format json ./... > vuln.json
           jq -r 'select(.finding) | select(.finding.trace[0].function != null) | .finding.osv' vuln.json \
@@ -149,7 +147,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version: "1.26"
       - uses: go-semantic-release/action@v1
         id: semrel
         with:

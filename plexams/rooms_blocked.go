@@ -110,7 +110,7 @@ func (p *Plexams) applyRoomBlocks(ctx context.Context, slotsWithRoomNames map[ti
 		}
 		when := formatBlockedRoomTime(b.Starttime)
 		if planned, ok := plannedInSlot[key]; ok && planned.Contains(b.Room) {
-			reporter.Warnf(aurora.Sprintf(
+			reporter.Warnf("%s", aurora.Sprintf(
 				aurora.Red("room %s is blocked at %s but currently planned there; it will be dropped on the next rooms-for-exams run"),
 				b.Room, when))
 		} else {

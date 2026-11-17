@@ -160,6 +160,11 @@ func newGraphQLServer(es graphql.ExecutableSchema, state gateState, origins []st
 	// GUI cannot mutate the plan underneath a running check.
 	srv.AroundOperations(operationGate(state))
 
+	// Field by field: the least role each root field needs (graph/policy.go).
+	// Registered here, before StartServer adds the logging and dirty-marking field
+	// middlewares, so it runs outermost and a denied call reaches none of them.
+	srv.AroundFields(rootFieldPolicyMiddleware(rootFieldPolicy))
+
 	return srv
 }
 

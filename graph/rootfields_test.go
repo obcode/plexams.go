@@ -180,6 +180,7 @@ func postQuery(t *testing.T, state gateState, user *model.User, doc string) (str
 func TestGate(t *testing.T) {
 	viewer := &model.User{Email: "v@example.test", Role: model.RoleViewer}
 	planer := &model.User{Email: "p@example.test", Role: model.RolePlaner}
+	admin := &model.User{Email: "a@example.test", Role: model.RoleAdmin}
 	open := fakeGateState{writes: true}
 
 	cases := []struct {
@@ -197,8 +198,12 @@ func TestGate(t *testing.T) {
 		{"planer may switch semester", open, planer, `mutation { setSemester(name: "2026-WS") { id } }`, ""},
 		{"protected semester blocks planning", fakeGateState{writes: true, readOnly: true}, planer,
 			`mutation { removeUser(email: "a") ... on Mutation { deleteTodo(id: 1) } }`, "semester is read-only"},
-		{"protected semester allows user admin", fakeGateState{writes: true, readOnly: true}, planer,
+		{"protected semester allows user admin", fakeGateState{writes: true, readOnly: true}, admin,
 			`mutation { removeUser(email: "a") }`, ""},
+		{"viewer may not read the user list", open, viewer, `query { users { email } }`, "requires role ADMIN"},
+		{"planer may not read the user list", open, planer, `query { users { email } }`, "requires role ADMIN"},
+		{"viewer may not reach an admin query through a fragment", open, viewer,
+			`query { ... on Query { adminOverview { users { email } } } }`, "requires role ADMIN"},
 		{"protected semester blocks a fragment-wrapped write", fakeGateState{writes: true, readOnly: true}, planer,
 			`subscription { ... on Subscription { sendEmailExaHM(run: false) { text } } }`, "semester is read-only"},
 	}

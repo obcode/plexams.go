@@ -266,6 +266,41 @@ func (q *Queries) MarkPortalTokenUsed(ctx context.Context, tokenID string) error
 	return err
 }
 
+const portalTeachers = `-- name: PortalTeachers :many
+select distinct on (id) id, shortname, fullname
+from teacher
+where id = any($1::int[])
+order by id, semester_id desc
+`
+
+type PortalTeachersRow struct {
+	ID        int
+	Shortname string
+	Fullname  string
+}
+
+// The newest mirror row of each requested ZPA person, independent of the active
+// semester: names for the portal's session view.
+func (q *Queries) PortalTeachers(ctx context.Context, ids []int) ([]PortalTeachersRow, error) {
+	rows, err := q.db.Query(ctx, portalTeachers, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PortalTeachersRow{}
+	for rows.Next() {
+		var i PortalTeachersRow
+		if err := rows.Scan(&i.ID, &i.Shortname, &i.Fullname); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const resolvePortalLogin = `-- name: ResolvePortalLogin :many
 
 select 'block'::text as kind, 0::int as teacher_id, ''::text as code, ''::text as label

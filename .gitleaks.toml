@@ -1,0 +1,24 @@
+# gitleaks configuration for plexams.go
+#
+# Extends the upstream default ruleset and adds the format of the portal's personal
+# access tokens (plexams/pat). The realistic leak path is not the server -- it is a
+# colleague committing a script, token and all. Same rule as in tallox.go.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "plexams-personal-access-token"
+description = "plexams portal personal access token"
+# plexams_<16 chars Crockford base32, uppercase>_<43 chars base64url>
+regex = '''plexams_[0-9A-HJKMNP-TV-Z]{16}_[A-Za-z0-9_-]{43}'''
+tags = ["plexams", "token"]
+
+[rules.allowlist]
+# Documentation and tests deliberately show the shape of a token. Anything that is all
+# A's or literally says "example"/"nonsense" is not a real secret.
+regexTarget = "match"
+regexes = [
+  '''plexams_A{16}_''',
+  '''plexams_[0-9A-HJKMNP-TV-Z]{16}_(example|nonsense|xxx)''',
+]

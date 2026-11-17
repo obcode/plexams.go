@@ -262,3 +262,28 @@ func (db *PG) RevokePortalToken(ctx context.Context, tokenID string) (bool, erro
 func (db *PG) MarkPortalTokenUsed(ctx context.Context, tokenID string) error {
 	return db.q(ctx).MarkPortalTokenUsed(ctx, tokenID)
 }
+
+// PortalTeacher is a ZPA person as the portal shows it.
+type PortalTeacher struct {
+	ID        int
+	Shortname string
+	Fullname  string
+}
+
+// PortalTeachers returns the newest mirror entry of each requested ZPA person. Ids
+// without any mirror row are missing from the map.
+func (db *PG) PortalTeachers(ctx context.Context, ids []int) (map[int]*PortalTeacher, error) {
+	out := make(map[int]*PortalTeacher, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := db.q(ctx).PortalTeachers(ctx, ids)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get portal teachers")
+		return nil, err
+	}
+	for _, r := range rows {
+		out[r.ID] = &PortalTeacher{ID: r.ID, Shortname: r.Shortname, Fullname: r.Fullname}
+	}
+	return out, nil
+}

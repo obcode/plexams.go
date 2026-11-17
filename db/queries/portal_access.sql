@@ -89,3 +89,11 @@ where token_id = @token_id and revoked_at is null;
 update portal_token set last_used_at = now()
 where token_id = @token_id
   and (last_used_at is null or last_used_at < now() - interval '5 minutes');
+
+-- The newest mirror row of each requested ZPA person, independent of the active
+-- semester: names for the portal's session view.
+-- name: PortalTeachers :many
+select distinct on (id) id, shortname, fullname
+from teacher
+where id = any(@ids::int[])
+order by id, semester_id desc;

@@ -144,19 +144,24 @@ func (db *PG) PreplanExam(ctx context.Context, id int) (*model.PreplanExam, erro
 
 // InsertPreplanExam assigns the next id and inserts the pre-exam.
 //
-// Reading max(id)+1 and inserting happen in one transaction, so two creations at
-// once cannot pick the same id -- under MongoDB they could, and the loser
-// silently became a second pre-exam with a duplicate id that the pair tables
-// could not tell apart.
+// A transaction alone does not make max(id)+1 safe: under READ COMMITTED two
+// creations at once both read the same maximum, and with the former upsert the
+// second silently overwrote the first. The advisory lock serialises the
+// allocation per semester until commit, and the insert has no ON CONFLICT, so a
+// collision that slips through anyway fails instead of destroying a row.
 func (db *PG) InsertPreplanExam(ctx context.Context, preplanExam *model.PreplanExam) (*model.PreplanExam, error) {
 	err := db.InTransaction(ctx, func(ctx context.Context) error {
+		if err := db.q(ctx).LockPreplanExamIDs(ctx, db.semesterID); err != nil {
+			log.Error().Err(err).Msg("cannot lock pre-exam id allocation")
+			return err
+		}
 		id, err := db.q(ctx).NextPreplanExamID(ctx, db.semesterID)
 		if err != nil {
 			log.Error().Err(err).Msg("cannot determine next pre-exam id")
 			return err
 		}
 		preplanExam.ID = id
-		return db.writePreplanExam(ctx, preplanExam)
+		return db.writePreplanExamRow(ctx, preplanExam, true)
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("cannot insert pre-exam")
@@ -210,6 +215,12 @@ func (db *PG) UpsertPreplanExam(ctx context.Context, preplanExam *model.PreplanE
 // is rejected by the foreign key -- so the CSV import has to write the pre-exams
 // before their pairs, and does.
 func (db *PG) writePreplanExam(ctx context.Context, exam *model.PreplanExam) error {
+	return db.writePreplanExamRow(ctx, exam, false)
+}
+
+// writePreplanExamRow is writePreplanExam with the choice between a plain insert
+// (a fresh pre-exam, insertOnly) and an upsert (replace, CSV import).
+func (db *PG) writePreplanExamRow(ctx context.Context, exam *model.PreplanExam, insertOnly bool) error {
 	var constraints []byte
 	if exam.Constraints != nil {
 		blob, err := json.Marshal(exam.Constraints)
@@ -224,7 +235,7 @@ func (db *PG) writePreplanExam(ctx context.Context, exam *model.PreplanExam) err
 		programs = make([]string, 0)
 	}
 
-	if err := db.q(ctx).UpsertPreplanExam(ctx, sqlc.UpsertPreplanExamParams{
+	params := sqlc.UpsertPreplanExamParams{
 		SemesterID:       db.semesterID,
 		ID:               exam.ID,
 		ExamKind:         exam.ExamKind,
@@ -240,7 +251,14 @@ func (db *PG) writePreplanExam(ctx context.Context, exam *model.PreplanExam) err
 		Notes:            exam.Notes,
 		Constraints:      constraints,
 		FormatVersion:    preplanConstraintsFormatVersion,
-	}); err != nil {
+	}
+	var err error
+	if insertOnly {
+		err = db.q(ctx).InsertNewPreplanExam(ctx, sqlc.InsertNewPreplanExamParams(params))
+	} else {
+		err = db.q(ctx).UpsertPreplanExam(ctx, params)
+	}
+	if err != nil {
 		return err
 	}
 

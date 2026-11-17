@@ -90,6 +90,55 @@ func (q *Queries) GetPreplanExam(ctx context.Context, arg GetPreplanExamParams) 
 	return i, err
 }
 
+const insertNewPreplanExam = `-- name: InsertNewPreplanExam :exec
+insert into preplan_exam (
+    semester_id, id, exam_kind, examer_id, examer_name, module, programs,
+    expected_students, duration_min, planned_starttime, is_fixed, ancode, notes,
+    constraints, format_version
+) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+`
+
+type InsertNewPreplanExamParams struct {
+	SemesterID       string
+	ID               int
+	ExamKind         string
+	ExamerID         int
+	ExamerName       string
+	Module           string
+	Programs         []string
+	ExpectedStudents int
+	DurationMin      *int
+	PlannedStarttime *time.Time
+	IsFixed          bool
+	Ancode           *int
+	Notes            string
+	Constraints      []byte
+	FormatVersion    int
+}
+
+// A fresh pre-exam. Deliberately no ON CONFLICT: an id collision is a bug in the
+// allocation and must fail loudly instead of overwriting another examiner's row.
+func (q *Queries) InsertNewPreplanExam(ctx context.Context, arg InsertNewPreplanExamParams) error {
+	_, err := q.db.Exec(ctx, insertNewPreplanExam,
+		arg.SemesterID,
+		arg.ID,
+		arg.ExamKind,
+		arg.ExamerID,
+		arg.ExamerName,
+		arg.Module,
+		arg.Programs,
+		arg.ExpectedStudents,
+		arg.DurationMin,
+		arg.PlannedStarttime,
+		arg.IsFixed,
+		arg.Ancode,
+		arg.Notes,
+		arg.Constraints,
+		arg.FormatVersion,
+	)
+	return err
+}
+
 const insertPreplanCanShareSlot = `-- name: InsertPreplanCanShareSlot :exec
 insert into preplan_can_share_slot (semester_id, id, other_id)
 values ($1, least($2::int, $3::int), greatest($2::int, $3::int))
@@ -237,6 +286,19 @@ func (q *Queries) ListPreplanNotSameSlot(ctx context.Context, semesterID string)
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockPreplanExamIDs = `-- name: LockPreplanExamIDs :exec
+select pg_advisory_xact_lock(hashtextextended('preplan_exam:' || $1::text, 0))
+`
+
+// Serialises the id allocation of one semester's pre-exams for the rest of the
+// transaction. Without it two concurrent creations read the same max(id): under
+// READ COMMITTED neither sees the other's uncommitted row. The key is derived from
+// the semester so different semesters do not wait for each other.
+func (q *Queries) LockPreplanExamIDs(ctx context.Context, semesterID string) error {
+	_, err := q.db.Exec(ctx, lockPreplanExamIDs, semesterID)
+	return err
 }
 
 const nextPreplanExamID = `-- name: NextPreplanExamID :one

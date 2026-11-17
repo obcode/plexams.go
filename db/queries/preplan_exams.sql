@@ -22,6 +22,22 @@ where semester_id = $1 and id = $2;
 -- name: NextPreplanExamID :one
 select (coalesce(max(id), 0) + 1)::int from preplan_exam where semester_id = $1;
 
+-- Serialises the id allocation of one semester's pre-exams for the rest of the
+-- transaction. Without it two concurrent creations read the same max(id): under
+-- READ COMMITTED neither sees the other's uncommitted row. The key is derived from
+-- the semester so different semesters do not wait for each other.
+-- name: LockPreplanExamIDs :exec
+select pg_advisory_xact_lock(hashtextextended('preplan_exam:' || @semester_id::text, 0));
+
+-- A fresh pre-exam. Deliberately no ON CONFLICT: an id collision is a bug in the
+-- allocation and must fail loudly instead of overwriting another examiner's row.
+-- name: InsertNewPreplanExam :exec
+insert into preplan_exam (
+    semester_id, id, exam_kind, examer_id, examer_name, module, programs,
+    expected_students, duration_min, planned_starttime, is_fixed, ancode, notes,
+    constraints, format_version
+) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);
+
 -- name: UpsertPreplanExam :exec
 insert into preplan_exam (
     semester_id, id, exam_kind, examer_id, examer_name, module, programs,

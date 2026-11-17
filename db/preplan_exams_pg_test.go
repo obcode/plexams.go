@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -305,5 +306,44 @@ func TestAnnyBookingsRoundTrip(t *testing.T) {
 		t.Fatalf("AllAnnyBookings: %v", err)
 	} else if len(all) != 1 || all[0].Number != "B-3" {
 		t.Errorf("bookings after the second save = %v, want only B-3", all)
+	}
+}
+
+// Several examiners entering their demand at the same moment must each get a row
+// of their own. Under READ COMMITTED two transactions read the same max(id), and
+// the insert's ON CONFLICT DO UPDATE then made the second silently overwrite the
+// first.
+func TestConcurrentPreplanInsertsKeepEveryRow(t *testing.T) {
+	pg := pgtest.NewDB(t)
+	ctx := t.Context()
+	seedSemester(t, pg)
+
+	const n = 12
+	errs := make(chan error, n)
+	start := make(chan struct{})
+	for i := range n {
+		go func() {
+			<-start
+			_, err := pg.InsertPreplanExam(ctx, testPreplanExam(0, fmt.Sprintf("Modul %d", i)))
+			errs <- err
+		}()
+	}
+	close(start)
+	for range n {
+		if err := <-errs; err != nil {
+			t.Fatalf("InsertPreplanExam: %v", err)
+		}
+	}
+
+	exams, err := pg.PreplanExams(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modules := make(map[string]bool, len(exams))
+	for _, e := range exams {
+		modules[e.Module] = true
+	}
+	if len(exams) != n || len(modules) != n {
+		t.Errorf("got %d rows with %d distinct modules, want %d of each", len(exams), len(modules), n)
 	}
 }

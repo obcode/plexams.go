@@ -34,5 +34,21 @@ Built 2026-11 as M1 of the examiner portal. Everything is behind `portal.enabled
 - **Admin API** (`graph/access.graphqls`, ADMIN): aliases, blocks, tokens,
   `accessIdentityReport`, `accessResolveLogin`, `rejectedLogins` (in-memory ring of 50).
 
-Next (M2): inquiries/submissions in a semester-explicit `plexams/inquiry` package, change
-notification mails, `server.publicurl`.
+**M2 (2026-11): inquiries** in `plexams/inquiry` -- semester-explicit; it uses sqlc
+directly through a narrow `Queries` interface (`db.PG.Queries(ctx)`), every query names its
+semester. Migration 00013: `inquiry`, `inquiry_response`, `inquiry_submission` (+ append-only
+`_revision`), `inquiry_activity`, `notification_setting`.
+- PREPLAN is applied automatically: new -> `preplan_exam` in the inquiry's semester; change
+  -> only the changed columns (`UpdatePreplanExamFromPortal`); withdrawal deletes the
+  pre-exam only while untouched (`DeleteUntouchedPreplanExam`). The remark never reaches
+  `notes`. Reporters: FK07 profs of the newest teacher mirror, or main examiners of the
+  newest semester with ZPA exams; profs may report for non-profs.
+- Every portal change writes one `inquiry_activity` row in the same transaction. The
+  `Notifier` mails planners (IMMEDIATE: bundled, quiet 2 min / max 10 min; DAILY at
+  `scheduler.changemail.time`, default 07:10); position moves only after a successful send.
+  Only started with `portal.enabled`.
+- Coded errors live in `plexams/apierr` (portal re-exports them).
+- The EXaHM/SEB invitation (`SendEmailExaHM`) switches to `exahmPortalEmail.md.tmpl` while a
+  PREPLAN inquiry of the active OR a later semester is open (it is sent "noch im vorherigen
+  Semester") -- needs `server.publicurl`. Closing PREPLAN marks `sebExahmDemandEntered`.
+- API docs for examiners: `docs/portal-api.md`.

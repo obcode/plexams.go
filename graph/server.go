@@ -198,7 +198,7 @@ func restRoutesOf(p *plexams.Plexams) restRoutes {
 
 // newRouter mounts the middleware chain, /query, the health check and the REST routes.
 // It is separate from StartServer so the chain can be exercised with httptest.
-func newRouter(auth authProvider, graphQL http.Handler, rest restRoutes, origins []string, production bool) chi.Router {
+func newRouter(auth authProvider, state gateState, graphQL http.Handler, rest restRoutes, origins []string, production bool) chi.Router {
 	router := chi.NewRouter()
 
 	// FIRST, before everything else. It clones a Sentry hub onto every request
@@ -264,26 +264,39 @@ func newRouter(auth authProvider, graphQL http.Handler, rest restRoutes, origins
 		})
 	})
 
-	// Binary uploads (browser-generated PNGs, cover-page PDF ZIPs) for email
-	// attachments; the send subscriptions read them back from the DB.
-	router.Post("/upload/email-attachment", rest.uploadEmailAttachment)
-	router.Post("/upload/email-attachments-zip", rest.uploadEmailAttachmentsZip)
-	router.Post("/upload/primuss-zip", rest.uploadPrimussZip)
-	// Attach an uploaded file (PDF/CSV/…) to a Jira issue (multipart: key, file).
-	router.Post("/upload/jira-attachment", rest.uploadJiraAttachment)
-	router.Get("/download/planned-rooms.json", rest.downloadPlannedRooms)
+	// Uploads change data: a writing role, an allowed origin and -- where they write
+	// into the active semester -- an unprotected semester (rest_authz.go).
+	router.Group(func(r chi.Router) {
+		r.Use(requireWriter(state, origins, true))
+		// Binary uploads (browser-generated PNGs, cover-page PDF ZIPs) for email
+		// attachments; the send subscriptions read them back from the DB.
+		r.Post("/upload/email-attachment", rest.uploadEmailAttachment)
+		r.Post("/upload/email-attachments-zip", rest.uploadEmailAttachmentsZip)
+		r.Post("/upload/primuss-zip", rest.uploadPrimussZip)
+		r.Post("/upload/dataset-csv", rest.uploadDatasetCSV)
+	})
+	router.Group(func(r chi.Router) {
+		// Attaching a file to a Jira issue changes nothing in the semester.
+		r.Use(requireWriter(state, origins, false))
+		r.Post("/upload/jira-attachment", rest.uploadJiraAttachment)
+	})
 
-	// Generated documents (formerly the pdf/csv/ics CLI commands): draft plans and
-	// exports for the faculties/examers. Read-only, so no write gating.
-	router.Get("/download/pdf/{kind}", rest.downloadPDF)
-	router.Get("/download/csv/{kind}", rest.downloadCSVDraft)
-	router.Get("/download/ics/{program}", rest.downloadICS)
+	// Downloads reveal planning data: any role on the allow-list.
+	router.Group(func(r chi.Router) {
+		r.Use(requireStaffRole)
+		r.Get("/download/planned-rooms.json", rest.downloadPlannedRooms)
 
-	// Human-readable CSV of the manually entered data (absolute date/time, robust
-	// against exam-period shifts): per-dataset and a combined "my inputs" ZIP.
-	router.Get("/download/dataset-csv", rest.downloadDatasetCSV)
-	router.Get("/download/my-inputs-csv.zip", rest.downloadMyInputsCSV)
-	router.Post("/upload/dataset-csv", rest.uploadDatasetCSV)
+		// Generated documents (formerly the pdf/csv/ics CLI commands): draft plans and
+		// exports for the faculties/examers.
+		r.Get("/download/pdf/{kind}", rest.downloadPDF)
+		r.Get("/download/csv/{kind}", rest.downloadCSVDraft)
+		r.Get("/download/ics/{program}", rest.downloadICS)
+
+		// Human-readable CSV of the manually entered data (absolute date/time, robust
+		// against exam-period shifts): per-dataset and a combined "my inputs" ZIP.
+		r.Get("/download/dataset-csv", rest.downloadDatasetCSV)
+		r.Get("/download/my-inputs-csv.zip", rest.downloadMyInputsCSV)
+	})
 
 	return router
 }
@@ -307,7 +320,7 @@ func StartServer(plexams *plexams.Plexams, port string) {
 	// Mark the prepared student regs stale when an input changes (for the GUI banner).
 	srv.AroundFields(studentRegsDirtyMiddleware(plexams))
 
-	router := newRouter(plexams, srv, restRoutesOf(plexams), origins, production)
+	router := newRouter(plexams, plexams, srv, restRoutesOf(plexams), origins, production)
 
 	server := &http.Server{Addr: fmt.Sprintf(":%s", port), Handler: router}
 	defer func() {

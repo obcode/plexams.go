@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"github.com/obcode/plexams.go/principal"
 	"io"
 	"net/http"
 	"sort"
@@ -1125,7 +1126,14 @@ func (p *Plexams) HTTPDownloadMyInputsCSV(w http.ResponseWriter, r *http.Request
 	// through oauth2-proxy. That is the machine's backup; this is the planner's, and
 	// the reminder is aimed at the planner.
 	//
+	// Only a writing role's download counts: a VIEWER's copy is not the planner's
+	// backup and must not clear the reminder.
+	//
 	// Best-effort: the download already succeeded.
+	if user := principal.UserFromContext(r.Context()); user == nil ||
+		(user.Role != model.RolePlaner && user.Role != model.RoleAdmin) {
+		return
+	}
 	if err := p.dbClient.SetLastDumpAt(r.Context(), time.Now()); err != nil {
 		log.Error().Err(err).Msg("cannot record last dump time")
 	}

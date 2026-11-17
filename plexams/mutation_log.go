@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"github.com/obcode/plexams.go/principal"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -38,7 +39,7 @@ func (p *Plexams) OperatorID() *string {
 }
 
 // LogUpload records a file upload (a REST handler, not a GraphQL mutation) in the
-// same audit log, tagged with the operator so uploads show "who uploaded what". The
+// same audit log, tagged with the logged-in user so uploads show "who uploaded what". The
 // variadic kv are alternating key/value strings describing the upload (e.g. the
 // filename, kind or dataset name).
 func (p *Plexams) LogUpload(ctx context.Context, name string, kv ...string) {
@@ -50,7 +51,7 @@ func (p *Plexams) LogUpload(ctx context.Context, name string, kv ...string) {
 		Time:    time.Now(),
 		Name:    name,
 		Type:    "upload",
-		User:    p.OperatorID(),
+		User:    p.actorID(ctx),
 		Args:    args,
 		Ancodes: []int{},
 	})
@@ -70,4 +71,14 @@ func (p *Plexams) MutationLog(ctx context.Context, opType, name *string, ancode 
 // MutationLogNames returns the distinct operation names in the log.
 func (p *Plexams) MutationLogNames(ctx context.Context) ([]string, error) {
 	return p.dbClient.MutationLogNames(ctx)
+}
+
+// actorID is the identity stamped on an audit entry: the authenticated user from the
+// request, falling back to the local operator config when there is none.
+func (p *Plexams) actorID(ctx context.Context) *string {
+	if user := principal.UserFromContext(ctx); user != nil && user.Email != "" {
+		email := user.Email
+		return &email
+	}
+	return p.OperatorID()
 }

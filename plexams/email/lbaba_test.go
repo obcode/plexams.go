@@ -32,10 +32,10 @@ func lbaStart(t time.Time) *time.Time { return &t }
 
 func TestBuildLbaRepeaterExams(t *testing.T) {
 	teachers := map[int]*model.Teacher{
-		1: {ID: 1, IsProf: false, Email: "lba1@hm.edu"},
-		2: {ID: 2, IsProf: false, Email: "lba2@hm.edu"},
-		3: {ID: 3, IsProf: true, Email: "prof@hm.edu"}, // prof -> excluded
-		5: {ID: 5, IsProf: false, Email: "lba5@hm.edu"},
+		1: {ID: 1, IsLBA: true, Email: "lba1@hm.edu"},
+		2: {ID: 2, IsLBA: true, Email: "lba2@hm.edu"},
+		3: {ID: 3, IsStaff: true, Email: "staff@hm.edu"}, // no Lehrauftrag -> excluded
+		5: {ID: 5, IsLBA: true, Email: "lba5@hm.edu"},
 	}
 	examer := func(id int) *model.Teacher { return teachers[id] } // id 4 -> nil (lookup fail)
 	invigs := map[string]*model.Teacher{
@@ -57,7 +57,7 @@ func TestBuildLbaRepeaterExams(t *testing.T) {
 		// B: slot1 (earlier) -> sorts before A
 		repeaterExam(2, "LBA Two", "MB", false, &model.PlanEntry{Starttime: lbaStart(lbaSlot1)},
 			[]*model.PlannedRoom{{RoomName: "R3"}}, nil),
-		// C: prof examer -> excluded
+		// C: staff without Lehrauftrag -> excluded
 		repeaterExam(3, "Prof", "MC", false, &model.PlanEntry{Starttime: lbaStart(lbaSlot1)}, nil, nil),
 		// D: not a repeater -> excluded
 		{ZpaExam: &model.ZPAExam{IsRepeaterExam: false, MainExamerID: 1}},
@@ -95,5 +95,24 @@ func TestBuildLbaRepeaterExams(t *testing.T) {
 	wantPrograms := []LbaProgram{{Name: "IB", Count: 1}, {Name: "IF", Count: 2}}
 	if !reflect.DeepEqual(a.Programs, wantPrograms) {
 		t.Errorf("A programs = %+v, want %+v", a.Programs, wantPrograms)
+	}
+}
+
+// A professor of another faculty teaching here on a Lehrauftrag is a lecturer for the
+// LBA-BA; a professor without one is not.
+func TestLbaRepeaterExamsFollowIsLBA(t *testing.T) {
+	teachers := map[int]*model.Teacher{
+		1: {ID: 1, IsProf: true, IsLBA: true, Email: "guest@hm.edu"},
+		2: {ID: 2, IsProf: true, Email: "prof@hm.edu"},
+	}
+	examer := func(id int) *model.Teacher { return teachers[id] }
+	none := func(string, time.Time) *model.Teacher { return nil }
+	exams := []*model.PlannedExam{
+		repeaterExam(1, "Guest", "MA", false, nil, nil, nil),
+		repeaterExam(2, "Prof", "MB", false, nil, nil, nil),
+	}
+	got := BuildLbaRepeaterExams(exams, examer, none)
+	if len(got) != 1 || got[0].Module != "MA" {
+		t.Errorf("want only the professor with a Lehrauftrag, got %+v", got)
 	}
 }

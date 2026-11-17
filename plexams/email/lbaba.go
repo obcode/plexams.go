@@ -60,11 +60,13 @@ func BuildLbaRepeaterExams(
 		if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
 			continue
 		}
-		// LBAs, Prof HC and externals (anyone who is not a regular prof) are the people the
-		// LBA-BA reminds. The teachers' IsLBA flag is unreliable here, so "not a regular
-		// prof" is the robust criterion.
+		// The LBA-BA reminds the lecturers -- ZPA's is_lba, the same criterion as the
+		// draft PDF and CSV of the LBA repeater exams. That includes professors of other
+		// faculties teaching here on a Lehrauftrag, and excludes staff without one. (Until
+		// 2026-11 ZPA delivered is_lba as false for everybody, which is why this used to
+		// say "not a professor".)
 		mainExamer := examer(exam.ZpaExam.MainExamerID)
-		if mainExamer == nil || mainExamer.IsProf {
+		if mainExamer == nil || !mainExamer.IsLBA {
 			continue
 		}
 

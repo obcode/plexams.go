@@ -8,7 +8,6 @@ package graph
 import (
 	"context"
 
-	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
 )
 
@@ -40,8 +39,3 @@ func (r *mutationResolver) RemoveMyJiraToken(ctx context.Context) (*model.MyAcco
 func (r *queryResolver) MyAccount(ctx context.Context) (*model.MyAccount, error) {
 	return r.plexams.MyAccount(ctx)
 }
-
-// Mutation returns generated.MutationResolver implementation.
-func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
-
-type mutationResolver struct{ *Resolver }

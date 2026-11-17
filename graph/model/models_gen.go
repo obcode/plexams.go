@@ -733,6 +733,17 @@ type GenerationConfigInput struct {
 	RoomHeatBaselineHour    float64                       `json:"roomHeatBaselineHour"`
 }
 
+// Something that keeps a person from reaching the portal, or lets a login be the wrong person.
+type IdentityProblem struct {
+	Kind        IdentityProblemKind `json:"kind"`
+	TeacherID   int                 `json:"teacherID"`
+	TeacherName string              `json:"teacherName"`
+	// The address involved, if any.
+	Email string `json:"email"`
+	// Whether the person is main examiner of an exam in the active semester.
+	HasExams bool `json:"hasExams"`
+}
+
 type ImportJointResult struct {
 	// programs (Studiengruppen) found in the CSV.
 	Programs []string `json:"programs"`
@@ -963,6 +974,17 @@ type LogLine struct {
 	RoomReport *RoomPlanReport     `json:"roomReport,omitempty"`
 }
 
+// A login whose SSO address differs from the address ZPA has for the person.
+type LoginAlias struct {
+	Email     string `json:"email"`
+	TeacherID int    `json:"teacherID"`
+	// Name from the newest teacher mirror; empty if the person is in none.
+	TeacherName string    `json:"teacherName"`
+	Note        string    `json:"note"`
+	CreatedBy   string    `json:"createdBy"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
 // MinutesReport: distribution of assigned vs. target minutes around the tolerance band.
 type MinutesReport struct {
 	WithinTolerance int `json:"withinTolerance"`
@@ -1129,6 +1151,26 @@ type PlanningState struct {
 	Phases []*PlanningPhase `json:"phases"`
 	// Areas whose generation is currently locked because a gate condition is set.
 	BlockedAreas []PlanningGate `json:"blockedAreas"`
+}
+
+// A personal access token of the portal, as an admin sees it -- never the secret.
+type PortalAccessToken struct {
+	ID          string     `json:"id"`
+	OwnerEmail  string     `json:"ownerEmail"`
+	Description string     `json:"description"`
+	Scope       string     `json:"scope"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	ExpiresAt   time.Time  `json:"expiresAt"`
+	LastUsedAt  *time.Time `json:"lastUsedAt,omitempty"`
+	RevokedAt   *time.Time `json:"revokedAt,omitempty"`
+}
+
+// A login whose portal access is withdrawn. A planner role is unaffected.
+type PortalLoginBlock struct {
+	Email     string    `json:"email"`
+	Reason    string    `json:"reason"`
+	CreatedBy string    `json:"createdBy"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type PreExam struct {
@@ -1328,6 +1370,24 @@ type RegWithProgram struct {
 	Program       string `json:"program"`
 	PrimussAncode int    `json:"primussAncode"`
 	ZpaAncode     int    `json:"zpaAncode"`
+}
+
+// A login the server turned away recently (in memory, cleared on restart).
+type RejectedLogin struct {
+	Email string    `json:"email"`
+	At    time.Time `json:"at"`
+	Count int       `json:"count"`
+}
+
+// How the server would resolve a login right now.
+type ResolvedLogin struct {
+	Email    string     `json:"email"`
+	Role     *Role      `json:"role,omitempty"`
+	Teachers []*Teacher `json:"teachers"`
+	ActsFor  []int      `json:"actsFor"`
+	Blocked  bool       `json:"blocked"`
+	// Whether the login gets into the portal (with portal.enabled).
+	PortalAccess bool `json:"portalAccess"`
 }
 
 // Anzahl der Nutzer je Rolle.
@@ -1848,6 +1908,69 @@ func (e *ConflictDecision) UnmarshalJSON(b []byte) error {
 }
 
 func (e ConflictDecision) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type IdentityProblemKind string
+
+const (
+	// The person has exams but no e-mail address in ZPA.
+	IdentityProblemKindNoAddress IdentityProblemKind = "NO_ADDRESS"
+	// The ZPA address is not an @hm.edu address, so the SSO login cannot match it.
+	IdentityProblemKindExternalAddress IdentityProblemKind = "EXTERNAL_ADDRESS"
+	// Several ZPA persons share the address; the login would be all of them.
+	IdentityProblemKindSharedAddress IdentityProblemKind = "SHARED_ADDRESS"
+	// An alias points to a person who is in no recent teacher mirror.
+	IdentityProblemKindAliasUnknownTeacher IdentityProblemKind = "ALIAS_UNKNOWN_TEACHER"
+)
+
+var AllIdentityProblemKind = []IdentityProblemKind{
+	IdentityProblemKindNoAddress,
+	IdentityProblemKindExternalAddress,
+	IdentityProblemKindSharedAddress,
+	IdentityProblemKindAliasUnknownTeacher,
+}
+
+func (e IdentityProblemKind) IsValid() bool {
+	switch e {
+	case IdentityProblemKindNoAddress, IdentityProblemKindExternalAddress, IdentityProblemKindSharedAddress, IdentityProblemKindAliasUnknownTeacher:
+		return true
+	}
+	return false
+}
+
+func (e IdentityProblemKind) String() string {
+	return string(e)
+}
+
+func (e *IdentityProblemKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = IdentityProblemKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid IdentityProblemKind", str)
+	}
+	return nil
+}
+
+func (e IdentityProblemKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *IdentityProblemKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e IdentityProblemKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

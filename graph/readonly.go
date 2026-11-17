@@ -24,6 +24,12 @@ var readOnlyExemptMutations = map[string]bool{
 	"setMyShortname":    true,
 	"setMyJiraToken":    true,
 	"removeMyJiraToken": true,
+	// examiner-portal access administration: global, not semester data
+	"setLoginAlias":           true,
+	"removeLoginAlias":        true,
+	"setPortalLoginBlock":     true,
+	"removePortalLoginBlock":  true,
+	"revokePortalAccessToken": true,
 }
 
 // todoMutations change only the todo list, never planning data. They stay allowed

@@ -542,6 +542,14 @@ type ComplexityRoot struct {
 		WeightPreferExamDays    func(childComplexity int) int
 	}
 
+	IdentityProblem struct {
+		Email       func(childComplexity int) int
+		HasExams    func(childComplexity int) int
+		Kind        func(childComplexity int) int
+		TeacherID   func(childComplexity int) int
+		TeacherName func(childComplexity int) int
+	}
+
 	ImportJointResult struct {
 		ExamsCreated     func(childComplexity int) int
 		ExamsExisting    func(childComplexity int) int
@@ -728,6 +736,15 @@ type ComplexityRoot struct {
 		Validation func(childComplexity int) int
 	}
 
+	LoginAlias struct {
+		CreatedAt   func(childComplexity int) int
+		CreatedBy   func(childComplexity int) int
+		Email       func(childComplexity int) int
+		Note        func(childComplexity int) int
+		TeacherID   func(childComplexity int) int
+		TeacherName func(childComplexity int) int
+	}
+
 	MinutesReport struct {
 		Over            func(childComplexity int) int
 		ToleranceMin    func(childComplexity int) int
@@ -781,9 +798,11 @@ type ComplexityRoot struct {
 		RemoveExamDuration            func(childComplexity int, ancode int) int
 		RemoveExamsCanShareSlot       func(childComplexity int, ancode1 int, ancode2 int) int
 		RemoveJointLink               func(childComplexity int, program string, primussAncode int) int
+		RemoveLoginAlias              func(childComplexity int, email string, teacherID int) int
 		RemoveMyJiraToken             func(childComplexity int) int
 		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
 		RemovePermanentNonInvigilator func(childComplexity int, teacherID int) int
+		RemovePortalLoginBlock        func(childComplexity int, email string) int
 		RemovePrePlannedInvigilation  func(childComplexity int, starttime time.Time, roomName *string) int
 		RemovePrePlannedRoom          func(childComplexity int, ancode int, roomName string, mtknr *string) int
 		RemovePrimussAncode           func(childComplexity int, zpaAncode int, program string) int
@@ -800,6 +819,7 @@ type ComplexityRoot struct {
 		ResetPrimussData              func(childComplexity int) int
 		ResetRoomsForExams            func(childComplexity int) int
 		ResetSemesterPlaner           func(childComplexity int) int
+		RevokePortalAccessToken       func(childComplexity int, id string) int
 		RmZpaExamFromPlan             func(childComplexity int, ancode int) int
 		Seb                           func(childComplexity int, ancode int) int
 		SeedStudyProgramsFromConfig   func(childComplexity int) int
@@ -813,11 +833,13 @@ type ComplexityRoot struct {
 		SetGenerationConfig           func(childComplexity int, input model.GenerationConfigInput) int
 		SetInvigilatorConstraints     func(childComplexity int, input model.InvigilatorConstraintsInput) int
 		SetJointZpaLink               func(childComplexity int, program string, primussAncode int, zpaAncode int) int
+		SetLoginAlias                 func(childComplexity int, email string, teacherID int, note *string) int
 		SetMyJiraToken                func(childComplexity int, token string) int
 		SetMyShortname                func(childComplexity int, shortname string) int
 		SetNTAActive                  func(childComplexity int, mtknr string, active bool) int
 		SetPermanentNonInvigilator    func(childComplexity int, teacherID int, name string, reason string, validFrom *string, validUntil *string) int
 		SetPlanningCondition          func(childComplexity int, key string, done bool) int
+		SetPortalLoginBlock           func(childComplexity int, email string, reason *string) int
 		SetPreplanExamCanShareSlot    func(childComplexity int, id int, otherID int, canShare bool) int
 		SetPreplanExamConstraints     func(childComplexity int, id int, constraints model.ConstraintsInput) int
 		SetPreplanExamFixed           func(childComplexity int, id int, fixed bool) int
@@ -1013,6 +1035,24 @@ type ComplexityRoot struct {
 		Phases       func(childComplexity int) int
 	}
 
+	PortalAccessToken struct {
+		CreatedAt   func(childComplexity int) int
+		Description func(childComplexity int) int
+		ExpiresAt   func(childComplexity int) int
+		ID          func(childComplexity int) int
+		LastUsedAt  func(childComplexity int) int
+		OwnerEmail  func(childComplexity int) int
+		RevokedAt   func(childComplexity int) int
+		Scope       func(childComplexity int) int
+	}
+
+	PortalLoginBlock struct {
+		CreatedAt func(childComplexity int) int
+		CreatedBy func(childComplexity int) int
+		Email     func(childComplexity int) int
+		Reason    func(childComplexity int) int
+	}
+
 	PreExam struct {
 		Constraints func(childComplexity int) int
 		PlanEntry   func(childComplexity int) int
@@ -1183,6 +1223,8 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		AccessIdentityReport          func(childComplexity int) int
+		AccessResolveLogin            func(childComplexity int, email string) int
 		AdditionalExams               func(childComplexity int) int
 		AdminOverview                 func(childComplexity int) int
 		AllAnnyBookings               func(childComplexity int) int
@@ -1238,6 +1280,7 @@ type ComplexityRoot struct {
 		JiraTransitions               func(childComplexity int, key string) int
 		JointExams                    func(childComplexity int) int
 		JointZpaCandidates            func(childComplexity int, program string, primussAncode int) int
+		LoginAliases                  func(childComplexity int) int
 		Me                            func(childComplexity int) int
 		MutationLog                   func(childComplexity int, typeArg *string, name *string, ancode *int, args []*model.ArgFilterInput, user *string, since *time.Time, until *time.Time, limit *int) int
 		MutationLogNames              func(childComplexity int) int
@@ -1258,6 +1301,8 @@ type ComplexityRoot struct {
 		PlannedRooms                  func(childComplexity int) int
 		PlannedRoomsAt                func(childComplexity int, starttime time.Time) int
 		PlanningState                 func(childComplexity int) int
+		PortalAccessTokens            func(childComplexity int) int
+		PortalLoginBlocks             func(childComplexity int) int
 		PreExamsAt                    func(childComplexity int, starttime time.Time) int
 		PrePlannedInvigilations       func(childComplexity int) int
 		PrePlannedRooms               func(childComplexity int) int
@@ -1271,6 +1316,7 @@ type ComplexityRoot struct {
 		PrimussExam                   func(childComplexity int, program string, ancode int) int
 		PrimussExams                  func(childComplexity int) int
 		PrimussExamsForAnCode         func(childComplexity int, ancode int) int
+		RejectedLogins                func(childComplexity int) int
 		RenderEmailTemplatePreview    func(childComplexity int, name string, markdown string) int
 		RoomPlanConstraints           func(childComplexity int) int
 		RoomRequests                  func(childComplexity int) int
@@ -1323,6 +1369,21 @@ type ComplexityRoot struct {
 		PrimussAncode func(childComplexity int) int
 		Program       func(childComplexity int) int
 		ZpaAncode     func(childComplexity int) int
+	}
+
+	RejectedLogin struct {
+		At    func(childComplexity int) int
+		Count func(childComplexity int) int
+		Email func(childComplexity int) int
+	}
+
+	ResolvedLogin struct {
+		ActsFor      func(childComplexity int) int
+		Blocked      func(childComplexity int) int
+		Email        func(childComplexity int) int
+		PortalAccess func(childComplexity int) int
+		Role         func(childComplexity int) int
+		Teachers     func(childComplexity int) int
 	}
 
 	RoleCounts struct {
@@ -1876,6 +1937,11 @@ type AssembledExamResolver interface {
 	MainExamer(ctx context.Context, obj *model.AssembledExam) (*model.Teacher, error)
 }
 type MutationResolver interface {
+	SetLoginAlias(ctx context.Context, email string, teacherID int, note *string) (*model.LoginAlias, error)
+	RemoveLoginAlias(ctx context.Context, email string, teacherID int) (bool, error)
+	SetPortalLoginBlock(ctx context.Context, email string, reason *string) (*model.PortalLoginBlock, error)
+	RemovePortalLoginBlock(ctx context.Context, email string) (bool, error)
+	RevokePortalAccessToken(ctx context.Context, id string) (bool, error)
 	SetMyShortname(ctx context.Context, shortname string) (*model.MyAccount, error)
 	SetMyJiraToken(ctx context.Context, token string) (*model.MyAccount, error)
 	RemoveMyJiraToken(ctx context.Context) (*model.MyAccount, error)
@@ -1999,6 +2065,12 @@ type QueryResolver interface {
 	SemesterConfig(ctx context.Context) (*model.SemesterConfig, error)
 	SemesterConfigInput(ctx context.Context) (*model.SemesterConfigInput, error)
 	NewSemesterConfigDefaults(ctx context.Context) (*model.SemesterConfigInput, error)
+	LoginAliases(ctx context.Context) ([]*model.LoginAlias, error)
+	PortalLoginBlocks(ctx context.Context) ([]*model.PortalLoginBlock, error)
+	RejectedLogins(ctx context.Context) ([]*model.RejectedLogin, error)
+	PortalAccessTokens(ctx context.Context) ([]*model.PortalAccessToken, error)
+	AccessIdentityReport(ctx context.Context) ([]*model.IdentityProblem, error)
+	AccessResolveLogin(ctx context.Context, email string) (*model.ResolvedLogin, error)
 	MyAccount(ctx context.Context) (*model.MyAccount, error)
 	AdditionalExams(ctx context.Context) ([]*model.AdditionalExam, error)
 	AdminOverview(ctx context.Context) (*model.AdminOverview, error)
@@ -4286,6 +4358,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.GenerationConfig.WeightPreferExamDays(childComplexity), true
 
+	case "IdentityProblem.email":
+		if e.ComplexityRoot.IdentityProblem.Email == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityProblem.Email(childComplexity), true
+	case "IdentityProblem.hasExams":
+		if e.ComplexityRoot.IdentityProblem.HasExams == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityProblem.HasExams(childComplexity), true
+	case "IdentityProblem.kind":
+		if e.ComplexityRoot.IdentityProblem.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityProblem.Kind(childComplexity), true
+	case "IdentityProblem.teacherID":
+		if e.ComplexityRoot.IdentityProblem.TeacherID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityProblem.TeacherID(childComplexity), true
+	case "IdentityProblem.teacherName":
+		if e.ComplexityRoot.IdentityProblem.TeacherName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityProblem.TeacherName(childComplexity), true
+
 	case "ImportJointResult.examsCreated":
 		if e.ComplexityRoot.ImportJointResult.ExamsCreated == nil {
 			break
@@ -5011,6 +5114,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.LogLine.Validation(childComplexity), true
 
+	case "LoginAlias.createdAt":
+		if e.ComplexityRoot.LoginAlias.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoginAlias.CreatedAt(childComplexity), true
+	case "LoginAlias.createdBy":
+		if e.ComplexityRoot.LoginAlias.CreatedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoginAlias.CreatedBy(childComplexity), true
+	case "LoginAlias.email":
+		if e.ComplexityRoot.LoginAlias.Email == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoginAlias.Email(childComplexity), true
+	case "LoginAlias.note":
+		if e.ComplexityRoot.LoginAlias.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoginAlias.Note(childComplexity), true
+	case "LoginAlias.teacherID":
+		if e.ComplexityRoot.LoginAlias.TeacherID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoginAlias.TeacherID(childComplexity), true
+	case "LoginAlias.teacherName":
+		if e.ComplexityRoot.LoginAlias.TeacherName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoginAlias.TeacherName(childComplexity), true
+
 	case "MinutesReport.over":
 		if e.ComplexityRoot.MinutesReport.Over == nil {
 			break
@@ -5511,6 +5651,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RemoveJointLink(childComplexity, args["program"].(string), args["primussAncode"].(int)), true
+	case "Mutation.removeLoginAlias":
+		if e.ComplexityRoot.Mutation.RemoveLoginAlias == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeLoginAlias_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemoveLoginAlias(childComplexity, args["email"].(string), args["teacherID"].(int)), true
 	case "Mutation.removeMyJiraToken":
 		if e.ComplexityRoot.Mutation.RemoveMyJiraToken == nil {
 			break
@@ -5539,6 +5690,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RemovePermanentNonInvigilator(childComplexity, args["teacherID"].(int)), true
+	case "Mutation.removePortalLoginBlock":
+		if e.ComplexityRoot.Mutation.RemovePortalLoginBlock == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removePortalLoginBlock_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemovePortalLoginBlock(childComplexity, args["email"].(string)), true
 	case "Mutation.removePrePlannedInvigilation":
 		if e.ComplexityRoot.Mutation.RemovePrePlannedInvigilation == nil {
 			break
@@ -5675,6 +5837,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ResetSemesterPlaner(childComplexity), true
+	case "Mutation.revokePortalAccessToken":
+		if e.ComplexityRoot.Mutation.RevokePortalAccessToken == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_revokePortalAccessToken_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RevokePortalAccessToken(childComplexity, args["id"].(string)), true
 	case "Mutation.rmZpaExamFromPlan":
 		if e.ComplexityRoot.Mutation.RmZpaExamFromPlan == nil {
 			break
@@ -5813,6 +5986,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetJointZpaLink(childComplexity, args["program"].(string), args["primussAncode"].(int), args["zpaAncode"].(int)), true
+	case "Mutation.setLoginAlias":
+		if e.ComplexityRoot.Mutation.SetLoginAlias == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setLoginAlias_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetLoginAlias(childComplexity, args["email"].(string), args["teacherID"].(int), args["note"].(*string)), true
 	case "Mutation.setMyJiraToken":
 		if e.ComplexityRoot.Mutation.SetMyJiraToken == nil {
 			break
@@ -5868,6 +6052,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetPlanningCondition(childComplexity, args["key"].(string), args["done"].(bool)), true
+	case "Mutation.setPortalLoginBlock":
+		if e.ComplexityRoot.Mutation.SetPortalLoginBlock == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setPortalLoginBlock_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetPortalLoginBlock(childComplexity, args["email"].(string), args["reason"].(*string)), true
 	case "Mutation.setPreplanExamCanShareSlot":
 		if e.ComplexityRoot.Mutation.SetPreplanExamCanShareSlot == nil {
 			break
@@ -6839,6 +7034,80 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PlanningState.Phases(childComplexity), true
 
+	case "PortalAccessToken.createdAt":
+		if e.ComplexityRoot.PortalAccessToken.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalAccessToken.CreatedAt(childComplexity), true
+	case "PortalAccessToken.description":
+		if e.ComplexityRoot.PortalAccessToken.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalAccessToken.Description(childComplexity), true
+	case "PortalAccessToken.expiresAt":
+		if e.ComplexityRoot.PortalAccessToken.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalAccessToken.ExpiresAt(childComplexity), true
+	case "PortalAccessToken.id":
+		if e.ComplexityRoot.PortalAccessToken.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalAccessToken.ID(childComplexity), true
+	case "PortalAccessToken.lastUsedAt":
+		if e.ComplexityRoot.PortalAccessToken.LastUsedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalAccessToken.LastUsedAt(childComplexity), true
+	case "PortalAccessToken.ownerEmail":
+		if e.ComplexityRoot.PortalAccessToken.OwnerEmail == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalAccessToken.OwnerEmail(childComplexity), true
+	case "PortalAccessToken.revokedAt":
+		if e.ComplexityRoot.PortalAccessToken.RevokedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalAccessToken.RevokedAt(childComplexity), true
+	case "PortalAccessToken.scope":
+		if e.ComplexityRoot.PortalAccessToken.Scope == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalAccessToken.Scope(childComplexity), true
+
+	case "PortalLoginBlock.createdAt":
+		if e.ComplexityRoot.PortalLoginBlock.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalLoginBlock.CreatedAt(childComplexity), true
+	case "PortalLoginBlock.createdBy":
+		if e.ComplexityRoot.PortalLoginBlock.CreatedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalLoginBlock.CreatedBy(childComplexity), true
+	case "PortalLoginBlock.email":
+		if e.ComplexityRoot.PortalLoginBlock.Email == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalLoginBlock.Email(childComplexity), true
+	case "PortalLoginBlock.reason":
+		if e.ComplexityRoot.PortalLoginBlock.Reason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortalLoginBlock.Reason(childComplexity), true
+
 	case "PreExam.constraints":
 		if e.ComplexityRoot.PreExam.Constraints == nil {
 			break
@@ -7496,6 +7765,23 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ProgramSpread.StudentCount(childComplexity), true
 
+	case "Query.accessIdentityReport":
+		if e.ComplexityRoot.Query.AccessIdentityReport == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.AccessIdentityReport(childComplexity), true
+	case "Query.accessResolveLogin":
+		if e.ComplexityRoot.Query.AccessResolveLogin == nil {
+			break
+		}
+
+		args, err := ec.field_Query_accessResolveLogin_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.AccessResolveLogin(childComplexity, args["email"].(string)), true
 	case "Query.additionalExams":
 		if e.ComplexityRoot.Query.AdditionalExams == nil {
 			break
@@ -7912,6 +8198,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.JointZpaCandidates(childComplexity, args["program"].(string), args["primussAncode"].(int)), true
+	case "Query.loginAliases":
+		if e.ComplexityRoot.Query.LoginAliases == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.LoginAliases(childComplexity), true
 	case "Query.me":
 		if e.ComplexityRoot.Query.Me == nil {
 			break
@@ -8067,6 +8359,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.PlanningState(childComplexity), true
+	case "Query.portalAccessTokens":
+		if e.ComplexityRoot.Query.PortalAccessTokens == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.PortalAccessTokens(childComplexity), true
+	case "Query.portalLoginBlocks":
+		if e.ComplexityRoot.Query.PortalLoginBlocks == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.PortalLoginBlocks(childComplexity), true
 	case "Query.preExamsAt":
 		if e.ComplexityRoot.Query.PreExamsAt == nil {
 			break
@@ -8175,6 +8479,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.PrimussExamsForAnCode(childComplexity, args["ancode"].(int)), true
+	case "Query.rejectedLogins":
+		if e.ComplexityRoot.Query.RejectedLogins == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.RejectedLogins(childComplexity), true
 	case "Query.renderEmailTemplatePreview":
 		if e.ComplexityRoot.Query.RenderEmailTemplatePreview == nil {
 			break
@@ -8533,6 +8843,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RegWithProgram.ZpaAncode(childComplexity), true
+
+	case "RejectedLogin.at":
+		if e.ComplexityRoot.RejectedLogin.At == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RejectedLogin.At(childComplexity), true
+	case "RejectedLogin.count":
+		if e.ComplexityRoot.RejectedLogin.Count == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RejectedLogin.Count(childComplexity), true
+	case "RejectedLogin.email":
+		if e.ComplexityRoot.RejectedLogin.Email == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RejectedLogin.Email(childComplexity), true
+
+	case "ResolvedLogin.actsFor":
+		if e.ComplexityRoot.ResolvedLogin.ActsFor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ResolvedLogin.ActsFor(childComplexity), true
+	case "ResolvedLogin.blocked":
+		if e.ComplexityRoot.ResolvedLogin.Blocked == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ResolvedLogin.Blocked(childComplexity), true
+	case "ResolvedLogin.email":
+		if e.ComplexityRoot.ResolvedLogin.Email == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ResolvedLogin.Email(childComplexity), true
+	case "ResolvedLogin.portalAccess":
+		if e.ComplexityRoot.ResolvedLogin.PortalAccess == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ResolvedLogin.PortalAccess(childComplexity), true
+	case "ResolvedLogin.role":
+		if e.ComplexityRoot.ResolvedLogin.Role == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ResolvedLogin.Role(childComplexity), true
+	case "ResolvedLogin.teachers":
+		if e.ComplexityRoot.ResolvedLogin.Teachers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ResolvedLogin.Teachers(childComplexity), true
 
 	case "RoleCounts.admin":
 		if e.ComplexityRoot.RoleCounts.Admin == nil {
@@ -11103,6 +11469,99 @@ func newExecutionContext(
 }
 
 var sources = []*ast.Source{
+	{Name: "../access.graphqls", Input: `# Administration of examiner-portal access. ADMIN only (graph/root_field_policy.txt and
+# requireAdmin in every resolver). These are global settings, not semester data, so they
+# are allowed on a protected semester.
+
+"A login whose SSO address differs from the address ZPA has for the person."
+type LoginAlias {
+  email: String!
+  teacherID: Int!
+  "Name from the newest teacher mirror; empty if the person is in none."
+  teacherName: String!
+  note: String!
+  createdBy: String!
+  createdAt: Time!
+}
+
+"A login whose portal access is withdrawn. A planner role is unaffected."
+type PortalLoginBlock {
+  email: String!
+  reason: String!
+  createdBy: String!
+  createdAt: Time!
+}
+
+"A login the server turned away recently (in memory, cleared on restart)."
+type RejectedLogin {
+  email: String!
+  at: Time!
+  count: Int!
+}
+
+"A personal access token of the portal, as an admin sees it -- never the secret."
+type PortalAccessToken {
+  id: String!
+  ownerEmail: String!
+  description: String!
+  scope: String!
+  createdAt: Time!
+  expiresAt: Time!
+  lastUsedAt: Time
+  revokedAt: Time
+}
+
+enum IdentityProblemKind {
+  "The person has exams but no e-mail address in ZPA."
+  NO_ADDRESS
+  "The ZPA address is not an @hm.edu address, so the SSO login cannot match it."
+  EXTERNAL_ADDRESS
+  "Several ZPA persons share the address; the login would be all of them."
+  SHARED_ADDRESS
+  "An alias points to a person who is in no recent teacher mirror."
+  ALIAS_UNKNOWN_TEACHER
+}
+
+"Something that keeps a person from reaching the portal, or lets a login be the wrong person."
+type IdentityProblem {
+  kind: IdentityProblemKind!
+  teacherID: Int!
+  teacherName: String!
+  "The address involved, if any."
+  email: String!
+  "Whether the person is main examiner of an exam in the active semester."
+  hasExams: Boolean!
+}
+
+"How the server would resolve a login right now."
+type ResolvedLogin {
+  email: String!
+  role: Role
+  teachers: [Teacher!]!
+  actsFor: [Int!]!
+  blocked: Boolean!
+  "Whether the login gets into the portal (with portal.enabled)."
+  portalAccess: Boolean!
+}
+
+extend type Query {
+  loginAliases: [LoginAlias!]!
+  portalLoginBlocks: [PortalLoginBlock!]!
+  rejectedLogins: [RejectedLogin!]!
+  portalAccessTokens: [PortalAccessToken!]!
+  "Problems with the identities of the active semester's teachers and with the aliases."
+  accessIdentityReport: [IdentityProblem!]!
+  accessResolveLogin(email: String!): ResolvedLogin!
+}
+
+extend type Mutation {
+  setLoginAlias(email: String!, teacherID: Int!, note: String): LoginAlias!
+  removeLoginAlias(email: String!, teacherID: Int!): Boolean!
+  setPortalLoginBlock(email: String!, reason: String): PortalLoginBlock!
+  removePortalLoginBlock(email: String!): Boolean!
+  revokePortalAccessToken(id: String!): Boolean!
+}
+`, BuiltIn: false},
 	{Name: "../account.graphqls", Input: `"""
 The current user's own account: identity (from the IdP via the auth proxy,
 read-only) plus editable self-service settings — the Kürzel (shortname) and the
@@ -15689,6 +16148,22 @@ func (ec *executionContext) childFields_GenerationConfig(ctx context.Context, fi
 	return nil, fmt.Errorf("no field named %q was found under type GenerationConfig", field.Name)
 }
 
+func (ec *executionContext) childFields_IdentityProblem(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "kind":
+		return ec.fieldContext_IdentityProblem_kind(ctx, field)
+	case "teacherID":
+		return ec.fieldContext_IdentityProblem_teacherID(ctx, field)
+	case "teacherName":
+		return ec.fieldContext_IdentityProblem_teacherName(ctx, field)
+	case "email":
+		return ec.fieldContext_IdentityProblem_email(ctx, field)
+	case "hasExams":
+		return ec.fieldContext_IdentityProblem_hasExams(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type IdentityProblem", field.Name)
+}
+
 func (ec *executionContext) childFields_ImportJointResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "programs":
@@ -16061,6 +16536,24 @@ func (ec *executionContext) childFields_LogLine(ctx context.Context, field graph
 	return nil, fmt.Errorf("no field named %q was found under type LogLine", field.Name)
 }
 
+func (ec *executionContext) childFields_LoginAlias(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "email":
+		return ec.fieldContext_LoginAlias_email(ctx, field)
+	case "teacherID":
+		return ec.fieldContext_LoginAlias_teacherID(ctx, field)
+	case "teacherName":
+		return ec.fieldContext_LoginAlias_teacherName(ctx, field)
+	case "note":
+		return ec.fieldContext_LoginAlias_note(ctx, field)
+	case "createdBy":
+		return ec.fieldContext_LoginAlias_createdBy(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_LoginAlias_createdAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type LoginAlias", field.Name)
+}
+
 func (ec *executionContext) childFields_MinutesReport(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "withinTolerance":
@@ -16393,6 +16886,42 @@ func (ec *executionContext) childFields_PlanningState(ctx context.Context, field
 		return ec.fieldContext_PlanningState_blockedAreas(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PlanningState", field.Name)
+}
+
+func (ec *executionContext) childFields_PortalAccessToken(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_PortalAccessToken_id(ctx, field)
+	case "ownerEmail":
+		return ec.fieldContext_PortalAccessToken_ownerEmail(ctx, field)
+	case "description":
+		return ec.fieldContext_PortalAccessToken_description(ctx, field)
+	case "scope":
+		return ec.fieldContext_PortalAccessToken_scope(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_PortalAccessToken_createdAt(ctx, field)
+	case "expiresAt":
+		return ec.fieldContext_PortalAccessToken_expiresAt(ctx, field)
+	case "lastUsedAt":
+		return ec.fieldContext_PortalAccessToken_lastUsedAt(ctx, field)
+	case "revokedAt":
+		return ec.fieldContext_PortalAccessToken_revokedAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PortalAccessToken", field.Name)
+}
+
+func (ec *executionContext) childFields_PortalLoginBlock(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "email":
+		return ec.fieldContext_PortalLoginBlock_email(ctx, field)
+	case "reason":
+		return ec.fieldContext_PortalLoginBlock_reason(ctx, field)
+	case "createdBy":
+		return ec.fieldContext_PortalLoginBlock_createdBy(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_PortalLoginBlock_createdAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PortalLoginBlock", field.Name)
 }
 
 func (ec *executionContext) childFields_PreExam(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -16753,6 +17282,36 @@ func (ec *executionContext) childFields_RegWithProgram(ctx context.Context, fiel
 		return ec.fieldContext_RegWithProgram_zpaAncode(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type RegWithProgram", field.Name)
+}
+
+func (ec *executionContext) childFields_RejectedLogin(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "email":
+		return ec.fieldContext_RejectedLogin_email(ctx, field)
+	case "at":
+		return ec.fieldContext_RejectedLogin_at(ctx, field)
+	case "count":
+		return ec.fieldContext_RejectedLogin_count(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RejectedLogin", field.Name)
+}
+
+func (ec *executionContext) childFields_ResolvedLogin(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "email":
+		return ec.fieldContext_ResolvedLogin_email(ctx, field)
+	case "role":
+		return ec.fieldContext_ResolvedLogin_role(ctx, field)
+	case "teachers":
+		return ec.fieldContext_ResolvedLogin_teachers(ctx, field)
+	case "actsFor":
+		return ec.fieldContext_ResolvedLogin_actsFor(ctx, field)
+	case "blocked":
+		return ec.fieldContext_ResolvedLogin_blocked(ctx, field)
+	case "portalAccess":
+		return ec.fieldContext_ResolvedLogin_portalAccess(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ResolvedLogin", field.Name)
 }
 
 func (ec *executionContext) childFields_RoleCounts(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -18675,6 +19234,28 @@ func (ec *executionContext) field_Mutation_removeJointLink_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_removeLoginAlias_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "email",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "teacherID",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["teacherID"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_removeNtaRoomAloneWaiver_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -18708,6 +19289,20 @@ func (ec *executionContext) field_Mutation_removePermanentNonInvigilator_args(ct
 		return nil, err
 	}
 	args["teacherID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removePortalLoginBlock_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "email",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg0
 	return args, nil
 }
 
@@ -18892,6 +19487,20 @@ func (ec *executionContext) field_Mutation_resetEmailTemplate_args(ctx context.C
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_revokePortalAccessToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -19127,6 +19736,36 @@ func (ec *executionContext) field_Mutation_setJointZpaLink_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setLoginAlias_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "email",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "teacherID",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["teacherID"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "note",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["note"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setMyJiraToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19242,6 +19881,28 @@ func (ec *executionContext) field_Mutation_setPlanningCondition_args(ctx context
 		return nil, err
 	}
 	args["done"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setPortalLoginBlock_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "email",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "reason",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg1
 	return args, nil
 }
 
@@ -19890,6 +20551,20 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_accessResolveLogin_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "email",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg0
 	return args, nil
 }
 
@@ -29589,6 +30264,121 @@ func (ec *executionContext) fieldContext_GenerationConfig_roomHeatBaselineHour(_
 	return graphql.NewScalarFieldContext("GenerationConfig", field, false, false, errors.New("field of type Float does not have child fields"))
 }
 
+func (ec *executionContext) _IdentityProblem_kind(ctx context.Context, field graphql.CollectedField, obj *model.IdentityProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_IdentityProblem_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.IdentityProblemKind) graphql.Marshaler {
+			return ec.marshalNIdentityProblemKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐIdentityProblemKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_IdentityProblem_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("IdentityProblem", field, false, false, errors.New("field of type IdentityProblemKind does not have child fields"))
+}
+
+func (ec *executionContext) _IdentityProblem_teacherID(ctx context.Context, field graphql.CollectedField, obj *model.IdentityProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_IdentityProblem_teacherID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TeacherID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_IdentityProblem_teacherID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("IdentityProblem", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _IdentityProblem_teacherName(ctx context.Context, field graphql.CollectedField, obj *model.IdentityProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_IdentityProblem_teacherName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TeacherName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_IdentityProblem_teacherName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("IdentityProblem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _IdentityProblem_email(ctx context.Context, field graphql.CollectedField, obj *model.IdentityProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_IdentityProblem_email(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Email, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_IdentityProblem_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("IdentityProblem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _IdentityProblem_hasExams(ctx context.Context, field graphql.CollectedField, obj *model.IdentityProblem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_IdentityProblem_hasExams(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HasExams, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_IdentityProblem_hasExams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("IdentityProblem", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _ImportJointResult_programs(ctx context.Context, field graphql.CollectedField, obj *model.ImportJointResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -32559,6 +33349,144 @@ func (ec *executionContext) fieldContext_LogLine_roomReport(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _LoginAlias_email(ctx context.Context, field graphql.CollectedField, obj *model.LoginAlias) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_LoginAlias_email(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Email, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_LoginAlias_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("LoginAlias", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _LoginAlias_teacherID(ctx context.Context, field graphql.CollectedField, obj *model.LoginAlias) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_LoginAlias_teacherID(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TeacherID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_LoginAlias_teacherID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("LoginAlias", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _LoginAlias_teacherName(ctx context.Context, field graphql.CollectedField, obj *model.LoginAlias) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_LoginAlias_teacherName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TeacherName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_LoginAlias_teacherName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("LoginAlias", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _LoginAlias_note(ctx context.Context, field graphql.CollectedField, obj *model.LoginAlias) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_LoginAlias_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_LoginAlias_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("LoginAlias", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _LoginAlias_createdBy(ctx context.Context, field graphql.CollectedField, obj *model.LoginAlias) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_LoginAlias_createdBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_LoginAlias_createdBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("LoginAlias", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _LoginAlias_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.LoginAlias) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_LoginAlias_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_LoginAlias_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("LoginAlias", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
 func (ec *executionContext) _MinutesReport_withinTolerance(ctx context.Context, field graphql.CollectedField, obj *model.MinutesReport) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -32649,6 +33577,226 @@ func (ec *executionContext) _MinutesReport_toleranceMin(ctx context.Context, fie
 }
 func (ec *executionContext) fieldContext_MinutesReport_toleranceMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("MinutesReport", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Mutation_setLoginAlias(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setLoginAlias(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetLoginAlias(ctx, fc.Args["email"].(string), fc.Args["teacherID"].(int), fc.Args["note"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.LoginAlias) graphql.Marshaler {
+			return ec.marshalNLoginAlias2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLoginAlias(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setLoginAlias(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_LoginAlias(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setLoginAlias_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeLoginAlias(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_removeLoginAlias(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemoveLoginAlias(ctx, fc.Args["email"].(string), fc.Args["teacherID"].(int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_removeLoginAlias(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeLoginAlias_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setPortalLoginBlock(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setPortalLoginBlock(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetPortalLoginBlock(ctx, fc.Args["email"].(string), fc.Args["reason"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.PortalLoginBlock) graphql.Marshaler {
+			return ec.marshalNPortalLoginBlock2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalLoginBlock(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setPortalLoginBlock(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PortalLoginBlock(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setPortalLoginBlock_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removePortalLoginBlock(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_removePortalLoginBlock(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemovePortalLoginBlock(ctx, fc.Args["email"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_removePortalLoginBlock(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removePortalLoginBlock_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_revokePortalAccessToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_revokePortalAccessToken(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RevokePortalAccessToken(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_revokePortalAccessToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_revokePortalAccessToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Mutation_setMyShortname(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -39885,6 +41033,282 @@ func (ec *executionContext) fieldContext_PlanningState_blockedAreas(_ context.Co
 	return graphql.NewScalarFieldContext("PlanningState", field, false, false, errors.New("field of type PlanningGate does not have child fields"))
 }
 
+func (ec *executionContext) _PortalAccessToken_id(ctx context.Context, field graphql.CollectedField, obj *model.PortalAccessToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalAccessToken_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalAccessToken_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalAccessToken", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PortalAccessToken_ownerEmail(ctx context.Context, field graphql.CollectedField, obj *model.PortalAccessToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalAccessToken_ownerEmail(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OwnerEmail, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalAccessToken_ownerEmail(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalAccessToken", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PortalAccessToken_description(ctx context.Context, field graphql.CollectedField, obj *model.PortalAccessToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalAccessToken_description(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalAccessToken_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalAccessToken", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PortalAccessToken_scope(ctx context.Context, field graphql.CollectedField, obj *model.PortalAccessToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalAccessToken_scope(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Scope, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalAccessToken_scope(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalAccessToken", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PortalAccessToken_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.PortalAccessToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalAccessToken_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalAccessToken_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalAccessToken", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _PortalAccessToken_expiresAt(ctx context.Context, field graphql.CollectedField, obj *model.PortalAccessToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalAccessToken_expiresAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalAccessToken_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalAccessToken", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _PortalAccessToken_lastUsedAt(ctx context.Context, field graphql.CollectedField, obj *model.PortalAccessToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalAccessToken_lastUsedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastUsedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PortalAccessToken_lastUsedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalAccessToken", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _PortalAccessToken_revokedAt(ctx context.Context, field graphql.CollectedField, obj *model.PortalAccessToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalAccessToken_revokedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RevokedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PortalAccessToken_revokedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalAccessToken", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _PortalLoginBlock_email(ctx context.Context, field graphql.CollectedField, obj *model.PortalLoginBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalLoginBlock_email(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Email, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalLoginBlock_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalLoginBlock", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PortalLoginBlock_reason(ctx context.Context, field graphql.CollectedField, obj *model.PortalLoginBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalLoginBlock_reason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalLoginBlock_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalLoginBlock", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PortalLoginBlock_createdBy(ctx context.Context, field graphql.CollectedField, obj *model.PortalLoginBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalLoginBlock_createdBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalLoginBlock_createdBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalLoginBlock", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PortalLoginBlock_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.PortalLoginBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PortalLoginBlock_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PortalLoginBlock_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PortalLoginBlock", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
 func (ec *executionContext) _PreExam_zpaExam(ctx context.Context, field graphql.CollectedField, obj *model.PreExam) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -42605,6 +44029,210 @@ func (ec *executionContext) fieldContext_Query_newSemesterConfigDefaults(_ conte
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_SemesterConfigInput(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_loginAliases(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_loginAliases(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().LoginAliases(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.LoginAlias) graphql.Marshaler {
+			return ec.marshalNLoginAlias2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLoginAliasᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_loginAliases(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_LoginAlias(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_portalLoginBlocks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_portalLoginBlocks(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().PortalLoginBlocks(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.PortalLoginBlock) graphql.Marshaler {
+			return ec.marshalNPortalLoginBlock2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalLoginBlockᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_portalLoginBlocks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PortalLoginBlock(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_rejectedLogins(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_rejectedLogins(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().RejectedLogins(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.RejectedLogin) graphql.Marshaler {
+			return ec.marshalNRejectedLogin2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRejectedLoginᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_rejectedLogins(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RejectedLogin(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_portalAccessTokens(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_portalAccessTokens(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().PortalAccessTokens(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.PortalAccessToken) graphql.Marshaler {
+			return ec.marshalNPortalAccessToken2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalAccessTokenᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_portalAccessTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PortalAccessToken(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_accessIdentityReport(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_accessIdentityReport(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().AccessIdentityReport(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.IdentityProblem) graphql.Marshaler {
+			return ec.marshalNIdentityProblem2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐIdentityProblemᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_accessIdentityReport(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_IdentityProblem(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_accessResolveLogin(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_accessResolveLogin(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().AccessResolveLogin(ctx, fc.Args["email"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ResolvedLogin) graphql.Marshaler {
+			return ec.marshalNResolvedLogin2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐResolvedLogin(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_accessResolveLogin(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ResolvedLogin(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_accessResolveLogin_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -47291,6 +48919,222 @@ func (ec *executionContext) _RegWithProgram_zpaAncode(ctx context.Context, field
 }
 func (ec *executionContext) fieldContext_RegWithProgram_zpaAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("RegWithProgram", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _RejectedLogin_email(ctx context.Context, field graphql.CollectedField, obj *model.RejectedLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RejectedLogin_email(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Email, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RejectedLogin_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RejectedLogin", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RejectedLogin_at(ctx context.Context, field graphql.CollectedField, obj *model.RejectedLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RejectedLogin_at(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.At, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RejectedLogin_at(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RejectedLogin", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _RejectedLogin_count(ctx context.Context, field graphql.CollectedField, obj *model.RejectedLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RejectedLogin_count(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Count, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RejectedLogin_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RejectedLogin", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _ResolvedLogin_email(ctx context.Context, field graphql.CollectedField, obj *model.ResolvedLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ResolvedLogin_email(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Email, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ResolvedLogin_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ResolvedLogin", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ResolvedLogin_role(ctx context.Context, field graphql.CollectedField, obj *model.ResolvedLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ResolvedLogin_role(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Role, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Role) graphql.Marshaler {
+			return ec.marshalORole2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRole(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ResolvedLogin_role(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ResolvedLogin", field, false, false, errors.New("field of type Role does not have child fields"))
+}
+
+func (ec *executionContext) _ResolvedLogin_teachers(ctx context.Context, field graphql.CollectedField, obj *model.ResolvedLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ResolvedLogin_teachers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Teachers, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Teacher) graphql.Marshaler {
+			return ec.marshalNTeacher2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐTeacherᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ResolvedLogin_teachers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ResolvedLogin",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Teacher(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ResolvedLogin_actsFor(ctx context.Context, field graphql.CollectedField, obj *model.ResolvedLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ResolvedLogin_actsFor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ActsFor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []int) graphql.Marshaler {
+			return ec.marshalNInt2ᚕintᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ResolvedLogin_actsFor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ResolvedLogin", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _ResolvedLogin_blocked(ctx context.Context, field graphql.CollectedField, obj *model.ResolvedLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ResolvedLogin_blocked(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Blocked, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ResolvedLogin_blocked(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ResolvedLogin", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _ResolvedLogin_portalAccess(ctx context.Context, field graphql.CollectedField, obj *model.ResolvedLogin) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ResolvedLogin_portalAccess(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PortalAccess, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ResolvedLogin_portalAccess(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ResolvedLogin", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _RoleCounts_admin(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
@@ -63251,6 +65095,64 @@ func (ec *executionContext) _GenerationConfig(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var identityProblemImplementors = []string{"IdentityProblem"}
+
+func (ec *executionContext) _IdentityProblem(ctx context.Context, sel ast.SelectionSet, obj *model.IdentityProblem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, identityProblemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IdentityProblem")
+		case "kind":
+			out.Values[i] = ec._IdentityProblem_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teacherID":
+			out.Values[i] = ec._IdentityProblem_teacherID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teacherName":
+			out.Values[i] = ec._IdentityProblem_teacherName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "email":
+			out.Values[i] = ec._IdentityProblem_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hasExams":
+			out.Values[i] = ec._IdentityProblem_hasExams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var importJointResultImplementors = []string{"ImportJointResult"}
 
 func (ec *executionContext) _ImportJointResult(ctx context.Context, sel ast.SelectionSet, obj *model.ImportJointResult) graphql.Marshaler {
@@ -64595,6 +66497,69 @@ func (ec *executionContext) _LogLine(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var loginAliasImplementors = []string{"LoginAlias"}
+
+func (ec *executionContext) _LoginAlias(ctx context.Context, sel ast.SelectionSet, obj *model.LoginAlias) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, loginAliasImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LoginAlias")
+		case "email":
+			out.Values[i] = ec._LoginAlias_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teacherID":
+			out.Values[i] = ec._LoginAlias_teacherID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teacherName":
+			out.Values[i] = ec._LoginAlias_teacherName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._LoginAlias_note(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdBy":
+			out.Values[i] = ec._LoginAlias_createdBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._LoginAlias_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var minutesReportImplementors = []string{"MinutesReport"}
 
 func (ec *executionContext) _MinutesReport(ctx context.Context, sel ast.SelectionSet, obj *model.MinutesReport) graphql.Marshaler {
@@ -64668,6 +66633,41 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
+		case "setLoginAlias":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setLoginAlias(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeLoginAlias":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeLoginAlias(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setPortalLoginBlock":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setPortalLoginBlock(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removePortalLoginBlock":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removePortalLoginBlock(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revokePortalAccessToken":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_revokePortalAccessToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setMyShortname":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setMyShortname(ctx, field)
@@ -66692,6 +68692,132 @@ func (ec *executionContext) _PlanningState(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var portalAccessTokenImplementors = []string{"PortalAccessToken"}
+
+func (ec *executionContext) _PortalAccessToken(ctx context.Context, sel ast.SelectionSet, obj *model.PortalAccessToken) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, portalAccessTokenImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PortalAccessToken")
+		case "id":
+			out.Values[i] = ec._PortalAccessToken_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ownerEmail":
+			out.Values[i] = ec._PortalAccessToken_ownerEmail(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._PortalAccessToken_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "scope":
+			out.Values[i] = ec._PortalAccessToken_scope(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._PortalAccessToken_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expiresAt":
+			out.Values[i] = ec._PortalAccessToken_expiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastUsedAt":
+			out.Values[i] = ec._PortalAccessToken_lastUsedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "revokedAt":
+			out.Values[i] = ec._PortalAccessToken_revokedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var portalLoginBlockImplementors = []string{"PortalLoginBlock"}
+
+func (ec *executionContext) _PortalLoginBlock(ctx context.Context, sel ast.SelectionSet, obj *model.PortalLoginBlock) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, portalLoginBlockImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PortalLoginBlock")
+		case "email":
+			out.Values[i] = ec._PortalLoginBlock_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._PortalLoginBlock_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdBy":
+			out.Values[i] = ec._PortalLoginBlock_createdBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._PortalLoginBlock_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var preExamImplementors = []string{"PreExam"}
 
 func (ec *executionContext) _PreExam(ctx context.Context, sel ast.SelectionSet, obj *model.PreExam) graphql.Marshaler {
@@ -68033,6 +70159,138 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_newSemesterConfigDefaults(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "loginAliases":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_loginAliases(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "portalLoginBlocks":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_portalLoginBlocks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "rejectedLogins":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_rejectedLogins(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "portalAccessTokens":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_portalAccessTokens(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "accessIdentityReport":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_accessIdentityReport(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "accessResolveLogin":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_accessResolveLogin(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -70875,6 +73133,117 @@ func (ec *executionContext) _RegWithProgram(ctx context.Context, sel ast.Selecti
 			}
 		case "zpaAncode":
 			out.Values[i] = ec._RegWithProgram_zpaAncode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var rejectedLoginImplementors = []string{"RejectedLogin"}
+
+func (ec *executionContext) _RejectedLogin(ctx context.Context, sel ast.SelectionSet, obj *model.RejectedLogin) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, rejectedLoginImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RejectedLogin")
+		case "email":
+			out.Values[i] = ec._RejectedLogin_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "at":
+			out.Values[i] = ec._RejectedLogin_at(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._RejectedLogin_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var resolvedLoginImplementors = []string{"ResolvedLogin"}
+
+func (ec *executionContext) _ResolvedLogin(ctx context.Context, sel ast.SelectionSet, obj *model.ResolvedLogin) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, resolvedLoginImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ResolvedLogin")
+		case "email":
+			out.Values[i] = ec._ResolvedLogin_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "role":
+			out.Values[i] = ec._ResolvedLogin_role(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "teachers":
+			out.Values[i] = ec._ResolvedLogin_teachers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "actsFor":
+			out.Values[i] = ec._ResolvedLogin_actsFor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "blocked":
+			out.Values[i] = ec._ResolvedLogin_blocked(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "portalAccess":
+			out.Values[i] = ec._ResolvedLogin_portalAccess(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -75963,6 +78332,42 @@ func (ec *executionContext) unmarshalNGenerationConfigInput2githubᚗcomᚋobcod
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNIdentityProblem2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐIdentityProblemᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.IdentityProblem) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNIdentityProblem2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐIdentityProblem(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNIdentityProblem2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐIdentityProblem(ctx context.Context, sel ast.SelectionSet, v *model.IdentityProblem) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._IdentityProblem(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNIdentityProblemKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐIdentityProblemKind(ctx context.Context, v any) (model.IdentityProblemKind, error) {
+	var res model.IdentityProblemKind
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNIdentityProblemKind2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐIdentityProblemKind(ctx context.Context, sel ast.SelectionSet, v model.IdentityProblemKind) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNImportJointResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐImportJointResult(ctx context.Context, sel ast.SelectionSet, v model.ImportJointResult) graphql.Marshaler {
 	return ec._ImportJointResult(ctx, sel, &v)
 }
@@ -76417,6 +78822,36 @@ func (ec *executionContext) marshalNLogLine2ᚖgithubᚗcomᚋobcodeᚋplexams�
 	return ec._LogLine(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNLoginAlias2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLoginAlias(ctx context.Context, sel ast.SelectionSet, v model.LoginAlias) graphql.Marshaler {
+	return ec._LoginAlias(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLoginAlias2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLoginAliasᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.LoginAlias) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNLoginAlias2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLoginAlias(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNLoginAlias2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐLoginAlias(ctx context.Context, sel ast.SelectionSet, v *model.LoginAlias) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LoginAlias(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNMinutesReport2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐMinutesReport(ctx context.Context, sel ast.SelectionSet, v *model.MinutesReport) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -76830,6 +79265,62 @@ func (ec *executionContext) marshalNPlanningState2ᚖgithubᚗcomᚋobcodeᚋple
 		return graphql.Null
 	}
 	return ec._PlanningState(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPortalAccessToken2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalAccessTokenᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PortalAccessToken) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPortalAccessToken2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalAccessToken(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPortalAccessToken2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalAccessToken(ctx context.Context, sel ast.SelectionSet, v *model.PortalAccessToken) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PortalAccessToken(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPortalLoginBlock2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalLoginBlock(ctx context.Context, sel ast.SelectionSet, v model.PortalLoginBlock) graphql.Marshaler {
+	return ec._PortalLoginBlock(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPortalLoginBlock2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalLoginBlockᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PortalLoginBlock) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPortalLoginBlock2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalLoginBlock(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPortalLoginBlock2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPortalLoginBlock(ctx context.Context, sel ast.SelectionSet, v *model.PortalLoginBlock) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PortalLoginBlock(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPreExam2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPreExam(ctx context.Context, sel ast.SelectionSet, v *model.PreExam) graphql.Marshaler {
@@ -77357,6 +79848,46 @@ func (ec *executionContext) marshalNRegWithProgram2ᚖgithubᚗcomᚋobcodeᚋpl
 		return graphql.Null
 	}
 	return ec._RegWithProgram(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRejectedLogin2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRejectedLoginᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RejectedLogin) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRejectedLogin2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRejectedLogin(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRejectedLogin2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRejectedLogin(ctx context.Context, sel ast.SelectionSet, v *model.RejectedLogin) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RejectedLogin(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNResolvedLogin2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐResolvedLogin(ctx context.Context, sel ast.SelectionSet, v model.ResolvedLogin) graphql.Marshaler {
+	return ec._ResolvedLogin(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNResolvedLogin2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐResolvedLogin(ctx context.Context, sel ast.SelectionSet, v *model.ResolvedLogin) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ResolvedLogin(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRole2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRole(ctx context.Context, v any) (model.Role, error) {
@@ -79406,6 +81937,22 @@ func (ec *executionContext) marshalOPrimussExamByProgram2ᚖgithubᚗcomᚋobcod
 		return graphql.Null
 	}
 	return ec._PrimussExamByProgram(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalORole2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRole(ctx context.Context, v any) (*model.Role, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.Role)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORole2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRole(ctx context.Context, sel ast.SelectionSet, v *model.Role) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalORoomConstraints2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐRoomConstraints(ctx context.Context, sel ast.SelectionSet, v *model.RoomConstraints) graphql.Marshaler {

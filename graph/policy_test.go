@@ -55,7 +55,12 @@ func TestRootFieldPolicyIsConsistent(t *testing.T) {
 			t.Errorf("%s writes but is open to VIEWER", name)
 		}
 	}
-	for _, name := range []string{"Mutation.setUser", "Mutation.removeUser", "Query.users"} {
+	for _, name := range []string{"Mutation.setUser", "Mutation.removeUser", "Query.users",
+		// examiner-portal access administration
+		"Query.loginAliases", "Query.portalLoginBlocks", "Query.rejectedLogins", "Query.portalAccessTokens",
+		"Query.accessIdentityReport", "Query.accessResolveLogin", "Mutation.setLoginAlias",
+		"Mutation.removeLoginAlias", "Mutation.setPortalLoginBlock", "Mutation.removePortalLoginBlock",
+		"Mutation.revokePortalAccessToken"} {
 		if rootFieldPolicy[name] != model.RoleAdmin {
 			t.Errorf("%s must require ADMIN, has %s", name, rootFieldPolicy[name])
 		}

@@ -51,9 +51,11 @@ Mutation.prePlanRoom PLANER
 Mutation.removeExamDuration PLANER
 Mutation.removeExamsCanShareSlot PLANER
 Mutation.removeJointLink PLANER
+Mutation.removeLoginAlias ADMIN
 Mutation.removeMyJiraToken PLANER
 Mutation.removeNtaRoomAloneWaiver PLANER
 Mutation.removePermanentNonInvigilator PLANER
+Mutation.removePortalLoginBlock ADMIN
 Mutation.removePrePlannedInvigilation PLANER
 Mutation.removePrePlannedRoom PLANER
 Mutation.removePrimussAncode PLANER
@@ -70,6 +72,7 @@ Mutation.resetPreplanTimes PLANER
 Mutation.resetPrimussData PLANER
 Mutation.resetRoomsForExams PLANER
 Mutation.resetSemesterPlaner PLANER
+Mutation.revokePortalAccessToken ADMIN
 Mutation.rmZpaExamFromPlan PLANER
 Mutation.seb PLANER
 Mutation.seedStudyProgramsFromConfig PLANER
@@ -83,11 +86,13 @@ Mutation.setExternalExamTime PLANER
 Mutation.setGenerationConfig PLANER
 Mutation.setInvigilatorConstraints PLANER
 Mutation.setJointZpaLink PLANER
+Mutation.setLoginAlias ADMIN
 Mutation.setMyJiraToken PLANER
 Mutation.setMyShortname PLANER
 Mutation.setNTAActive PLANER
 Mutation.setPermanentNonInvigilator PLANER
 Mutation.setPlanningCondition PLANER
+Mutation.setPortalLoginBlock ADMIN
 Mutation.setPreplanExamCanShareSlot PLANER
 Mutation.setPreplanExamConstraints PLANER
 Mutation.setPreplanExamFixed PLANER
@@ -116,6 +121,8 @@ Mutation.updateTodoComment PLANER
 Mutation.upsertAdditionalExam PLANER
 Mutation.upsertSpecialInterest PLANER
 Mutation.upsertStudyProgram PLANER
+Query.accessIdentityReport ADMIN
+Query.accessResolveLogin ADMIN
 Query.additionalExams VIEWER
 Query.adminOverview ADMIN
 Query.allAnnyBookings VIEWER
@@ -171,6 +178,7 @@ Query.jiraOpenIssuesByType VIEWER
 Query.jiraTransitions VIEWER
 Query.jointExams VIEWER
 Query.jointZpaCandidates VIEWER
+Query.loginAliases ADMIN
 Query.me VIEWER
 Query.mutationLog VIEWER
 Query.mutationLogNames VIEWER
@@ -191,6 +199,8 @@ Query.plannedRoomNamesAt VIEWER
 Query.plannedRooms VIEWER
 Query.plannedRoomsAt VIEWER
 Query.planningState VIEWER
+Query.portalAccessTokens ADMIN
+Query.portalLoginBlocks ADMIN
 Query.preExamsAt VIEWER
 Query.prePlannedInvigilations VIEWER
 Query.prePlannedRooms VIEWER
@@ -204,6 +214,7 @@ Query.preplanSameSlotGroups VIEWER
 Query.primussExam VIEWER
 Query.primussExams VIEWER
 Query.primussExamsForAnCode VIEWER
+Query.rejectedLogins ADMIN
 Query.renderEmailTemplatePreview VIEWER
 Query.roomPlanConstraints VIEWER
 Query.roomRequests VIEWER

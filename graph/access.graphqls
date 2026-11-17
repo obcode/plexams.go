@@ -1,0 +1,92 @@
+# Administration of examiner-portal access. ADMIN only (graph/root_field_policy.txt and
+# requireAdmin in every resolver). These are global settings, not semester data, so they
+# are allowed on a protected semester.
+
+"A login whose SSO address differs from the address ZPA has for the person."
+type LoginAlias {
+  email: String!
+  teacherID: Int!
+  "Name from the newest teacher mirror; empty if the person is in none."
+  teacherName: String!
+  note: String!
+  createdBy: String!
+  createdAt: Time!
+}
+
+"A login whose portal access is withdrawn. A planner role is unaffected."
+type PortalLoginBlock {
+  email: String!
+  reason: String!
+  createdBy: String!
+  createdAt: Time!
+}
+
+"A login the server turned away recently (in memory, cleared on restart)."
+type RejectedLogin {
+  email: String!
+  at: Time!
+  count: Int!
+}
+
+"A personal access token of the portal, as an admin sees it -- never the secret."
+type PortalAccessToken {
+  id: String!
+  ownerEmail: String!
+  description: String!
+  scope: String!
+  createdAt: Time!
+  expiresAt: Time!
+  lastUsedAt: Time
+  revokedAt: Time
+}
+
+enum IdentityProblemKind {
+  "The person has exams but no e-mail address in ZPA."
+  NO_ADDRESS
+  "The ZPA address is not an @hm.edu address, so the SSO login cannot match it."
+  EXTERNAL_ADDRESS
+  "Several ZPA persons share the address; the login would be all of them."
+  SHARED_ADDRESS
+  "An alias points to a person who is in no recent teacher mirror."
+  ALIAS_UNKNOWN_TEACHER
+}
+
+"Something that keeps a person from reaching the portal, or lets a login be the wrong person."
+type IdentityProblem {
+  kind: IdentityProblemKind!
+  teacherID: Int!
+  teacherName: String!
+  "The address involved, if any."
+  email: String!
+  "Whether the person is main examiner of an exam in the active semester."
+  hasExams: Boolean!
+}
+
+"How the server would resolve a login right now."
+type ResolvedLogin {
+  email: String!
+  role: Role
+  teachers: [Teacher!]!
+  actsFor: [Int!]!
+  blocked: Boolean!
+  "Whether the login gets into the portal (with portal.enabled)."
+  portalAccess: Boolean!
+}
+
+extend type Query {
+  loginAliases: [LoginAlias!]!
+  portalLoginBlocks: [PortalLoginBlock!]!
+  rejectedLogins: [RejectedLogin!]!
+  portalAccessTokens: [PortalAccessToken!]!
+  "Problems with the identities of the active semester's teachers and with the aliases."
+  accessIdentityReport: [IdentityProblem!]!
+  accessResolveLogin(email: String!): ResolvedLogin!
+}
+
+extend type Mutation {
+  setLoginAlias(email: String!, teacherID: Int!, note: String): LoginAlias!
+  removeLoginAlias(email: String!, teacherID: Int!): Boolean!
+  setPortalLoginBlock(email: String!, reason: String): PortalLoginBlock!
+  removePortalLoginBlock(email: String!): Boolean!
+  revokePortalAccessToken(id: String!): Boolean!
+}

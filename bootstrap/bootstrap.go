@@ -61,8 +61,24 @@ func Serve() error {
 	// a config error above is still logged like everything else.
 	reconfigureLogging(sentryWriter)
 
+	if err := checkAuthConfig(viper.GetBool("server.production"), viper.GetBool("auth.enabled")); err != nil {
+		return err
+	}
+
 	plexams := newPlexams()
 	graph.StartServer(plexams, viper.GetString("server.port"))
+	return nil
+}
+
+// checkAuthConfig refuses a production server without authentication. With
+// auth.enabled false every request gets the full-access local dev user, so behind
+// the SSO proxy every logged-in account -- any @hm.edu address, students
+// included -- would be an ADMIN. That is a local-development setting only.
+func checkAuthConfig(production, authEnabled bool) error {
+	if production && !authEnabled {
+		return fmt.Errorf("refusing to start: server.production is set but auth.enabled is not -- " +
+			"every logged-in account would be an ADMIN; set auth.enabled: true")
+	}
 	return nil
 }
 

@@ -102,6 +102,26 @@ func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationRep
 	}
 	validStarts := p.validStarttimes()
 
+	// ExamsAt reads a slot through the assembled-exam cache and skips an entry the
+	// cache does not know. External exams are never assembled, so only a ZPA exam
+	// missing from the cache is an inconsistency worth reporting.
+	assembled, err := p.dbClient.GetAssembledExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+	assembledAncodes := make(map[int]bool, len(assembled))
+	for _, exam := range assembled {
+		assembledAncodes[exam.Ancode] = true
+	}
+	external, err := p.dbClient.ExternalExams(ctx)
+	if err != nil {
+		return nil, err
+	}
+	externalAncodes := make(map[int]bool, len(external))
+	for _, exam := range external {
+		externalAncodes[exam.AnCode] = true
+	}
+
 	v.step("validating plan entries")
 	planEntryMap := make(map[int]*model.PlanEntry)
 	for _, planEntry := range planEntries {
@@ -116,6 +136,10 @@ func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationRep
 		if !known[planEntry.Ancode] {
 			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
 				"plan entry for ancode %d, but no such exam (neither to-plan nor external)", planEntry.Ancode)
+		} else if !externalAncodes[planEntry.Ancode] && !assembledAncodes[planEntry.Ancode] {
+			v.warnf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
+				"plan entry for ancode %d, but no assembled exam: it is left out of its slot until the exams are assembled again",
+				planEntry.Ancode)
 		}
 
 		switch {

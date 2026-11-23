@@ -2,11 +2,13 @@ package plexams
 
 import (
 	"context"
+	"errors"
 	"math"
 	"sort"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/invigcalc"
@@ -65,6 +67,13 @@ func (p *Plexams) examsAt(ctx context.Context, start time.Time) ([]*model.Planne
 			continue
 		}
 		exam, err := p.dbClient.GetAssembledExam(ctx, planEntry.Ancode)
+		if errors.Is(err, pgx.ErrNoRows) {
+			// one orphan plan entry must not take down the whole slot (see
+			// db.ExamsAt); ValidateDBPlanEntries reports it to the planner.
+			log.Warn().Int("ancode", planEntry.Ancode).Time("starttime", start).
+				Msg("plan entry without assembled exam, skipping it")
+			continue
+		}
 		if err != nil {
 			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
 			return nil, err

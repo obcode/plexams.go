@@ -164,7 +164,7 @@ func (e *ExamKind) UnmarshalGQL(v any) error {
 }
 
 func (e ExamKind) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 func (e *ExamKind) UnmarshalJSON(b []byte) error {
@@ -219,7 +219,7 @@ func (e *GrantLevel) UnmarshalGQL(v any) error {
 }
 
 func (e GrantLevel) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 func (e *GrantLevel) UnmarshalJSON(b []byte) error {
@@ -281,7 +281,7 @@ func (e *InquiryKind) UnmarshalGQL(v any) error {
 }
 
 func (e InquiryKind) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 func (e *InquiryKind) UnmarshalJSON(b []byte) error {
@@ -336,7 +336,7 @@ func (e *InquiryState) UnmarshalGQL(v any) error {
 }
 
 func (e InquiryState) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 func (e *InquiryState) UnmarshalJSON(b []byte) error {
@@ -398,7 +398,7 @@ func (e *ReviewState) UnmarshalGQL(v any) error {
 }
 
 func (e ReviewState) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 func (e *ReviewState) UnmarshalJSON(b []byte) error {
@@ -455,7 +455,7 @@ func (e *TokenScope) UnmarshalGQL(v any) error {
 }
 
 func (e TokenScope) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 func (e *TokenScope) UnmarshalJSON(b []byte) error {

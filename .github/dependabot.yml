@@ -13,7 +13,7 @@ updates:
           - minor
           - patch
 
-  # Dockerfile-Base-Images. Der Builder `golang:1.25-alpine` bekommt PRs; die finale
+  # Dockerfile-Base-Images. Der Builder `golang:1.27-alpine` bekommt PRs; die finale
   # Stage `alpine:latest` ist unpinned und wird von Dependabot NICHT angefasst -- ein
   # fester Tag (z. B. alpine:3.24) wäre nötig, damit auch sie überwacht würde.
   - package-ecosystem: docker

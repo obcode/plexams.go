@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -60,9 +60,9 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - name: Test
         run: go test -v ./...
         env:
@@ -84,7 +84,7 @@ jobs:
     # That needs the migrations applied first, so it belongs next to the test job.
     steps:
       - uses: actions/checkout@v7
-      - uses: sqlc-dev/setup-sqlc@v4
+      - uses: sqlc-dev/setup-sqlc@v5
         with:
           sqlc-version: "1.31.1"
       - name: sqlc diff
@@ -108,9 +108,9 @@ jobs:
     # go red on a rule that changed its mind.
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       # govulncheck has no suppression mechanism, so the JSON output is filtered instead:
       # fail on every advisory reachable at symbol level (trace[0].function set -- the
       # same set the text mode reports) unless it is listed in IGNORED. -format json
@@ -145,9 +145,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - uses: go-semantic-release/action@v1
         id: semrel
         with:

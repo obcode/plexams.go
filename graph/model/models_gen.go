@@ -254,6 +254,15 @@ type CoverageReport struct {
 	Unfilled  int `json:"unfilled"`
 }
 
+type DeleteJointResult struct {
+	// programs whose imported exams were deleted.
+	Programs []string `json:"programs"`
+	// imported exam rows deleted.
+	ExamsDeleted int `json:"examsDeleted"`
+	// external (non-ZPA) exams removed together with their plan entries.
+	ExternalExamsDeleted int `json:"externalExamsDeleted"`
+}
+
 type DistributionBucket struct {
 	Count        int `json:"count"`
 	Invigilators int `json:"invigilators"`

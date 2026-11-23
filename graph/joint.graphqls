@@ -48,3 +48,22 @@ type ImportJointResult {
   "assembled exams of the imported programs removed because they are no longer in the CSV (or flipped to FK07)."
   examsRemoved: Int!
 }
+
+extend type Mutation {
+  """
+  Delete the imported exams of one joint program, or of all joint programs when
+  program is omitted: the imported rows, their links (manual ones too) and the
+  external exams generated from them, incl. their times. FK07 (ZPA) exams are not
+  touched. For undoing a wrong CSV import (e.g. a file of a past semester).
+  """
+  deleteJointExams(program: String): DeleteJointResult!
+}
+
+type DeleteJointResult {
+  "programs whose imported exams were deleted."
+  programs: [String!]!
+  "imported exam rows deleted."
+  examsDeleted: Int!
+  "external (non-ZPA) exams removed together with their plan entries."
+  externalExamsDeleted: Int!
+}

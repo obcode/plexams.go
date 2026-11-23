@@ -50,3 +50,7 @@ on conflict (semester_id, program, primuss_ancode) do update set
 -- name: DeleteJointLink :exec
 delete from joint_link
 where semester_id = $1 and program = $2 and primuss_ancode = $3;
+
+-- All links of one program, manual ones included: for undoing a wrong import.
+-- name: DeleteJointLinksForProgram :exec
+delete from joint_link where semester_id = $1 and program = $2;

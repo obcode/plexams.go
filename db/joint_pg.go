@@ -180,3 +180,25 @@ func (db *PG) DeleteJointLink(ctx context.Context, program string, primussAncode
 	}
 	return err
 }
+
+// DeleteJointProgram removes a joint program's imported exams and all of their
+// links, manual ones included -- for undoing a wrong CSV import. The external
+// exams generated from them are the caller's business (they live in exam).
+func (db *PG) DeleteJointProgram(ctx context.Context, program string) error {
+	err := db.q(ctx).DeleteJointLinksForProgram(ctx, sqlc.DeleteJointLinksForProgramParams{
+		SemesterID: db.semesterID,
+		Program:    program,
+	})
+	if err != nil {
+		log.Error().Err(err).Str("program", program).Msg("cannot delete the joint links")
+		return err
+	}
+	err = db.q(ctx).DeleteJointExamsForProgram(ctx, sqlc.DeleteJointExamsForProgramParams{
+		SemesterID: db.semesterID,
+		Program:    program,
+	})
+	if err != nil {
+		log.Error().Err(err).Str("program", program).Msg("cannot delete the joint exams")
+	}
+	return err
+}

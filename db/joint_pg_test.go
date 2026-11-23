@@ -346,3 +346,51 @@ func TestJointExamRefillKeepsTheLinks(t *testing.T) {
 		t.Errorf("Source = %q, want manual", link.Source)
 	}
 }
+
+// TestDeleteJointProgram: deleting one program takes its exams and links (manual
+// ones too) and leaves the other program alone.
+func TestDeleteJointProgram(t *testing.T) {
+	pg := pgtest.NewDB(t)
+	ctx := t.Context()
+
+	seedPrimussFixtures(t, pg, "ID-B", "DE-B")
+
+	for _, prog := range []string{"ID-B", "DE-B"} {
+		if err := pg.ReplaceJointExamsForProgram(ctx, prog, []*db.JointExam{
+			testJointExam(prog, 101, "Computational Thinking"),
+		}); err != nil {
+			t.Fatalf("ReplaceJointExamsForProgram(%s): %v", prog, err)
+		}
+		if err := pg.UpsertJointLink(ctx, &db.JointLink{
+			Program: prog, PrimussAncode: 101, Kind: "zpa",
+			Status: "unresolved", Source: "manual",
+		}); err != nil {
+			t.Fatalf("UpsertJointLink(%s): %v", prog, err)
+		}
+	}
+
+	if err := pg.DeleteJointProgram(ctx, "ID-B"); err != nil {
+		t.Fatalf("DeleteJointProgram: %v", err)
+	}
+
+	for _, c := range []struct {
+		prog      string
+		wantExams int
+		wantLink  bool
+	}{{"ID-B", 0, false}, {"DE-B", 1, true}} {
+		exams, err := pg.JointExamsForProgram(ctx, c.prog)
+		if err != nil {
+			t.Fatalf("JointExamsForProgram(%s): %v", c.prog, err)
+		}
+		if len(exams) != c.wantExams {
+			t.Errorf("%s: %d exams, want %d", c.prog, len(exams), c.wantExams)
+		}
+		link, err := pg.JointLink(ctx, c.prog, 101)
+		if err != nil {
+			t.Fatalf("JointLink(%s): %v", c.prog, err)
+		}
+		if (link != nil) != c.wantLink {
+			t.Errorf("%s: link present = %v, want %v", c.prog, link != nil, c.wantLink)
+		}
+	}
+}

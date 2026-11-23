@@ -31,6 +31,11 @@ func (r *mutationResolver) RemoveJointLink(ctx context.Context, program string, 
 	return r.plexams.RemoveJointLink(ctx, program, primussAncode)
 }
 
+// DeleteJointExams is the resolver for the deleteJointExams field.
+func (r *mutationResolver) DeleteJointExams(ctx context.Context, program *string) (*model.DeleteJointResult, error) {
+	return r.plexams.DeleteJointExams(ctx, program)
+}
+
 // JointZpaCandidates is the resolver for the jointZpaCandidates field.
 func (r *queryResolver) JointZpaCandidates(ctx context.Context, program string, primussAncode int) ([]*model.ZPAExam, error) {
 	return r.plexams.JointZpaCandidates(ctx, program, primussAncode)

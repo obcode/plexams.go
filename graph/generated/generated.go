@@ -252,6 +252,12 @@ type ComplexityRoot struct {
 		Unfilled  func(childComplexity int) int
 	}
 
+	DeleteJointResult struct {
+		ExamsDeleted         func(childComplexity int) int
+		ExternalExamsDeleted func(childComplexity int) int
+		Programs             func(childComplexity int) int
+	}
+
 	DistributionBucket struct {
 		Count        func(childComplexity int) int
 		Invigilators func(childComplexity int) int
@@ -839,6 +845,7 @@ type ComplexityRoot struct {
 		CreateTodo                    func(childComplexity int, input model.TodoInput) int
 		DeleteAdditionalExam          func(childComplexity int, ancode int) int
 		DeleteInvigilatorConstraints  func(childComplexity int, teacherID int) int
+		DeleteJointExams              func(childComplexity int, program *string) int
 		DeletePreplanExam             func(childComplexity int, id int) int
 		DeleteSpecialInterest         func(childComplexity int, name string) int
 		DeleteStudyProgram            func(childComplexity int, shortname string) int
@@ -2090,6 +2097,7 @@ type MutationResolver interface {
 	SetExternalExamTime(ctx context.Context, ancode int, date string, time string) (bool, error)
 	SetJointZpaLink(ctx context.Context, program string, primussAncode int, zpaAncode int) (*model.JointExam, error)
 	RemoveJointLink(ctx context.Context, program string, primussAncode int) (*model.JointExam, error)
+	DeleteJointExams(ctx context.Context, program *string) (*model.DeleteJointResult, error)
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
@@ -3216,6 +3224,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.CoverageReport.Unfilled(childComplexity), true
+
+	case "DeleteJointResult.examsDeleted":
+		if e.ComplexityRoot.DeleteJointResult.ExamsDeleted == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DeleteJointResult.ExamsDeleted(childComplexity), true
+	case "DeleteJointResult.externalExamsDeleted":
+		if e.ComplexityRoot.DeleteJointResult.ExternalExamsDeleted == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DeleteJointResult.ExternalExamsDeleted(childComplexity), true
+	case "DeleteJointResult.programs":
+		if e.ComplexityRoot.DeleteJointResult.Programs == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DeleteJointResult.Programs(childComplexity), true
 
 	case "DistributionBucket.count":
 		if e.ComplexityRoot.DistributionBucket.Count == nil {
@@ -5833,6 +5860,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteInvigilatorConstraints(childComplexity, args["teacherID"].(int)), true
+	case "Mutation.deleteJointExams":
+		if e.ComplexityRoot.Mutation.DeleteJointExams == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteJointExams_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteJointExams(childComplexity, args["program"].(*string)), true
 	case "Mutation.deletePreplanExam":
 		if e.ComplexityRoot.Mutation.DeletePreplanExam == nil {
 			break
@@ -13867,6 +13905,25 @@ type ImportJointResult {
   "assembled exams of the imported programs removed because they are no longer in the CSV (or flipped to FK07)."
   examsRemoved: Int!
 }
+
+extend type Mutation {
+  """
+  Delete the imported exams of one joint program, or of all joint programs when
+  program is omitted: the imported rows, their links (manual ones too) and the
+  external exams generated from them, incl. their times. FK07 (ZPA) exams are not
+  touched. For undoing a wrong CSV import (e.g. a file of a past semester).
+  """
+  deleteJointExams(program: String): DeleteJointResult!
+}
+
+type DeleteJointResult {
+  "programs whose imported exams were deleted."
+  programs: [String!]!
+  "imported exam rows deleted."
+  examsDeleted: Int!
+  "external (non-ZPA) exams removed together with their plan entries."
+  externalExamsDeleted: Int!
+}
 `, BuiltIn: false},
 	{Name: "../mutation_log.graphqls", Input: `extend type Query {
   """
@@ -16325,6 +16382,18 @@ func (ec *executionContext) childFields_CoverageReport(ctx context.Context, fiel
 		return ec.fieldContext_CoverageReport_unfilled(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type CoverageReport", field.Name)
+}
+
+func (ec *executionContext) childFields_DeleteJointResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "programs":
+		return ec.fieldContext_DeleteJointResult_programs(ctx, field)
+	case "examsDeleted":
+		return ec.fieldContext_DeleteJointResult_examsDeleted(ctx, field)
+	case "externalExamsDeleted":
+		return ec.fieldContext_DeleteJointResult_externalExamsDeleted(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type DeleteJointResult", field.Name)
 }
 
 func (ec *executionContext) childFields_DistributionBucket(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -19796,6 +19865,20 @@ func (ec *executionContext) field_Mutation_deleteInvigilatorConstraints_args(ctx
 		return nil, err
 	}
 	args["teacherID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteJointExams_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "program",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["program"] = arg0
 	return args, nil
 }
 
@@ -26410,6 +26493,75 @@ func (ec *executionContext) _CoverageReport_unfilled(ctx context.Context, field 
 }
 func (ec *executionContext) fieldContext_CoverageReport_unfilled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("CoverageReport", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _DeleteJointResult_programs(ctx context.Context, field graphql.CollectedField, obj *model.DeleteJointResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DeleteJointResult_programs(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Programs, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DeleteJointResult_programs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DeleteJointResult", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _DeleteJointResult_examsDeleted(ctx context.Context, field graphql.CollectedField, obj *model.DeleteJointResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DeleteJointResult_examsDeleted(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExamsDeleted, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DeleteJointResult_examsDeleted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DeleteJointResult", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _DeleteJointResult_externalExamsDeleted(ctx context.Context, field graphql.CollectedField, obj *model.DeleteJointResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DeleteJointResult_externalExamsDeleted(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExternalExamsDeleted, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DeleteJointResult_externalExamsDeleted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DeleteJointResult", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _DistributionBucket_count(ctx context.Context, field graphql.CollectedField, obj *model.DistributionBucket) (ret graphql.Marshaler) {
@@ -38253,6 +38405,50 @@ func (ec *executionContext) fieldContext_Mutation_removeJointLink(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeJointLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteJointExams(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_deleteJointExams(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteJointExams(ctx, fc.Args["program"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.DeleteJointResult) graphql.Marshaler {
+			return ec.marshalNDeleteJointResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDeleteJointResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_deleteJointExams(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_DeleteJointResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteJointExams_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -66127,6 +66323,54 @@ func (ec *executionContext) _CoverageReport(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var deleteJointResultImplementors = []string{"DeleteJointResult"}
+
+func (ec *executionContext) _DeleteJointResult(ctx context.Context, sel ast.SelectionSet, obj *model.DeleteJointResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deleteJointResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeleteJointResult")
+		case "programs":
+			out.Values[i] = ec._DeleteJointResult_programs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "examsDeleted":
+			out.Values[i] = ec._DeleteJointResult_examsDeleted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "externalExamsDeleted":
+			out.Values[i] = ec._DeleteJointResult_externalExamsDeleted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var distributionBucketImplementors = []string{"DistributionBucket"}
 
 func (ec *executionContext) _DistributionBucket(ctx context.Context, sel ast.SelectionSet, obj *model.DistributionBucket) graphql.Marshaler {
@@ -70446,6 +70690,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "removeJointLink":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeJointLink(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteJointExams":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteJointExams(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -81455,6 +81706,20 @@ func (ec *executionContext) marshalNCoverageReport2ᚖgithubᚗcomᚋobcodeᚋpl
 		return graphql.Null
 	}
 	return ec._CoverageReport(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDeleteJointResult2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDeleteJointResult(ctx context.Context, sel ast.SelectionSet, v model.DeleteJointResult) graphql.Marshaler {
+	return ec._DeleteJointResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDeleteJointResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDeleteJointResult(ctx context.Context, sel ast.SelectionSet, v *model.DeleteJointResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DeleteJointResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNDistributionBucket2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐDistributionBucketᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.DistributionBucket) graphql.Marshaler {

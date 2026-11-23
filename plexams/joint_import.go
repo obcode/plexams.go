@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -195,4 +196,75 @@ func (p *Plexams) existingExternalByPrimuss(ctx context.Context) (map[primussKey
 		}
 	}
 	return m, maxAncode, nil
+}
+
+// DeleteJointExams undoes a joint CSV import: for one program (or all joint
+// programs when program is nil) it deletes the imported exams, their links (manual
+// ones too) and the external exams generated from them together with their plan
+// entries. FK07 exams are ZPA exams and stay; only their link goes. Atomic.
+func (p *Plexams) DeleteJointExams(ctx context.Context, program *string) (*model.DeleteJointResult, error) {
+	all := p.jointProgramNames(ctx)
+	programs := all
+	if program != nil {
+		prog := strings.TrimSpace(*program)
+		if !slices.Contains(all, prog) {
+			return nil, fmt.Errorf("%q ist kein gemeinsamer Studiengang", prog)
+		}
+		programs = []string{prog}
+	}
+	sort.Strings(programs)
+	toDelete := make(map[string]bool, len(programs))
+	for _, prog := range programs {
+		toDelete[prog] = true
+	}
+
+	result := &model.DeleteJointResult{Programs: []string{}}
+	err := p.dbClient.InTransaction(ctx, func(ctx context.Context) error {
+		// an external exam may carry several programs: delete each ancode once
+		existing, _, err := p.existingExternalByPrimuss(ctx)
+		if err != nil {
+			return err
+		}
+		ancodes := make(map[int]bool)
+		for key, ancode := range existing {
+			if toDelete[key.program] {
+				ancodes[ancode] = true
+			}
+		}
+		for ancode := range ancodes {
+			if err := p.dbClient.DeleteExternalExam(ctx, ancode); err != nil {
+				return err
+			}
+			if err := p.dbClient.RemovePlanEntry(ctx, ancode); err != nil {
+				return err
+			}
+		}
+		result.ExternalExamsDeleted = len(ancodes)
+
+		for _, prog := range programs {
+			exams, err := p.dbClient.JointExamsForProgram(ctx, prog)
+			if err != nil {
+				return err
+			}
+			if len(exams) > 0 {
+				result.Programs = append(result.Programs, prog)
+				result.ExamsDeleted += len(exams)
+			}
+			if err := p.dbClient.DeleteJointProgram(ctx, prog); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	remaining, err := p.JointExams(ctx)
+	if err == nil && len(remaining) == 0 {
+		p.unmarkCondition(ctx, condJointImported)
+	}
+	log.Info().Strs("programs", result.Programs).Int("exams", result.ExamsDeleted).
+		Int("external", result.ExternalExamsDeleted).Msg("deleted joint exams")
+	return result, nil
 }

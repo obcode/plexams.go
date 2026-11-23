@@ -30,6 +30,7 @@ Mutation.createSemester PLANER
 Mutation.createTodo PLANER
 Mutation.deleteAdditionalExam PLANER
 Mutation.deleteInvigilatorConstraints PLANER
+Mutation.deleteJointExams PLANER
 Mutation.deletePreplanExam PLANER
 Mutation.deleteSpecialInterest PLANER
 Mutation.deleteStudyProgram PLANER

@@ -43,6 +43,21 @@ func (q *Queries) DeleteJointLink(ctx context.Context, arg DeleteJointLinkParams
 	return err
 }
 
+const deleteJointLinksForProgram = `-- name: DeleteJointLinksForProgram :exec
+delete from joint_link where semester_id = $1 and program = $2
+`
+
+type DeleteJointLinksForProgramParams struct {
+	SemesterID string
+	Program    string
+}
+
+// All links of one program, manual ones included: for undoing a wrong import.
+func (q *Queries) DeleteJointLinksForProgram(ctx context.Context, arg DeleteJointLinksForProgramParams) error {
+	_, err := q.db.Exec(ctx, deleteJointLinksForProgram, arg.SemesterID, arg.Program)
+	return err
+}
+
 const getJointExam = `-- name: GetJointExam :one
 select semester_id, program, primuss_ancode, module, exam_type, grading, duration_min, main_examer, second_examer, is_repeater_exam, planer from joint_exam
 where semester_id = $1 and program = $2 and primuss_ancode = $3

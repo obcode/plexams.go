@@ -41,99 +41,143 @@ func (p *Plexams) ImportJointExams(ctx context.Context, csvText string) (*model.
 	}
 	sort.Strings(programs)
 
-	for _, program := range programs {
-		exams := byProgram[program]
-		if err := p.dbClient.ReplaceJointExamsForProgram(ctx, program, exams); err != nil {
-			return nil, err
-		}
-		result.Programs = append(result.Programs, program)
-		result.ExamsImported += len(exams)
-	}
-
-	// generate the non-ZPA exams for non-FK07 exams
-	existing, maxAncode, err := p.existingExternalByPrimuss(ctx)
-	if err != nil {
+	// Every program must exist before anything is replaced: joint_exam.program
+	// references study_program, and an unknown one used to surface as a raw
+	// foreign-key violation after the programs before it had already been replaced.
+	if err := p.checkJointImportPrograms(ctx, programs); err != nil {
 		return nil, err
 	}
-	nextAncode := externalAncodeBase
-	if maxAncode >= nextAncode {
-		nextAncode = maxAncode + 1
-	}
 
-	importedPrograms := make(map[string]bool, len(programs))
-	for _, program := range programs {
-		importedPrograms[program] = true
-	}
-	// real MUC.DAI study programs (e.g. DE/GS/ID); an external exam whose program is not
-	// one of these is bogus (e.g. a faculty code that ended up in the program column) and
-	// is always removed.
-	jointPrograms := make(map[string]bool)
-	for _, prog := range p.jointProgramNames(ctx) {
-		jointPrograms[prog] = true
-	}
-	// keys that should have a assembled exam after this import (non-FK07)
-	validKeys := make(map[primussKey]bool)
+	// One transaction for the whole import: a failure halfway through must not
+	// leave some programs replaced and their external exams and links stale.
+	err = p.dbClient.InTransaction(ctx, func(ctx context.Context) error {
+		for _, program := range programs {
+			exams := byProgram[program]
+			if err := p.dbClient.ReplaceJointExamsForProgram(ctx, program, exams); err != nil {
+				return err
+			}
+			result.Programs = append(result.Programs, program)
+			result.ExamsImported += len(exams)
+		}
 
-	for _, program := range programs {
-		modelExams, err := p.JointExamsForProgram(ctx, program)
+		// generate the non-ZPA exams for non-FK07 exams
+		existing, maxAncode, err := p.existingExternalByPrimuss(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		for _, exam := range modelExams {
-			if strings.EqualFold(strings.TrimSpace(exam.PlannedBy), jointPlannerFK07) {
-				result.ExamsSkippedFk07++
+		nextAncode := externalAncodeBase
+		if maxAncode >= nextAncode {
+			nextAncode = maxAncode + 1
+		}
+
+		importedPrograms := make(map[string]bool, len(programs))
+		for _, program := range programs {
+			importedPrograms[program] = true
+		}
+		// real MUC.DAI study programs (e.g. DE/GS/ID); an external exam whose program is not
+		// one of these is bogus (e.g. a faculty code that ended up in the program column) and
+		// is always removed.
+		jointPrograms := make(map[string]bool)
+		for _, prog := range p.jointProgramNames(ctx) {
+			jointPrograms[prog] = true
+		}
+		// keys that should have a assembled exam after this import (non-FK07)
+		validKeys := make(map[primussKey]bool)
+
+		for _, program := range programs {
+			modelExams, err := p.JointExamsForProgram(ctx, program)
+			if err != nil {
+				return err
+			}
+			for _, exam := range modelExams {
+				if strings.EqualFold(strings.TrimSpace(exam.PlannedBy), jointPlannerFK07) {
+					result.ExamsSkippedFk07++
+					continue
+				}
+				key := primussKey{exam.Program, exam.PrimussAncode}
+				validKeys[key] = true
+				if _, ok := existing[key]; ok {
+					result.ExamsExisting++
+					continue
+				}
+				if _, err := p.AddJointExam(ctx, nextAncode, exam); err != nil {
+					log.Error().Err(err).Str("program", exam.Program).Int("primussAncode", exam.PrimussAncode).
+						Msg("cannot create joint exam")
+					return err
+				}
+				existing[key] = nextAncode
+				result.ExamsCreated++
+				nextAncode++
+			}
+		}
+
+		// remove stale external exams: those of an imported program no longer in the CSV
+		// (or flipped to FK07), and any with a bogus program that is not a real MUC.DAI
+		// study program (e.g. leftovers from a faulty earlier import). Other MUC.DAI
+		// programs not part of this (incremental) import are kept.
+		for key, ancode := range existing {
+			bogusProgram := !jointPrograms[key.program]
+			staleInImported := importedPrograms[key.program] && !validKeys[key]
+			if !bogusProgram && !staleInImported {
 				continue
 			}
-			key := primussKey{exam.Program, exam.PrimussAncode}
-			validKeys[key] = true
-			if _, ok := existing[key]; ok {
-				result.ExamsExisting++
-				continue
+			if err := p.dbClient.DeleteExternalExam(ctx, ancode); err != nil {
+				return err
 			}
-			if _, err := p.AddJointExam(ctx, nextAncode, exam); err != nil {
-				log.Error().Err(err).Str("program", exam.Program).Int("primussAncode", exam.PrimussAncode).
-					Msg("cannot create joint exam")
-				return nil, err
+			if err := p.dbClient.RemovePlanEntry(ctx, ancode); err != nil {
+				return err
 			}
-			existing[key] = nextAncode
-			result.ExamsCreated++
-			nextAncode++
+			result.ExamsRemoved++
 		}
-	}
 
-	// remove stale external exams: those of an imported program no longer in the CSV
-	// (or flipped to FK07), and any with a bogus program that is not a real MUC.DAI
-	// study program (e.g. leftovers from a faulty earlier import). Other MUC.DAI
-	// programs not part of this (incremental) import are kept.
-	for key, ancode := range existing {
-		bogusProgram := !jointPrograms[key.program]
-		staleInImported := importedPrograms[key.program] && !validKeys[key]
-		if !bogusProgram && !staleInImported {
-			continue
+		// stamp the origin faculty (FK03/FK08/FK12 …) onto every external exam from the
+		// StudyProgram master data, so existing exams are backfilled on a re-import too.
+		// This never touches the ancode or the plan entry (the set time stays).
+		if err := p.backfillExternalExamFaculties(ctx); err != nil {
+			return err
 		}
-		if err := p.dbClient.DeleteExternalExam(ctx, ancode); err != nil {
-			return nil, err
-		}
-		if err := p.dbClient.RemovePlanEntry(ctx, ancode); err != nil {
-			return nil, err
-		}
-		result.ExamsRemoved++
-	}
 
-	// stamp the origin faculty (FK03/FK08/FK12 …) onto every external exam from the
-	// StudyProgram master data, so existing exams are backfilled on a re-import too.
-	// This never touches the ancode or the plan entry (the set time stays).
-	if err := p.backfillExternalExamFaculties(ctx); err != nil {
-		return nil, err
-	}
-
-	// (re)build the explicit MUC.DAI ↔ external/ZPA links
-	if err := p.relinkJointExams(ctx); err != nil {
+		// (re)build the explicit MUC.DAI ↔ external/ZPA links
+		if err := p.relinkJointExams(ctx); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
 	p.markCondition(ctx, condJointImported)
 	return result, nil
+}
+
+// checkJointImportPrograms returns an error naming every program of a joint import
+// that is not in the study program master data.
+func (p *Plexams) checkJointImportPrograms(ctx context.Context, programs []string) error {
+	known, err := p.dbClient.StudyPrograms(ctx)
+	if err != nil {
+		return err
+	}
+	knownSet := make(map[string]bool, len(known))
+	for _, prog := range known {
+		knownSet[prog.Shortname] = true
+	}
+	unknown := make([]string, 0)
+	for _, program := range programs {
+		if !knownSet[program] {
+			unknown = append(unknown, program)
+		}
+	}
+	switch len(unknown) {
+	case 0:
+		return nil
+	case 1:
+		return fmt.Errorf("unbekannter Studiengang im CSV: %s. Bitte zuerst unter Studiengänge anlegen; es wurde nichts importiert",
+			unknown[0])
+	default:
+		return fmt.Errorf("unbekannte Studiengänge im CSV: %s. Bitte zuerst unter Studiengänge anlegen; es wurde nichts importiert",
+			strings.Join(unknown, ", "))
+	}
 }
 
 // backfillExternalExamFaculties sets the per-exam faculty (Prüfungsplanung) on all

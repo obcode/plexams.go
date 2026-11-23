@@ -308,3 +308,33 @@ func TestAPlanEntryWithoutATimeIsNotPlanned(t *testing.T) {
 		t.Errorf("entry = %#v, want a stored entry that is not planned", entry)
 	}
 }
+
+// An orphan plan entry -- an ancode the assembled-exam cache does not know --
+// used to fail ExamsAt for the whole slot with "no rows in result set". It is
+// skipped now; the other exams at that time stay readable.
+func TestExamsAtSkipsAPlanEntryWithoutAssembledExam(t *testing.T) {
+	pg := pgtest.NewDB(t)
+	ctx := t.Context()
+
+	start := berlin(t, "2027-01-20 08:30")
+	seedExamFixtures(t, pg, 100, 101)
+	for _, ancode := range []int{100, 101} {
+		if _, err := pg.AddExamToSlot(ctx, &model.PlanEntry{Ancode: ancode, Starttime: &start}); err != nil {
+			t.Fatalf("AddExamToSlot %d: %v", ancode, err)
+		}
+	}
+	if err := pg.CacheAssembledExams(ctx, []*model.AssembledExam{{Ancode: 100, MaxDuration: 90}}); err != nil {
+		t.Fatalf("CacheAssembledExams: %v", err)
+	}
+
+	exams, err := pg.ExamsAt(ctx, start)
+	if err != nil {
+		t.Fatalf("ExamsAt: %v -- one orphan entry must not take down the slot", err)
+	}
+	if len(exams) != 1 || exams[0].Ancode != 100 {
+		t.Fatalf("ExamsAt = %d exams, want only ancode 100", len(exams))
+	}
+	if exams[0].PlanEntry == nil || exams[0].PlanEntry.Ancode != 100 {
+		t.Errorf("PlanEntry = %#v, want the entry of ancode 100", exams[0].PlanEntry)
+	}
+}

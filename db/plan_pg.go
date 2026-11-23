@@ -67,6 +67,11 @@ func (db *PG) PlanEntriesAt(ctx context.Context, starttime time.Time) ([]*model.
 
 // ExamsAt returns the assembled exams placed at the given absolute start time,
 // each with its plan entry and its rooms.
+//
+// A plan entry whose ancode has no assembled exam is skipped with a warning
+// rather than failing the whole slot: one orphan entry (an exam no longer to be
+// planned, an external exam, a stale cache) used to make every exam at that
+// time unreadable. ValidateDBPlanEntries reports such entries to the planner.
 func (db *PG) ExamsAt(ctx context.Context, starttime time.Time) ([]*model.PlannedExam, error) {
 	planEntries, err := db.PlanEntriesAt(ctx, starttime)
 	if err != nil {
@@ -76,6 +81,11 @@ func (db *PG) ExamsAt(ctx context.Context, starttime time.Time) ([]*model.Planne
 	exams := make([]*model.PlannedExam, 0, len(planEntries))
 	for _, planEntry := range planEntries {
 		exam, err := db.GetAssembledExam(ctx, planEntry.Ancode)
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Warn().Int("ancode", planEntry.Ancode).Time("starttime", starttime).
+				Msg("plan entry without assembled exam, skipping it")
+			continue
+		}
 		if err != nil {
 			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam")
 			return nil, err

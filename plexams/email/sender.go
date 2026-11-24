@@ -2,6 +2,7 @@ package email
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/hex"
@@ -89,6 +90,8 @@ type Sender struct {
 	// dryRunOverride, when set, redirects dry-run sends for this session only (not
 	// persisted); set/cleared from the Probeläufe page via SetDryRunOverride/ResetDryRunOverride.
 	dryRunOverride string
+	// dialContext replaces the network dial in tests; nil uses go-mail's own dialer.
+	dialContext mail.DialContextFunc
 }
 
 // NewSender builds a Sender for the given SMTP configuration.
@@ -166,7 +169,7 @@ func (s *Sender) DryRunOverride() (string, bool) {
 // newClient builds an SMTP client. STARTTLS is mandatory; the server certificate is not
 // verified (internal/self-signed cert).
 func (s *Sender) newClient() (*mail.Client, error) {
-	return mail.NewClient(s.cfg.Server,
+	opts := []mail.Option{
 		mail.WithPort(s.cfg.Port),
 		mail.WithHELO(s.mailHostname()),
 		mail.WithSMTPAuth(mail.SMTPAuthPlain),
@@ -177,7 +180,11 @@ func (s *Sender) newClient() (*mail.Client, error) {
 			InsecureSkipVerify: true, //nolint:gosec // server uses a self-signed/internal cert
 			ServerName:         s.cfg.Server,
 		}),
-	)
+	}
+	if s.dialContext != nil {
+		opts = append(opts, mail.WithDialContextFunc(s.dialContext))
+	}
+	return mail.NewClient(s.cfg.Server, opts...)
 }
 
 // buildMsg assembles a go-mail message. From = the send-as account (FromAddress →
@@ -272,7 +279,7 @@ func (s *Sender) SendTest() error {
 	if err != nil {
 		return err
 	}
-	return client.DialAndSend(msg)
+	return dialAndSend(context.Background(), client, interactiveDialRetryDelays, msg)
 }
 
 // DryRunRecipient is the address all dry-run mails go to: the session override (if set),
@@ -358,7 +365,11 @@ func (s *Sender) send(run bool, to, cc []string, subject string, text, html []by
 	if err != nil {
 		return err
 	}
-	return client.DialAndSend(msg)
+	delays := interactiveDialRetryDelays
+	if system {
+		delays = systemDialRetryDelays
+	}
+	return dialAndSend(context.Background(), client, delays, msg)
 }
 
 // collectedMail is one mail captured during a bundled dry-run.
@@ -420,7 +431,7 @@ func (s *Sender) FlushCollection() (int, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-	if err := client.DialAndSend(msg); err != nil {
+	if err := dialAndSend(context.Background(), client, interactiveDialRetryDelays, msg); err != nil {
 		return 0, "", fmt.Errorf("cannot send bundled dry-run mail: %w", err)
 	}
 	return len(collector.mails), recipient, nil

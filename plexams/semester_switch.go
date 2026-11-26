@@ -3,7 +3,6 @@ package plexams
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/obcode/plexams.go/plexams/apierr"
 
 	"github.com/obcode/plexams.go/db"
@@ -75,7 +74,7 @@ func (p *Plexams) SwitchSemester(ctx context.Context, name string) (*model.Semes
 		return nil, apierr.New(apierr.CodeBusy, "Das Semester lässt sich nicht wechseln, solange eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand läuft.")
 	}
 	if !db.IsSemester(name) {
-		return nil, fmt.Errorf("invalid semester %q (expected YYYY-SS or YYYY-WS)", name)
+		return nil, apierr.Newf(apierr.CodeInvalidInput, "„%s“ ist kein gültiges Semester. Erwartet wird z. B. 2027-SS oder 2027-WS.", name)
 	}
 
 	p.semester = p.dbClient.SwitchTo(ctx, name)

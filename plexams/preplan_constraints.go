@@ -2,7 +2,7 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -19,7 +19,7 @@ func (p *Plexams) SetPreplanExamConstraints(ctx context.Context, id int, input *
 		return nil, err
 	}
 	if preExam == nil {
-		return nil, fmt.Errorf("pre-exam %d not found", id)
+		return nil, apierr.New(apierr.CodeNotFound, errPreplanExamGone)
 	}
 
 	all, err := p.dbClient.PreplanExams(ctx)

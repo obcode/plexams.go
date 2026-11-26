@@ -58,10 +58,10 @@ func ParseCSV(csvText string) (map[string][]*db.JointExam, error) {
 
 	rows, err := reader.ReadAll()
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse CSV: %w", err)
+		return nil, fmt.Errorf("Die Datei ist keine lesbare CSV-Datei (%v). Bitte die Datei als CSV exportieren und erneut hochladen.", err)
 	}
 	if len(rows) < 2 {
-		return nil, fmt.Errorf("CSV has no data rows")
+		return nil, fmt.Errorf("Die Datei enthält nur die Kopfzeile oder ist leer.")
 	}
 
 	// header -> column index (tolerating mongoimport type suffixes like ".int32()")
@@ -73,10 +73,10 @@ func ParseCSV(csvText string) (map[string][]*db.JointExam, error) {
 		}
 	}
 	if _, ok := field2col["ancode"]; !ok {
-		return nil, fmt.Errorf("CSV is missing the 'Nr' column")
+		return nil, fmt.Errorf("In der Datei fehlt die Spalte „Nr“ (Primuss-Ancode).")
 	}
 	if _, ok := field2col["program"]; !ok {
-		return nil, fmt.Errorf("CSV is missing the 'Studiengruppe' column")
+		return nil, fmt.Errorf("In der Datei fehlt die Spalte „Studiengruppe“.")
 	}
 
 	get := func(row []string, field string) string {

@@ -2,7 +2,7 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 	"strings"
 
@@ -114,11 +114,11 @@ func autoJointLink(e *model.JointExam, zpaByPrimuss map[primussKey][]int, extern
 func (p *Plexams) SetJointZpaLink(ctx context.Context, program string, primussAncode, zpaAncode int) (*model.JointExam, error) {
 	mucExam, err := p.dbClient.JointExam(ctx, program, primussAncode)
 	if err != nil || mucExam == nil {
-		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
+		return nil, apierr.Newf(apierr.CodeNotFound, "Im Import des Studiengangs %s gibt es keine Prüfung mit Primuss-Ancode %d. Seite neu laden; ist die Prüfung weiter da, den Import wiederholen.", program, primussAncode)
 	}
 	zpaExam, err := p.GetZpaExamByAncode(ctx, zpaAncode)
 	if err != nil || zpaExam == nil {
-		return nil, fmt.Errorf("no ZPA exam with ancode %d", zpaAncode)
+		return nil, apierr.Newf(apierr.CodeNotFound, "Im ZPA-Import gibt es keine Prüfung mit Ancode %d. Ancode prüfen oder unter „ZPA-Import“ die Prüfungen neu laden.", zpaAncode)
 	}
 	a := zpaAncode
 	if err := p.dbClient.UpsertJointLink(ctx, &db.JointLink{
@@ -135,7 +135,7 @@ func (p *Plexams) SetJointZpaLink(ctx context.Context, program string, primussAn
 func (p *Plexams) RemoveJointLink(ctx context.Context, program string, primussAncode int) (*model.JointExam, error) {
 	mucExam, err := p.dbClient.JointExam(ctx, program, primussAncode)
 	if err != nil || mucExam == nil {
-		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
+		return nil, apierr.Newf(apierr.CodeNotFound, "Im Import des Studiengangs %s gibt es keine Prüfung mit Primuss-Ancode %d. Seite neu laden; ist die Prüfung weiter da, den Import wiederholen.", program, primussAncode)
 	}
 	externalMap, _, err := p.existingExternalByPrimuss(ctx)
 	if err != nil {
@@ -155,7 +155,7 @@ func (p *Plexams) RemoveJointLink(ctx context.Context, program string, primussAn
 func (p *Plexams) enrichedJointExam(ctx context.Context, program string, primussAncode int) (*model.JointExam, error) {
 	mucExam, err := p.dbClient.JointExam(ctx, program, primussAncode)
 	if err != nil || mucExam == nil {
-		return nil, fmt.Errorf("no MUC.DAI exam %s/%d", program, primussAncode)
+		return nil, apierr.Newf(apierr.CodeNotFound, "Im Import des Studiengangs %s gibt es keine Prüfung mit Primuss-Ancode %d. Seite neu laden; ist die Prüfung weiter da, den Import wiederholen.", program, primussAncode)
 	}
 	exam := p.mkJointExam(mucExam)
 	p.enrichJointExams(ctx, []*model.JointExam{exam})

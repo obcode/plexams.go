@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 	"time"
 
@@ -495,7 +496,7 @@ func (p *Plexams) solvePreplanAssignment(ctx context.Context, preExams []*model.
 	// grid (08:30/10:30/12:30/14:30/16:30), not just the MUC.DAI pattern.
 	regularSlots := p.semesterConfig.Slots
 	if len(regularSlots) == 0 {
-		return nil, fmt.Errorf("no slots configured for this semester")
+		return nil, apierr.New(apierr.CodeInvalidInput, "In der Semester-Konfiguration sind keine Startzeiten eingetragen. Erst dort die Prüfungszeiten festlegen, dann die Vorplanung starten.")
 	}
 
 	// candidate slots: only those with usable Anny seats; usable capacity = 90%

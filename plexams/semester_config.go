@@ -2,7 +2,8 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -107,7 +108,7 @@ func (p *Plexams) SetSemesterConfigInput(ctx context.Context, data *model.Semest
 	warnings := p.semesterConfigChangeWarnings(ctx, input)
 
 	if err := p.dbClient.SaveSemesterConfigInput(ctx, input); err != nil {
-		return nil, fmt.Errorf("cannot save semester config: %w", err)
+		return nil, wrapGerman(err, "Die Semester-Konfiguration wurde nicht gespeichert")
 	}
 
 	p.deriveSemesterConfig(input)
@@ -119,7 +120,7 @@ func (p *Plexams) SetSemesterConfigInput(ctx context.Context, data *model.Semest
 // and validates it.
 func semesterConfigInputFromData(data *model.SemesterConfigInputData) (*model.SemesterConfigInput, error) {
 	if data == nil {
-		return nil, fmt.Errorf("no config provided")
+		return nil, apierr.New(apierr.CodeInvalidInput, "Es wurde keine Semester-Konfiguration übermittelt.")
 	}
 
 	forbiddenDays := make([]time.Time, 0, len(data.ForbiddenDays))
@@ -227,24 +228,24 @@ func maxSeatsPerSlotOf(input *model.SemesterConfigInput) int {
 // validateSemesterConfigInput checks date ordering and slot start-time format.
 func validateSemesterConfigInput(input *model.SemesterConfigInput) error {
 	if input == nil {
-		return fmt.Errorf("no config provided")
+		return apierr.New(apierr.CodeInvalidInput, "Es wurde keine Semester-Konfiguration übermittelt.")
 	}
 	if input.From.After(input.Until) {
-		return fmt.Errorf("from (%s) must not be after until (%s)",
-			input.From.Format("2006-01-02"), input.Until.Format("2006-01-02"))
+		return apierr.Newf(apierr.CodeInvalidInput, "Der Prüfungszeitraum beginnt (%s) nach seinem Ende (%s). Bitte Beginn und Ende tauschen oder korrigieren.",
+			input.From.Format("02.01.2006"), input.Until.Format("02.01.2006"))
 	}
 	if len(input.StartTimes) == 0 {
-		return fmt.Errorf("at least one start time is required")
+		return apierr.New(apierr.CodeInvalidInput, "Bitte mindestens eine Startzeit für Prüfungen eintragen, z. B. 08:30.")
 	}
 	for _, s := range input.StartTimes {
 		parts := strings.Split(s, ":")
 		if len(parts) != 2 {
-			return fmt.Errorf("invalid start time %q (expected HH:MM)", s)
+			return apierr.Newf(apierr.CodeInvalidInput, "Die Startzeit „%s“ ist keine Uhrzeit. Bitte als Stunde:Minute schreiben, z. B. 08:30.", s)
 		}
 		hour, errH := strconv.Atoi(parts[0])
 		minute, errM := strconv.Atoi(parts[1])
 		if errH != nil || errM != nil || hour < 0 || hour > 23 || minute < 0 || minute > 59 {
-			return fmt.Errorf("invalid slot start time %q (expected HH:MM)", s)
+			return apierr.Newf(apierr.CodeInvalidInput, "Die Startzeit „%s“ ist keine Uhrzeit. Bitte als Stunde:Minute schreiben, z. B. 08:30.", s)
 		}
 	}
 	return nil
@@ -290,7 +291,7 @@ func (p *Plexams) CreateSemesterFromInput(ctx context.Context, semester string, 
 func (p *Plexams) createSemesterWithInput(ctx context.Context, semester string, input *model.SemesterConfigInput) (*model.SaveSemesterConfigResult, error) {
 	semester = strings.TrimSpace(semester)
 	if !db.IsSemester(semester) {
-		return nil, fmt.Errorf("invalid semester %q (expected YYYY-SS or YYYY-WS)", semester)
+		return nil, apierr.Newf(apierr.CodeInvalidInput, "„%s“ ist kein gültiges Semester. Erwartet wird z. B. 2027-SS oder 2027-WS.", semester)
 	}
 	if err := validateSemesterConfigInput(input); err != nil {
 		return nil, err
@@ -301,7 +302,7 @@ func (p *Plexams) createSemesterWithInput(ctx context.Context, semester string, 
 		return nil, err
 	}
 	if existing != nil {
-		return nil, fmt.Errorf("semester %q already has a config — edit it instead of creating it", semester)
+		return nil, apierr.Newf(apierr.CodeAlreadyExists, "Das Semester %s gibt es schon. Seine Einstellungen unter „Semester-Konfiguration“ ändern, statt es neu anzulegen.", semester)
 	}
 
 	// Register the semester BEFORE writing its config: semester_config_input has a
@@ -313,10 +314,10 @@ func (p *Plexams) createSemesterWithInput(ctx context.Context, semester string, 
 	// behind that the same rule exists to prevent.
 	if err := p.dbClient.InTransaction(ctx, func(ctx context.Context) error {
 		if err := p.dbClient.EnsureSemester(ctx, semester, currentSchemaVersion); err != nil {
-			return fmt.Errorf("cannot register new semester: %w", err)
+			return wrapGerman(err, "Das Semester wurde nicht angelegt")
 		}
 		if err := p.dbClient.SaveSemesterConfigInputFor(ctx, semester, input); err != nil {
-			return fmt.Errorf("cannot save config for new semester: %w", err)
+			return wrapGerman(err, "Das Semester wurde nicht angelegt, weil seine Konfiguration nicht gespeichert werden konnte")
 		}
 		return nil
 	}); err != nil {
@@ -342,11 +343,19 @@ func (p *Plexams) semesterConfigChangeWarnings(ctx context.Context, input *model
 		return warnings
 	}
 
-	if !old.From.Equal(input.From) {
-		warnings = append(warnings, "from geändert: gespeicherte Tag-Nummern im Plan verschieben sich.")
+	// Plan entries are absolute times, so nothing moves. But an entry outside the new
+	// period or at a start time that is gone no longer fits the config.
+	if !old.From.Equal(input.From) || !old.Until.Equal(input.Until) {
+		warnings = append(warnings, "Der Prüfungszeitraum hat sich geändert, und es gibt schon geplante Termine. "+
+			"Sie bleiben, wo sie sind. Termine außerhalb des neuen Zeitraums meldet „Validierung (alle Bereiche)“ unter „Stimmigkeit der Daten“ als Fehler; dort nachsehen und sie verschieben.")
 	}
-	if len(old.Starttimes) != len(input.StartTimes) {
-		warnings = append(warnings, "Anzahl der Anfangszeiten geändert: gespeicherte Slot-Nummern im Plan können ungültig werden.")
+	oldStarts := make([]string, 0, len(old.Starttimes))
+	for _, st := range old.Starttimes {
+		oldStarts = append(oldStarts, st.Start)
+	}
+	if !slices.Equal(oldStarts, input.StartTimes) {
+		warnings = append(warnings, "Die Startzeiten haben sich geändert, und es gibt schon geplante Termine. "+
+			"Sie bleiben, wo sie sind. Termine zu einer Startzeit, die es nicht mehr gibt, meldet „Validierung (alle Bereiche)“ unter „Stimmigkeit der Daten“ als Fehler; dort nachsehen und sie verschieben.")
 	}
 	return warnings
 }

@@ -2,7 +2,7 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"slices"
 	"sort"
 	"strings"
@@ -30,7 +30,7 @@ func (p *Plexams) ImportJointExams(ctx context.Context, csvText string) (*model.
 		return nil, err
 	}
 	if len(byProgram) == 0 {
-		return nil, fmt.Errorf("no MUC.DAI exams found in CSV (check the column headers)")
+		return nil, apierr.New(apierr.CodeInvalidInput, "In der Datei steht keine Prüfung eines gemeinsamen Studiengangs. Stimmen die Spaltenüberschriften (u. a. „Nr“ und „Studiengruppe“)?")
 	}
 
 	result := &model.ImportJointResult{Programs: []string{}}
@@ -172,10 +172,10 @@ func (p *Plexams) checkJointImportPrograms(ctx context.Context, programs []strin
 	case 0:
 		return nil
 	case 1:
-		return fmt.Errorf("unbekannter Studiengang im CSV: %s. Bitte zuerst unter Studiengänge anlegen; es wurde nichts importiert",
+		return apierr.Newf(apierr.CodeInvalidInput, "Unbekannter Studiengang in der Datei: %s. Bitte zuerst unter „Studiengänge“ anlegen; es wurde nichts importiert.",
 			unknown[0])
 	default:
-		return fmt.Errorf("unbekannte Studiengänge im CSV: %s. Bitte zuerst unter Studiengänge anlegen; es wurde nichts importiert",
+		return apierr.Newf(apierr.CodeInvalidInput, "Unbekannte Studiengänge in der Datei: %s. Bitte zuerst unter „Studiengänge“ anlegen; es wurde nichts importiert.",
 			strings.Join(unknown, ", "))
 	}
 }
@@ -252,7 +252,7 @@ func (p *Plexams) DeleteJointExams(ctx context.Context, program *string) (*model
 	if program != nil {
 		prog := strings.TrimSpace(*program)
 		if !slices.Contains(all, prog) {
-			return nil, fmt.Errorf("%q ist kein gemeinsamer Studiengang", prog)
+			return nil, apierr.Newf(apierr.CodeInvalidInput, "„%s“ ist kein gemeinsamer Studiengang.", prog)
 		}
 		programs = []string{prog}
 	}

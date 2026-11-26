@@ -2,7 +2,7 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 	"strings"
 	"time"
@@ -58,7 +58,7 @@ func (p *Plexams) UpdatePreplanExam(ctx context.Context, id int, input *model.Pr
 		return nil, err
 	}
 	if existing == nil {
-		return nil, fmt.Errorf("pre-exam %d not found", id)
+		return nil, apierr.New(apierr.CodeNotFound, errPreplanExamGone)
 	}
 
 	preplanExam, err := p.preplanExamFromInput(ctx, input)
@@ -97,7 +97,7 @@ func (p *Plexams) SetPreplanExamTime(ctx context.Context, id int, starttime *tim
 		return nil, err
 	}
 	if preplanExam == nil {
-		return nil, fmt.Errorf("pre-exam %d not found", id)
+		return nil, apierr.New(apierr.CodeNotFound, errPreplanExamGone)
 	}
 
 	if starttime == nil {
@@ -144,10 +144,10 @@ func (p *Plexams) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (
 		return nil, err
 	}
 	if preplanExam == nil {
-		return nil, fmt.Errorf("pre-exam %d not found", id)
+		return nil, apierr.New(apierr.CodeNotFound, errPreplanExamGone)
 	}
 	if fixed && preplanExam.PlannedStarttime == nil {
-		return nil, fmt.Errorf("cannot fix pre-exam %d: it has no slot yet", id)
+		return nil, apierr.New(apierr.CodeInvalidInput, "Diese Vorplanungs-Prüfung hat noch keinen Termin. Erst einen Termin zuweisen, dann fixieren.")
 	}
 
 	preplanExam.IsFixed = fixed
@@ -166,8 +166,8 @@ func (p *Plexams) SetPreplanExamFixed(ctx context.Context, id int, fixed bool) (
 				Ancode:    *preplanExam.Ancode,
 				Locked:    true,
 			}); err != nil {
-				return nil, fmt.Errorf("cannot pin ancode %d into slot %s: %w",
-					*preplanExam.Ancode, preplanExam.PlannedStarttime.Format("02.01. 15:04"), err)
+				return nil, wrapGerman(err, "Die verknüpfte ZPA-Prüfung (Ancode %d) ließ sich nicht fest auf %s setzen",
+					*preplanExam.Ancode, slotLabelDE(*preplanExam.PlannedStarttime))
 			}
 		} else {
 			if err := p.dbClient.RemovePlanEntry(ctx, *preplanExam.Ancode); err != nil {
@@ -203,13 +203,13 @@ func (p *Plexams) SetPreplanExamCanShareSlot(ctx context.Context, id, otherID in
 func (p *Plexams) setPreplanPairLink(ctx context.Context, id, otherID int, add bool,
 	get func(*model.PreplanExam) []int, set func(*model.PreplanExam, []int)) (*model.PreplanExam, error) {
 	if id == otherID {
-		return nil, fmt.Errorf("a pre-exam cannot be linked to itself")
+		return nil, apierr.New(apierr.CodeInvalidInput, "Eine Vorplanungs-Prüfung kann nicht mit sich selbst verbunden werden.")
 	}
 	if add {
 		if other, err := p.dbClient.PreplanExam(ctx, otherID); err != nil {
 			return nil, err
 		} else if other == nil {
-			return nil, fmt.Errorf("pre-exam %d not found", otherID)
+			return nil, apierr.New(apierr.CodeNotFound, errPreplanExamGone)
 		}
 	}
 	if err := p.updatePreplanPair(ctx, id, otherID, add, get, set); err != nil {
@@ -229,7 +229,7 @@ func (p *Plexams) updatePreplanPair(ctx context.Context, id, other int, add bool
 		return err
 	}
 	if pe == nil {
-		return fmt.Errorf("pre-exam %d not found", id)
+		return apierr.New(apierr.CodeNotFound, errPreplanExamGone)
 	}
 	ids := make(map[int]bool, len(get(pe)))
 	for _, x := range get(pe) {
@@ -254,25 +254,25 @@ func (p *Plexams) updatePreplanPair(ctx context.Context, id, other int, add bool
 // examer's name from the linked teacher.
 func (p *Plexams) preplanExamFromInput(ctx context.Context, input *model.PreplanExamInput) (*model.PreplanExam, error) {
 	if input == nil {
-		return nil, fmt.Errorf("no pre-exam provided")
+		return nil, apierr.New(apierr.CodeInvalidInput, "Es wurden keine Angaben zur Vorplanungs-Prüfung übermittelt.")
 	}
 	if !validPreplanExamKinds[input.ExamKind] {
-		return nil, fmt.Errorf("invalid examKind %q (expected EXaHM or SEB)", input.ExamKind)
+		return nil, apierr.Newf(apierr.CodeInvalidInput, "Unbekannte Prüfungsart %q. Erlaubt sind EXaHM und SEB.", input.ExamKind)
 	}
 	if strings.TrimSpace(input.Module) == "" {
-		return nil, fmt.Errorf("module is required")
+		return nil, apierr.New(apierr.CodeInvalidInput, "Bitte den Namen des Moduls angeben.")
 	}
 	if input.ExpectedStudents < 0 {
-		return nil, fmt.Errorf("expectedStudents must not be negative")
+		return nil, apierr.New(apierr.CodeInvalidInput, "Die erwartete Zahl der Studierenden darf nicht negativ sein.")
 	}
 
 	examerName := ""
 	teacher, err := p.GetTeacher(ctx, input.ExamerID)
 	if err != nil {
-		return nil, fmt.Errorf("cannot look up examer %d: %w", input.ExamerID, err)
+		return nil, err
 	}
 	if teacher == nil {
-		return nil, fmt.Errorf("no teacher with id %d", input.ExamerID)
+		return nil, apierr.New(apierr.CodeNotFound, "Die gewählte Prüferin bzw. der gewählte Prüfer ist in der Liste der Lehrenden nicht (mehr) vorhanden. Lehrende unter „ZPA-Import“ neu laden und erneut auswählen.")
 	}
 	examerName = teacher.Fullname
 

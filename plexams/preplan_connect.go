@@ -2,7 +2,7 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 	"strings"
 
@@ -18,15 +18,15 @@ func (p *Plexams) ConnectPreplanExamToAncode(ctx context.Context, id, ancode int
 		return nil, err
 	}
 	if preExam == nil {
-		return nil, fmt.Errorf("pre-exam %d not found", id)
+		return nil, apierr.New(apierr.CodeNotFound, errPreplanExamGone)
 	}
 
 	zpaExam, err := p.GetZpaExamByAncode(ctx, ancode)
 	if err != nil {
-		return nil, fmt.Errorf("no ZPA exam with ancode %d: %w", ancode, err)
+		return nil, err
 	}
 	if zpaExam == nil {
-		return nil, fmt.Errorf("no ZPA exam with ancode %d", ancode)
+		return nil, apierr.Newf(apierr.CodeNotFound, "Im ZPA-Import gibt es keine Prüfung mit Ancode %d. Ancode prüfen oder unter „ZPA-Import“ die Prüfungen neu laden.", ancode)
 	}
 
 	// reject if another pre-exam already links this ancode
@@ -36,7 +36,7 @@ func (p *Plexams) ConnectPreplanExamToAncode(ctx context.Context, id, ancode int
 	}
 	for _, other := range all {
 		if other.ID != id && other.Ancode != nil && *other.Ancode == ancode {
-			return nil, fmt.Errorf("ancode %d is already linked by pre-exam %d (%s)", ancode, other.ID, other.Module)
+			return nil, apierr.Newf(apierr.CodeAlreadyExists, "Ancode %d ist schon mit der Vorplanungs-Prüfung „%s“ verknüpft. Dort zuerst die Verknüpfung lösen.", ancode, other.Module)
 		}
 	}
 
@@ -48,7 +48,7 @@ func (p *Plexams) ConnectPreplanExamToAncode(ctx context.Context, id, ancode int
 	// carry the pre-plan constraints over to the ZPA exams: SEB/EXaHM room kind,
 	// allowedRooms, and same-slot (only between members that are both connected).
 	if err := p.syncPreplanGroupZPAConstraints(ctx, id); err != nil {
-		return nil, fmt.Errorf("cannot carry over pre-plan constraints to ancode %d: %w", ancode, err)
+		return nil, wrapGerman(err, "Die Vorgaben aus der Vorplanung ließen sich nicht auf Ancode %d übertragen", ancode)
 	}
 
 	// a FIXED pre-exam has a definitive slot, so the linked ZPA exam is pre-planned into
@@ -60,8 +60,8 @@ func (p *Plexams) ConnectPreplanExamToAncode(ctx context.Context, id, ancode int
 			Ancode:    ancode,
 			Locked:    true,
 		}); err != nil {
-			return nil, fmt.Errorf("cannot pre-plan ancode %d into slot %s: %w",
-				ancode, preExam.PlannedStarttime.Format("02.01. 15:04"), err)
+			return nil, wrapGerman(err, "Ancode %d ließ sich nicht fest auf %s setzen",
+				ancode, slotLabelDE(*preExam.PlannedStarttime))
 		}
 	}
 
@@ -77,7 +77,7 @@ func (p *Plexams) DisconnectPreplanExam(ctx context.Context, id int) (*model.Pre
 		return nil, err
 	}
 	if preExam == nil {
-		return nil, fmt.Errorf("pre-exam %d not found", id)
+		return nil, apierr.New(apierr.CodeNotFound, errPreplanExamGone)
 	}
 	freedAncode := preExam.Ancode
 	wasFixed := preExam.IsFixed
@@ -187,7 +187,7 @@ func (p *Plexams) syncPreplanGroupZPAConstraints(ctx context.Context, startID in
 		}
 		input.SameSlot = sameSlot
 		if _, err := p.AddConstraints(ctx, *m.Ancode, input); err != nil {
-			return fmt.Errorf("cannot sync constraints for ancode %d: %w", *m.Ancode, err)
+			return wrapGerman(err, "Die Vorgaben für Ancode %d ließen sich nicht abgleichen", *m.Ancode)
 		}
 	}
 	return nil
@@ -272,7 +272,7 @@ func (p *Plexams) PreplanExamAncodeSuggestions(ctx context.Context, id int) ([]*
 		return nil, err
 	}
 	if preExam == nil {
-		return nil, fmt.Errorf("pre-exam %d not found", id)
+		return nil, apierr.New(apierr.CodeNotFound, errPreplanExamGone)
 	}
 
 	zpaExams, err := p.GetZpaExamsToPlan(ctx)

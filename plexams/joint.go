@@ -2,7 +2,7 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"strings"
 
 	"github.com/obcode/plexams.go/db"
@@ -124,7 +124,7 @@ func (p *Plexams) mkJointExam(jointExam *db.JointExam) *model.JointExam {
 func (p *Plexams) AddJointExamByProgram(ctx context.Context, jointExam *model.JointExam) (*model.ZPAExam, error) {
 	base, ok := p.externalExamsBaseForProgram(ctx, jointExam.Program)
 	if !ok {
-		return nil, fmt.Errorf("no externalExamsBase set for program %s (StudyProgram master data)", jointExam.Program)
+		return nil, apierr.Newf(apierr.CodeInvalidInput, "Für den Studiengang %s fehlt der Basis-Ancode. Unter „Studiengänge“ beim Studiengang den Basis-Ancode eintragen (lokaler Ancode = Basis + Primuss-Ancode).", jointExam.Program)
 	}
 	return p.AddJointExam(ctx, base+jointExam.PrimussAncode, jointExam)
 }

@@ -47,14 +47,16 @@ func effectiveGapMinutes(examGap, crossCampusGap int, locA, locB string) int {
 
 // ExamScheduleResult summarizes a Terminplan generation run.
 type ExamScheduleResult struct {
-	Units             int
-	Fixed             int
-	Placed            int
-	Unplaced          int
-	UnplacedAncodes   []int
-	HardViolations    []string
-	Cost              float64
-	CostByConstraint  map[string]float64
+	Units            int
+	Fixed            int
+	Placed           int
+	Unplaced         int
+	UnplacedAncodes  []int
+	HardViolations   []string
+	Cost             float64
+	CostByConstraint map[string]float64
+	// CostTitles maps a CostByConstraint key to its German label.
+	CostTitles        map[string]string
 	Iterations        int
 	StoppedEarly      bool
 	Written           bool
@@ -956,7 +958,7 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 
 	result := &ExamScheduleResult{
 		Units: len(prob.Units), Unplaced: len(unplaced), UnplacedAncodes: unplaced,
-		HardViolations: hard, Cost: total, CostByConstraint: byC,
+		HardViolations: hard, Cost: total, CostByConstraint: byC, CostTitles: constraintTitles(reg.Describe()),
 		Iterations: res.Iterations, StoppedEarly: res.StoppedEarly, Seed: int(seed), Diagnostics: st.Diagnostics(),
 		ExahmNtaAncodes: buildInfo.exahmNtaAncodes, UnplacedReasons: unplacedReasons,
 	}
@@ -1230,4 +1232,13 @@ func hardViolationText(v optimize.Violation, names examNamer) string {
 		}
 	}
 	return v.Message
+}
+
+// constraintTitles maps each rule's key to its German label.
+func constraintTitles(infos []optimize.Info) map[string]string {
+	m := make(map[string]string, len(infos))
+	for _, i := range infos {
+		m[i.Name] = i.Title
+	}
+	return m
 }

@@ -75,6 +75,8 @@ type OptimizerConstraint {
 type ConstraintCost {
   name: String!
   cost: Float!
+  "German label of the rule, for display (name is the stable key)."
+  title: String
 }
 
 "Quality report of a generated (or current) exam schedule."

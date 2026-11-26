@@ -221,8 +221,9 @@ type ComplexityRoot struct {
 	}
 
 	ConstraintCost struct {
-		Cost func(childComplexity int) int
-		Name func(childComplexity int) int
+		Cost  func(childComplexity int) int
+		Name  func(childComplexity int) int
+		Title func(childComplexity int) int
 	}
 
 	Constraints struct {
@@ -3116,6 +3117,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ConstraintCost.Name(childComplexity), true
+	case "ConstraintCost.title":
+		if e.ComplexityRoot.ConstraintCost.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ConstraintCost.Title(childComplexity), true
 
 	case "Constraints.ancode":
 		if e.ComplexityRoot.Constraints.Ancode == nil {
@@ -13190,6 +13197,8 @@ type OptimizerConstraint {
 type ConstraintCost {
   name: String!
   cost: Float!
+  "German label of the rule, for display (name is the stable key)."
+  title: String
 }
 
 "Quality report of a generated (or current) exam schedule."
@@ -16359,6 +16368,8 @@ func (ec *executionContext) childFields_ConstraintCost(ctx context.Context, fiel
 		return ec.fieldContext_ConstraintCost_name(ctx, field)
 	case "cost":
 		return ec.fieldContext_ConstraintCost_cost(ctx, field)
+	case "title":
+		return ec.fieldContext_ConstraintCost_title(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type ConstraintCost", field.Name)
 }
@@ -26123,6 +26134,29 @@ func (ec *executionContext) _ConstraintCost_cost(ctx context.Context, field grap
 }
 func (ec *executionContext) fieldContext_ConstraintCost_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("ConstraintCost", field, false, false, "Float")
+}
+
+func (ec *executionContext) _ConstraintCost_title(ctx context.Context, field graphql.CollectedField, obj *model.ConstraintCost) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ConstraintCost_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ConstraintCost_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ConstraintCost", field, false, false, "String")
 }
 
 func (ec *executionContext) _Constraints_ancode(ctx context.Context, field graphql.CollectedField, obj *model.Constraints) (ret graphql.Marshaler) {
@@ -66349,6 +66383,11 @@ func (ec *executionContext) _ConstraintCost(ctx context.Context, sel ast.Selecti
 		case "cost":
 			out.Values[i] = ec._ConstraintCost_cost(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._ConstraintCost_title(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:

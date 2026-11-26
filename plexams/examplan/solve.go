@@ -246,7 +246,7 @@ type fixedC struct{}
 
 func (fixedC) Info() optimize.Info {
 	return optimize.Info{Name: "fixed", Title: "Feste Termine unverändert", Kind: optimize.KindHard, Tier: 1,
-		Description: "Gesperrte, externe und nicht von mir geplante Prüfungen behalten ihren Slot."}
+		Description: "Prüfungen mit festem Termin aus der Vorplanung, fixierte EXaHM/SEB-Prüfungen und die Prüfungen anderer FKs behalten ihren Termin."}
 }
 func (fixedC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
@@ -261,8 +261,8 @@ func (fixedC) Check(st *State) []optimize.Violation {
 type allowedC struct{}
 
 func (allowedC) Info() optimize.Info {
-	return optimize.Info{Name: "allowed-slots", Title: "Zulässige Slots", Kind: optimize.KindHard, Tier: 2,
-		Description: "Jede Prüfung nur in einem für sie erlaubten Slot (Constraints, gesperrte Tage, MUC.DAI)."}
+	return optimize.Info{Name: "allowed-slots", Title: "Nur erlaubte Termine", Kind: optimize.KindHard, Tier: 2,
+		Description: "Jede Prüfung liegt nur zu einem für sie erlaubten Termin (Vorgaben, Sperrtage, reservierte Zeiten gemeinsamer Studiengänge)."}
 }
 func (allowedC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
@@ -277,7 +277,7 @@ func (allowedC) Check(st *State) []optimize.Violation {
 type sameStudentC struct{}
 
 func (sameStudentC) Info() optimize.Info {
-	return optimize.Info{Name: "student-clash", Title: "Kein Studierender doppelt", Kind: optimize.KindHard, Tier: 3,
+	return optimize.Info{Name: "student-clash", Title: "Keine Überschneidung für Studierende", Kind: optimize.KindHard, Tier: 3,
 		Description: "Zwei Prüfungen eines/einer Studierenden dürfen sich zeitlich nicht überlappen — inkl. der (ggf. per NTA verlängerten) Prüfungsdauer plus Puffer für Wechsel/Weg (außer das Paar ist als gleichzeitig erlaubt markiert)."}
 }
 func (sameStudentC) Check(st *State) []optimize.Violation {
@@ -296,8 +296,8 @@ func (sameStudentC) Check(st *State) []optimize.Violation {
 type capacityC struct{}
 
 func (capacityC) Info() optimize.Info {
-	return optimize.Info{Name: "capacity", Title: "Slot-Kapazität", Kind: optimize.KindHard, Tier: 4,
-		Description: "Pro Slot: EXaHM-Prüfungen ≤ gebuchte EXaHM-Sitze; beim Zusammenlegen mehrerer Prüfungen ≤ Gesamt-Raumkapazität (eine einzelne Prüfung darf die Kapazität überschreiten und belegt den Slot dann allein)."}
+	return optimize.Info{Name: "capacity", Title: "Plätze je Startzeit", Kind: optimize.KindHard, Tier: 4,
+		Description: "Je Startzeit: nicht mehr EXaHM-Plätze als gebucht; liegen mehrere Prüfungen gleichzeitig, zusammen nicht mehr Plätze als erlaubt (eine einzelne große Prüfung darf darüber liegen und hat die Startzeit dann für sich)."}
 }
 func (capacityC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
@@ -327,15 +327,15 @@ type attractC struct{ w Weights }
 
 func (c attractC) Info() optimize.Info {
 	return optimize.Info{Name: "attract", Title: "Zusammen legen", Kind: optimize.KindSoft, Weight: c.w.Attract, Tier: 20,
-		Description: "Parallelsektionen desselben Moduls und kleine Prüfungen desselben Prüfers möglichst in denselben Slot."}
+		Description: "Parallelgruppen desselben Moduls und kleine Prüfungen derselben Prüferin bzw. desselben Prüfers möglichst zur selben Zeit."}
 }
 func (attractC) Cost(st *State) (float64, []optimize.Violation) { return attractCost(st) }
 
 type slotLoadC struct{ w Weights }
 
 func (c slotLoadC) Info() optimize.Info {
-	return optimize.Info{Name: "slot-load", Title: "Gleichmäßige Slot-Auslastung", Kind: optimize.KindSoft, Weight: c.w.SlotLoad, Tier: 30,
-		Description: "Prüfungen möglichst gleichmäßig über die Slots verteilen: Abweichung von der idealen Auslastung (Anmeldungen / Slots) wird bestraft (leere und sehr volle Slots)."}
+	return optimize.Info{Name: "slot-load", Title: "Gleichmäßige Auslastung der Startzeiten", Kind: optimize.KindSoft, Weight: c.w.SlotLoad, Tier: 30,
+		Description: "Prüfungen möglichst gleichmäßig über die Startzeiten verteilen: sehr leere und sehr volle Startzeiten kosten Strafpunkte."}
 }
 func (slotLoadC) Cost(st *State) (float64, []optimize.Violation) { return slotLoadCost(st) }
 
@@ -343,7 +343,7 @@ type holeC struct{ w Weights }
 
 func (c holeC) Info() optimize.Info {
 	return optimize.Info{Name: "slot-hole", Title: "Keine Lücke mitten am Tag", Kind: optimize.KindSoft, Weight: c.w.Hole, Tier: 31,
-		Description: "Bleibt an einem Tag ein Slot frei, soll er nicht zwischen belegten Slots liegen (schlecht für die Aufsichtenplanung): freie Slots werden an den Tagesrand gedrängt, sonst mit einer kleinen Prüfung gefüllt."}
+		Description: "Bleibt an einem Tag eine Startzeit leer, dann möglichst am Rand des Tages und nicht zwischen belegten (schlecht für die Aufsichtenplanung)."}
 }
 func (holeC) Cost(st *State) (float64, []optimize.Violation) { return holeCost(st) }
 
@@ -375,7 +375,7 @@ type placementC struct{ w Weights }
 
 func (c placementC) Info() optimize.Info {
 	return optimize.Info{Name: "placement", Title: "Alle Prüfungen geplant", Kind: optimize.KindSoft, Weight: c.w.Unplaced, Tier: 0,
-		Description: "Jede zu planende Prüfung muss einen Slot bekommen (dominante Strafe für ungeplante)."}
+		Description: "Jede zu planende Prüfung soll einen Termin bekommen; eine Prüfung ohne Termin kostet sehr viele Strafpunkte."}
 }
 func (placementC) Cost(st *State) (float64, []optimize.Violation) { return unplacedCost(st) }
 

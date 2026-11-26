@@ -193,6 +193,8 @@ type ConnectedExamWarning struct {
 type ConstraintCost struct {
 	Name string  `json:"name"`
 	Cost float64 `json:"cost"`
+	// German label of the rule, for display (name is the stable key).
+	Title *string `json:"title,omitempty"`
 }
 
 type Constraints struct {

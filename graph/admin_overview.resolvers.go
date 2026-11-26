@@ -45,7 +45,7 @@ func (r *subscriptionResolver) SendAdminDigestNow(ctx context.Context, dryRun bo
 		defer close(ch)
 		if err := r.plexams.SendAdminDigest(opCtx, !dryRun, reporter); err != nil {
 			log.Error().Err(err).Msg("triggered admin digest failed")
-			reporter.emit(model.LogLevelError, "error: "+err.Error())
+			reporter.emitError(err)
 		}
 		reporter.emit(model.LogLevelDone, "done")
 	}()

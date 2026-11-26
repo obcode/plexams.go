@@ -566,11 +566,13 @@ func (p *Plexams) ValidateRoomsPerExam(reporter Reporter) (*model.ValidationRepo
 								if mtknr != nta.Mtknr {
 									r := ref{Ancode: ptr(exam.Ancode), Room: ptr(room.RoomName), StudentMtknr: ptr(nta.Mtknr), Starttime: exam.PlanEntry.Starttime}
 									if reason, ok := waiverReasons[ntaExamKey{nta.Mtknr, exam.Ancode}]; ok {
+										r.Code = FindingNTARoomWaived
 										v.infof(r,
 											"NTA %s waives the room of their own for exam %d. %s (%s) at %s: %s",
 											nta.Name, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,
 											examStart, reason)
 									} else {
+										r.Code = FindingNTARoomNotAlone
 										v.errorf(r,
 											"NTA %s has room %s not alone for exam %d. %s (%s) at %s",
 											nta.Name, room.RoomName, exam.Ancode, exam.ZpaExam.Module, exam.ZpaExam.MainExamer,

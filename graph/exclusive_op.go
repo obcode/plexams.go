@@ -29,7 +29,7 @@ func (r *subscriptionResolver) runExclusiveOp(
 	if !r.plexams.TryBeginExclusiveOp() {
 		go func() {
 			defer close(ch)
-			reporter.emit(model.LogLevelError, "error: a validation or another transfer/email is running, cannot start now")
+			reporter.emitError(errBusy)
 			reporter.emit(model.LogLevelDone, "done")
 		}()
 		return ch
@@ -41,7 +41,7 @@ func (r *subscriptionResolver) runExclusiveOp(
 		defer r.plexams.EndExclusiveOp()
 		if err := fn(opCtx, reporter); err != nil {
 			log.Error().Err(err).Msg("exclusive operation failed")
-			reporter.emit(model.LogLevelError, "error: "+err.Error())
+			reporter.emitError(err)
 		}
 		reporter.emit(model.LogLevelDone, "done")
 	}()

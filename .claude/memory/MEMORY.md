@@ -55,3 +55,4 @@
 - [PII in Fehlerberichten](pii-in-fehlerberichten.md) — mtknr steckt in 33 Logfeldern, in der Route `nta/[mtknr]` und in GraphQL-Argumenten; Fehler-Telemetrie braucht eine Positivliste, keine Sperrliste (2026-08-05)
 - [Fehler-Telemetrie `obs/`](error-reporting-obs.md) — Phase 3a FERTIG auf main: Scrubber zuerst, dann Init, bootstrap, graph; caller-Fingerprint, pseudonymer Nutzer, `recoverMiddleware` für die REST-Routen; lokal gegen GlitchTip geprüft (2026-08-05)
 - [todos](todos.md) — per-semester todo list with comments and (kind,key) links without FK; labels resolved on read; read-only-semester exemption kept apart from the VIEWER check; carry-over by copy (2026-09-24).
+- [Planner error codes](planner-error-codes.md) — errors carry a stable code (extensions.code / LogLine.code / ValidationFinding.code); GUI reacts to codes, wording is free

@@ -2,7 +2,7 @@ package graph
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/http"
 	"slices"
 	"strings"
@@ -176,7 +176,7 @@ func roleCanAdmin(role model.Role) bool {
 func requireAdmin(ctx context.Context) error {
 	user := UserFromContext(ctx)
 	if user == nil || !roleCanAdmin(user.Role) {
-		return fmt.Errorf("forbidden: user administration requires role ADMIN")
+		return apierr.New(apierr.CodeForbidden, "forbidden: user administration requires role ADMIN")
 	}
 	return nil
 }

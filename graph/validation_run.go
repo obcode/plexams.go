@@ -24,7 +24,7 @@ func (r *subscriptionResolver) runValidation(
 	if !r.plexams.TryBeginValidation() {
 		go func() {
 			defer close(ch)
-			reporter.emit(model.LogLevelError, "error: a ZPA transfer is running, cannot validate now")
+			reporter.emitError(errValidationBusy)
 			reporter.emit(model.LogLevelDone, "done")
 		}()
 		return ch
@@ -36,7 +36,7 @@ func (r *subscriptionResolver) runValidation(
 		report, err := fn(reporter)
 		if err != nil {
 			log.Error().Err(err).Msg("validation failed")
-			reporter.emit(model.LogLevelError, "error: "+err.Error())
+			reporter.emitError(err)
 			// A validator that aborts with an error produces no report. Synthesize
 			// a failing one so the GUI shows the validation as red instead of
 			// defaulting to "passed".

@@ -9,6 +9,7 @@ package planstate
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -161,7 +162,7 @@ func (m *Machine) EmailSendAllowed(ctx context.Context, condKey string, run bool
 	for _, key := range setKeys {
 		if key == condKey {
 			def, _ := m.condDefByKey(condKey)
-			return fmt.Errorf("email already sent (%s: %s); unset the planning condition to send it again",
+			return apierr.Newf(apierr.CodeAlreadySent, "email already sent (%s: %s); unset the planning condition to send it again",
 				condKey, def.Title)
 		}
 	}
@@ -181,7 +182,7 @@ func (m *Machine) GenerationAllowed(ctx context.Context, area model.PlanningGate
 	}
 	for _, cd := range m.conds {
 		if cd.Gate == area && set[cd.Key] {
-			return fmt.Errorf("%s is published (%s); generation is locked. "+
+			return apierr.Newf(apierr.CodePublishedLocked, "%s is published (%s); generation is locked. "+
 				"Make explicit changes instead, or unset the condition to regenerate", cd.Title, cd.Key)
 		}
 	}

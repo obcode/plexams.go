@@ -20,6 +20,10 @@ type ValidationFinding {
   starttime: Time
   invigilatorID: Int
   studentMtknr: String
+  "Stable kind of the finding, where a client offers an action for it."
+  code: String
+  "What to do about the finding, as a sentence for the planner."
+  hint: String
 }
 
 """

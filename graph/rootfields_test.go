@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"encoding/json"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -118,7 +119,7 @@ func TestViewerCannotRunAFragmentWrappedMutation(t *testing.T) {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 
-		if !strings.Contains(rec.Body.String(), "forbidden: your role is read-only") {
+		if !strings.Contains(rec.Body.String(), `"code":"READ_ONLY_ROLE"`) {
 			t.Errorf("%s: want forbidden, got %s", doc, rec.Body.String())
 		}
 	}
@@ -188,24 +189,24 @@ func TestGate(t *testing.T) {
 		state gateState
 		user  *model.User
 		doc   string
-		want  string // substring of the error; "" = must reach the field
+		want  string // error code; "" = must reach the field
 	}{
-		{"no principal, query", open, nil, `query { me { email } }`, "no authenticated user"},
+		{"no principal, query", open, nil, `query { me { email } }`, codeOf(apierr.CodeForbidden)},
 		{"viewer may query", open, viewer, `query { me { email } }`, ""},
 		{"viewer may validate", open, viewer, `subscription { validateConflicts(onlyPlannedByMe: true, ancode: 0) { text } }`, ""},
-		{"viewer may not switch semester", open, viewer, `mutation { setSemester(name: "2026-WS") { id } }`, "read-only"},
-		{"viewer may not set own shortname", open, viewer, `mutation { setMyShortname(shortname: "x") { email } }`, "read-only"},
+		{"viewer may not switch semester", open, viewer, `mutation { setSemester(name: "2026-WS") { id } }`, codeOf(apierr.CodeReadOnlyRole)},
+		{"viewer may not set own shortname", open, viewer, `mutation { setMyShortname(shortname: "x") { email } }`, codeOf(apierr.CodeReadOnlyRole)},
 		{"planer may switch semester", open, planer, `mutation { setSemester(name: "2026-WS") { id } }`, ""},
 		{"protected semester blocks planning", fakeGateState{writes: true, readOnly: true}, planer,
-			`mutation { removeUser(email: "a") ... on Mutation { deleteTodo(id: 1) } }`, "semester is read-only"},
+			`mutation { removeUser(email: "a") ... on Mutation { deleteTodo(id: 1) } }`, codeOf(apierr.CodeSemesterReadOnly)},
 		{"protected semester allows user admin", fakeGateState{writes: true, readOnly: true}, admin,
 			`mutation { removeUser(email: "a") }`, ""},
-		{"viewer may not read the user list", open, viewer, `query { users { email } }`, "requires role ADMIN"},
-		{"planer may not read the user list", open, planer, `query { users { email } }`, "requires role ADMIN"},
+		{"viewer may not read the user list", open, viewer, `query { users { email } }`, codeOf(apierr.CodeForbidden)},
+		{"planer may not read the user list", open, planer, `query { users { email } }`, codeOf(apierr.CodeForbidden)},
 		{"viewer may not reach an admin query through a fragment", open, viewer,
-			`query { ... on Query { adminOverview { users { email } } } }`, "requires role ADMIN"},
+			`query { ... on Query { adminOverview { users { email } } } }`, codeOf(apierr.CodeForbidden)},
 		{"protected semester blocks a fragment-wrapped write", fakeGateState{writes: true, readOnly: true}, planer,
-			`subscription { ... on Subscription { sendEmailExaHM(run: false) { text } } }`, "semester is read-only"},
+			`subscription { ... on Subscription { sendEmailExaHM(run: false) { text } } }`, codeOf(apierr.CodeSemesterReadOnly)},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -222,3 +223,7 @@ func TestGate(t *testing.T) {
 		})
 	}
 }
+
+// codeOf is how a code appears in a response body. The tests look for the code, not
+// the wording, so messages can be reworded without touching them.
+func codeOf(code string) string { return `"code":"` + code + `"` }

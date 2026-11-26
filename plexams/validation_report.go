@@ -8,6 +8,15 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 )
 
+// Codes of findings the GUI offers an action for (ValidationFinding.code).
+const (
+	// FindingNTARoomNotAlone: an NTA entitled to a room of their own shares it. The
+	// GUI offers to record a waiver.
+	FindingNTARoomNotAlone = "NTA_ROOM_NOT_ALONE"
+	// FindingNTARoomWaived: the same situation with a recorded waiver.
+	FindingNTARoomWaived = "NTA_ROOM_WAIVED"
+)
+
 // ptr returns a pointer to v, for the optional reference fields of a finding.
 func ptr[T any](v T) *T { return &v }
 
@@ -32,6 +41,10 @@ type ref struct {
 	Starttime      *time.Time
 	InvigilatorID  *int
 	StudentMtknr   *string
+	// Code is the stable kind of the finding, set where the GUI offers an action
+	// for it. Hint tells the planner what to do about it.
+	Code string
+	Hint string
 }
 
 // newValidation starts a validator: name is the stable machine name (used in the
@@ -47,7 +60,16 @@ func (v *validation) step(format string, a ...any) {
 }
 
 func (v *validation) add(level model.ValidationLevel, r ref, format string, a ...any) {
+	var code, hint *string
+	if r.Code != "" {
+		code = &r.Code
+	}
+	if r.Hint != "" {
+		hint = &r.Hint
+	}
 	v.findings = append(v.findings, &model.ValidationFinding{
+		Code:           code,
+		Hint:           hint,
 		Level:          level,
 		Message:        fmt.Sprintf(format, a...),
 		Ancode:         r.Ancode,

@@ -52,7 +52,7 @@ func requireWriter(state gateState, allowedOrigins []string, semesterData bool) 
 				return
 			}
 			if semesterData && state.IsReadOnly() {
-				http.Error(w, "semester is read-only", http.StatusConflict)
+				http.Error(w, "semester is read-only", http.StatusLocked)
 				return
 			}
 			next.ServeHTTP(w, r)

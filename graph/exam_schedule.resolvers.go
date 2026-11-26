@@ -73,7 +73,7 @@ func (r *subscriptionResolver) GenerateExamSchedule(ctx context.Context, dryRun 
 		result, err := r.plexams.GenerateExamSchedule(context.Background(), dryRun, seedVal, iterVal, ignore, keep, reporter)
 		if err != nil {
 			log.Error().Err(err).Msg("generate exam schedule failed")
-			reporter.emit(model.LogLevelError, "error: "+err.Error())
+			reporter.emitError(err)
 		}
 		if result != nil {
 			reporter.send(&model.LogLine{Level: model.LogLevelResult, Text: "report", ExamReport: examScheduleReport(result)})
@@ -106,7 +106,7 @@ func (r *subscriptionResolver) GenerateExamRoomsPhase(ctx context.Context, dryRu
 		result, err := r.plexams.GenerateExamRoomsPhase(context.Background(), dryRun, seedVal, iterVal, reporter)
 		if err != nil {
 			log.Error().Err(err).Msg("generate exam rooms phase failed")
-			reporter.emit(model.LogLevelError, "error: "+err.Error())
+			reporter.emitError(err)
 		}
 		if result != nil {
 			reporter.send(&model.LogLine{Level: model.LogLevelResult, Text: "report", ExamReport: examScheduleReport(result)})

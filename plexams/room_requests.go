@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -59,7 +60,7 @@ func (p *Plexams) ApplyRoomRequestsPreview(ctx context.Context, force bool) (int
 				approved++
 			}
 		}
-		return 0, fmt.Errorf("%d room requests already exist (%d approved); "+
+		return 0, apierr.Newf(apierr.CodeAlreadyExists, "%d room requests already exist (%d approved); "+
 			"use force to discard them and regenerate", len(existing), approved)
 	}
 
@@ -94,7 +95,7 @@ func (p *Plexams) AddRoomRequest(ctx context.Context, room string, starttime tim
 		return nil, err
 	}
 	if existing != nil {
-		return nil, fmt.Errorf("room request for %s at %s already exists", room, starttime.Format("02.01. 15:04"))
+		return nil, apierr.Newf(apierr.CodeAlreadyExists, "room request for %s at %s already exists", room, starttime.Format("02.01. 15:04"))
 	}
 	request := &model.RoomRequest{
 		Room:      room,

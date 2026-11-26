@@ -1147,7 +1147,7 @@ func (p *Plexams) HTTPUploadDatasetCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if p.IsReadOnly() {
-		http.Error(w, "semester is read-only", http.StatusConflict)
+		http.Error(w, "semester is read-only", http.StatusLocked)
 		return
 	}
 	if err := r.ParseMultipartForm(64 << 20); err != nil {

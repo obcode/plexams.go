@@ -47,7 +47,7 @@ func TestRESTRoutesAreGated(t *testing.T) {
 		{"planer upload, dev GUI origin", req{"POST", "/upload/dataset-csv", "planer@example.test", "http://localhost:5173", false}, http.StatusOK},
 		{"planer upload, same host", req{"POST", "/upload/dataset-csv", "planer@example.test", "http://example.com", false}, http.StatusOK},
 		{"planer upload, foreign origin", req{"POST", "/upload/email-attachment", "planer@example.test", "https://evil.example", false}, http.StatusForbidden},
-		{"planer upload, protected semester", req{"POST", "/upload/primuss-zip", "planer@example.test", "", true}, http.StatusConflict},
+		{"planer upload, protected semester", req{"POST", "/upload/primuss-zip", "planer@example.test", "", true}, http.StatusLocked},
 		{"planer jira upload, protected semester", req{"POST", "/upload/jira-attachment", "planer@example.test", "", true}, http.StatusOK},
 		{"viewer download", req{"GET", "/download/pdf/draft-fs", "viewer@example.test", "", false}, http.StatusOK},
 		{"viewer my inputs", req{"GET", "/download/my-inputs-csv.zip", "viewer@example.test", "", false}, http.StatusOK},

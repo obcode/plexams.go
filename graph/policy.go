@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -82,7 +83,7 @@ func rootFieldPolicyMiddleware(policy map[string]model.Role) graphql.FieldMiddle
 		}
 		user := UserFromContext(ctx)
 		if user == nil {
-			return nil, fmt.Errorf("forbidden: no authenticated user")
+			return nil, apierr.New(apierr.CodeForbidden, "forbidden: no authenticated user")
 		}
 		name := fc.Field.Name
 		if strings.HasPrefix(name, "__") {
@@ -91,10 +92,10 @@ func rootFieldPolicyMiddleware(policy map[string]model.Role) graphql.FieldMiddle
 		}
 		need, ok := policy[fc.Object+"."+name]
 		if !ok {
-			return nil, fmt.Errorf("forbidden: %s.%s has no access rule", fc.Object, name)
+			return nil, apierr.Newf(apierr.CodeForbidden, "forbidden: %s.%s has no access rule", fc.Object, name)
 		}
 		if roleRank[user.Role] < roleRank[need] {
-			return nil, fmt.Errorf("forbidden: %s requires role %s", name, need)
+			return nil, apierr.Newf(apierr.CodeForbidden, "forbidden: %s requires role %s", name, need)
 		}
 		return next(ctx)
 	}

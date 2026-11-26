@@ -1046,8 +1046,11 @@ type LiveStatus struct {
 // is only set when level is PROGRESS; report is only set on the final RESULT line
 // of an invigilation generation and carries the structured outcome.
 type LogLine struct {
-	Level      LogLevel            `json:"level"`
-	Text       string              `json:"text"`
+	Level LogLevel `json:"level"`
+	Text  string   `json:"text"`
+	// Set on an ERROR line whose cause is known: a stable code (BUSY, PUBLISHED_LOCKED,
+	// ALREADY_SENT, ...) a client can react to without parsing text.
+	Code       *string             `json:"code,omitempty"`
 	Progress   *OptimizerProgress  `json:"progress,omitempty"`
 	Report     *InvigilationReport `json:"report,omitempty"`
 	Validation *ValidationReport   `json:"validation,omitempty"`
@@ -1897,6 +1900,10 @@ type ValidationFinding struct {
 	Starttime     *time.Time `json:"starttime,omitempty"`
 	InvigilatorID *int       `json:"invigilatorID,omitempty"`
 	StudentMtknr  *string    `json:"studentMtknr,omitempty"`
+	// Stable kind of the finding, where a client offers an action for it.
+	Code *string `json:"code,omitempty"`
+	// What to do about the finding, as a sentence for the planner.
+	Hint *string `json:"hint,omitempty"`
 }
 
 // ValidationReport is the structured outcome of one validator. It is delivered on

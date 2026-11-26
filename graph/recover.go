@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/http"
 	"runtime/debug"
 
@@ -59,7 +60,10 @@ func recoverFunc(ctx context.Context, err any) error {
 
 	event.Msg("panic in GraphQL resolver")
 
-	return gqlerror.Errorf("internal system error")
+	return &gqlerror.Error{
+		Message:    "internal system error",
+		Extensions: map[string]any{"code": apierr.CodeInternal},
+	}
 }
 
 // recoverMiddleware does for the REST routes what recoverFunc does for the

@@ -795,6 +795,7 @@ type ComplexityRoot struct {
 	}
 
 	LogLine struct {
+		Code       func(childComplexity int) int
 		ExamReport func(childComplexity int) int
 		Level      func(childComplexity int) int
 		Progress   func(childComplexity int) int
@@ -1924,6 +1925,8 @@ type ComplexityRoot struct {
 
 	ValidationFinding struct {
 		Ancode         func(childComplexity int) int
+		Code           func(childComplexity int) int
+		Hint           func(childComplexity int) int
 		InvigilatorID  func(childComplexity int) int
 		Level          func(childComplexity int) int
 		Message        func(childComplexity int) int
@@ -5491,6 +5494,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.LiveStatus.WritesAllowed(childComplexity), true
 
+	case "LogLine.code":
+		if e.ComplexityRoot.LogLine.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LogLine.Code(childComplexity), true
 	case "LogLine.examReport":
 		if e.ComplexityRoot.LogLine.ExamReport == nil {
 			break
@@ -11552,6 +11561,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ValidationFinding.Ancode(childComplexity), true
+	case "ValidationFinding.code":
+		if e.ComplexityRoot.ValidationFinding.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ValidationFinding.Code(childComplexity), true
+	case "ValidationFinding.hint":
+		if e.ComplexityRoot.ValidationFinding.Hint == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ValidationFinding.Hint(childComplexity), true
 	case "ValidationFinding.invigilatorID":
 		if e.ComplexityRoot.ValidationFinding.InvigilatorID == nil {
 			break
@@ -15342,6 +15363,11 @@ of an invigilation generation and carries the structured outcome.
 type LogLine {
   level: LogLevel!
   text: String!
+  """
+  Set on an ERROR line whose cause is known: a stable code (BUSY, PUBLISHED_LOCKED,
+  ALREADY_SENT, ...) a client can react to without parsing text.
+  """
+  code: String
   progress: OptimizerProgress
   report: InvigilationReport
   validation: ValidationReport
@@ -15746,6 +15772,10 @@ type ValidationFinding {
   starttime: Time
   invigilatorID: Int
   studentMtknr: String
+  "Stable kind of the finding, where a client offers an action for it."
+  code: String
+  "What to do about the finding, as a sentence for the planner."
+  hint: String
 }
 
 """
@@ -17461,6 +17491,8 @@ func (ec *executionContext) childFields_LogLine(ctx context.Context, field graph
 		return ec.fieldContext_LogLine_level(ctx, field)
 	case "text":
 		return ec.fieldContext_LogLine_text(ctx, field)
+	case "code":
+		return ec.fieldContext_LogLine_code(ctx, field)
 	case "progress":
 		return ec.fieldContext_LogLine_progress(ctx, field)
 	case "report":
@@ -19047,6 +19079,10 @@ func (ec *executionContext) childFields_ValidationFinding(ctx context.Context, f
 		return ec.fieldContext_ValidationFinding_invigilatorID(ctx, field)
 	case "studentMtknr":
 		return ec.fieldContext_ValidationFinding_studentMtknr(ctx, field)
+	case "code":
+		return ec.fieldContext_ValidationFinding_code(ctx, field)
+	case "hint":
+		return ec.fieldContext_ValidationFinding_hint(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type ValidationFinding", field.Name)
 }
@@ -35568,6 +35604,29 @@ func (ec *executionContext) _LogLine_text(ctx context.Context, field graphql.Col
 	)
 }
 func (ec *executionContext) fieldContext_LogLine_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("LogLine", field, false, false, "String")
+}
+
+func (ec *executionContext) _LogLine_code(ctx context.Context, field graphql.CollectedField, obj *model.LogLine) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_LogLine_code(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_LogLine_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("LogLine", field, false, false, "String")
 }
 
@@ -60700,6 +60759,52 @@ func (ec *executionContext) fieldContext_ValidationFinding_studentMtknr(_ contex
 	return graphql.NewScalarFieldContext("ValidationFinding", field, false, false, "String")
 }
 
+func (ec *executionContext) _ValidationFinding_code(ctx context.Context, field graphql.CollectedField, obj *model.ValidationFinding) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ValidationFinding_code(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ValidationFinding_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ValidationFinding", field, false, false, "String")
+}
+
+func (ec *executionContext) _ValidationFinding_hint(ctx context.Context, field graphql.CollectedField, obj *model.ValidationFinding) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ValidationFinding_hint(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Hint, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ValidationFinding_hint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ValidationFinding", field, false, false, "String")
+}
+
 func (ec *executionContext) _ValidationReport_name(ctx context.Context, field graphql.CollectedField, obj *model.ValidationReport) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -69922,6 +70027,11 @@ func (ec *executionContext) _LogLine(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "code":
+			out.Values[i] = ec._LogLine_code(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		case "progress":
 			out.Values[i] = ec._LogLine_progress(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
@@ -77083,6 +77193,16 @@ func (ec *executionContext) _ValidationFinding(ctx context.Context, sel ast.Sele
 			}
 		case "studentMtknr":
 			out.Values[i] = ec._ValidationFinding_studentMtknr(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "code":
+			out.Values[i] = ec._ValidationFinding_code(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "hint":
+			out.Values[i] = ec._ValidationFinding_hint(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}

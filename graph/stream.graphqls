@@ -33,6 +33,11 @@ of an invigilation generation and carries the structured outcome.
 type LogLine {
   level: LogLevel!
   text: String!
+  """
+  Set on an ERROR line whose cause is known: a stable code (BUSY, PUBLISHED_LOCKED,
+  ALREADY_SENT, ...) a client can react to without parsing text.
+  """
+  code: String
   progress: OptimizerProgress
   report: InvigilationReport
   validation: ValidationReport

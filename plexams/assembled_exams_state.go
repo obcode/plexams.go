@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 	"time"
 
@@ -49,7 +50,7 @@ func (p *Plexams) AssembledExamsState(ctx context.Context) (*model.AssembledExam
 // running.
 func (p *Plexams) ResetAssembledExams(ctx context.Context) (int, error) {
 	if !p.WritesAllowed() {
-		return 0, fmt.Errorf("a validation or transfer/email is running, cannot reset now")
+		return 0, apierr.New(apierr.CodeBusy, "a validation or transfer/email is running, cannot reset now")
 	}
 	n, err := p.dbClient.DropAssembledExams(ctx)
 	if err != nil {

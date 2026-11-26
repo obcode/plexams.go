@@ -92,7 +92,7 @@ func (r *subscriptionResolver) TriggerScheduledSync(ctx context.Context) (<-chan
 		defer close(ch)
 		if _, err := r.plexams.RunScheduledSync(opCtx, cfg, reporter); err != nil {
 			log.Error().Err(err).Msg("triggered auto-sync failed")
-			reporter.emit(model.LogLevelError, "error: "+err.Error())
+			reporter.emitError(err)
 		}
 		reporter.emit(model.LogLevelDone, "done")
 	}()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
@@ -71,7 +72,7 @@ func (p *Plexams) SetSemesterReadOnly(ctx context.Context, readOnly bool) (*mode
 // config yet) — the config is then nil until created/imported.
 func (p *Plexams) SwitchSemester(ctx context.Context, name string) (*model.Semester, error) {
 	if !p.WritesAllowed() {
-		return nil, fmt.Errorf("cannot switch semester while an operation (validation/import/email/upload) is running")
+		return nil, apierr.New(apierr.CodeBusy, "cannot switch semester while an operation (validation/import/email/upload) is running")
 	}
 	if !db.IsSemester(name) {
 		return nil, fmt.Errorf("invalid semester %q (expected YYYY-SS or YYYY-WS)", name)

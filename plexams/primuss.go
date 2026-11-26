@@ -2,7 +2,7 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/primuss"
@@ -26,7 +26,7 @@ func (p *Plexams) ImportPrimussDir(ctx context.Context, dir string) (*primuss.Im
 // running.
 func (p *Plexams) ResetPrimussData(ctx context.Context) ([]string, error) {
 	if !p.WritesAllowed() {
-		return nil, fmt.Errorf("a validation or transfer/email is running, cannot reset now")
+		return nil, apierr.New(apierr.CodeBusy, "a validation or transfer/email is running, cannot reset now")
 	}
 	programs, err := p.dbClient.DropPrimussData(ctx)
 	if err != nil {

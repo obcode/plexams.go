@@ -37,7 +37,7 @@ func (r *subscriptionResolver) AssignInvigilations(ctx context.Context, dryRun b
 		report, err := r.plexams.AssignInvigilations(context.Background(), dryRun, opts, reporter)
 		if err != nil {
 			log.Error().Err(err).Msg("generate invigilations failed")
-			reporter.emit(model.LogLevelError, "error: "+err.Error())
+			reporter.emitError(err)
 		}
 		if report != nil {
 			reporter.send(&model.LogLine{Level: model.LogLevelResult, Text: "report", Report: report})

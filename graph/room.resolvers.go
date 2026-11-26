@@ -185,7 +185,7 @@ func (r *subscriptionResolver) AssignRoomsForExams(ctx context.Context, dryRun b
 	if !r.plexams.TryBeginExclusiveOp() {
 		go func() {
 			defer close(ch)
-			reporter.emit(model.LogLevelError, "error: a validation or another transfer/email is running, cannot start now")
+			reporter.emitError(errBusy)
 			reporter.emit(model.LogLevelDone, "done")
 		}()
 		return ch, nil
@@ -208,7 +208,7 @@ func (r *subscriptionResolver) AssignRoomsForExams(ctx context.Context, dryRun b
 		result, err := r.plexams.GenerateRoomPlan(opCtx, dryRun, seedVal, iterVal, keep, reporter)
 		if err != nil {
 			log.Error().Err(err).Msg("generate room plan failed")
-			reporter.emit(model.LogLevelError, "error: "+err.Error())
+			reporter.emitError(err)
 		}
 		if result != nil {
 			reporter.send(&model.LogLine{Level: model.LogLevelResult, Text: "report", RoomReport: roomPlanReport(result)})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/http"
 	"os"
 	"os/signal"
@@ -114,18 +115,18 @@ func operationGate(state gateState) graphql.OperationMiddleware {
 			// closed instead of skipping the role check.
 			user := UserFromContext(ctx)
 			if user == nil {
-				return graphql.OneShot(graphql.ErrorResponse(ctx, "forbidden: no authenticated user"))
+				return codedResponse(apierr.CodeForbidden, "forbidden: no authenticated user")
 			}
 			if !roleCanWrite(user.Role) && isWriteOperation(oc) {
-				return graphql.OneShot(graphql.ErrorResponse(ctx, "forbidden: your role is read-only"))
+				return codedResponse(apierr.CodeReadOnlyRole, "forbidden: your role is read-only")
 			}
 			if op == ast.Mutation && !state.WritesAllowed() && !isTodoOnlyOperation(oc) {
-				return graphql.OneShot(graphql.ErrorResponse(ctx, "writes are blocked while a validation is running"))
+				return codedResponse(apierr.CodeBusy, "writes are blocked while a validation is running")
 			}
 			// read-only database: reject data-changing operations, but allow queries,
 			// validations, switching the semester, toggling read-only and todos.
 			if state.IsReadOnly() && isDataChangingOperation(oc) && !isTodoOnlyOperation(oc) {
-				return graphql.OneShot(graphql.ErrorResponse(ctx, "semester is read-only"))
+				return codedResponse(apierr.CodeSemesterReadOnly, "semester is read-only")
 			}
 		}
 		return next(ctx)
@@ -150,6 +151,7 @@ func newGraphQLServer(es graphql.ExecutableSchema, state gateState, origins []st
 		Implementation:        originCheckedWebsocket{allowed: originSet, origins: origins},
 	})
 	srv.SetRecoverFunc(recoverFunc)
+	srv.SetErrorPresenter(presentError)
 
 	// In production the GraphQL introspection is turned off (server.production=true);
 	// locally it stays on for the playground and tooling.

@@ -34,7 +34,16 @@ func mayRefreshFromZPA(ctx context.Context) bool {
 func (p *Plexams) GetTeachers(ctx context.Context, fromZpa *bool) ([]*model.Teacher, error) {
 	if fromZpa != nil && *fromZpa && mayRefreshFromZPA(ctx) {
 		if err := p.SetZPA(); err != nil {
-			return nil, err
+			// A page that only wants current names must not fail because the ZPA is
+			// down or refuses this host: fall back to the teachers loaded last. Only
+			// when there are none is the ZPA error the answer.
+			cached, dbErr := p.dbClient.GetTeachers(ctx)
+			if dbErr != nil || len(cached) == 0 {
+				return nil, err
+			}
+			log.Warn().Err(err).Int("cached", len(cached)).
+				Msg("ZPA not available, serving the teachers loaded last")
+			return cached, nil
 		}
 
 		teachers := p.zpa.client.GetTeachers()

@@ -433,10 +433,9 @@ func (p *Plexams) validateNtasApplied(ctx context.Context, v *validation, ntas [
 		if program == "" {
 			program = "(leer)"
 		}
-		v.warnf(ref{StudentMtknr: ptr(f.Nta.Mtknr)},
-			"NTA für Matrikelnummer %s (%s) wird NICHT angewandt: im NTA steht Studiengang %s, "+
-				"in der Anmeldung %s. Der Nachteilsausgleich greift dadurch nicht — "+
-				"Studiengang im NTA korrigieren.",
+		v.warnf(ref{StudentMtknr: ptr(f.Nta.Mtknr)}.hint("Unter NTA-Stammdaten den Studiengang korrigieren und danach die aufbereiteten Prüfungen neu generieren."),
+			"Der Nachteilsausgleich für Matrikelnummer %s (%s) wird nicht angewandt: im Nachteilsausgleich steht Studiengang %s, "+
+				"in der Anmeldung %s. Die Person bekommt dadurch weder Zeitverlängerung noch eigenen Raum.",
 			f.Nta.Mtknr, f.Nta.Name, program, f.StudentProgram)
 	}
 	return nil

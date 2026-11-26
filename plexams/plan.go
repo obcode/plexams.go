@@ -56,7 +56,7 @@ func (p *Plexams) SetExamLocked(ctx context.Context, ancode int, locked bool) (*
 		return nil, err
 	}
 	if entry == nil || entry.Starttime == nil {
-		return nil, apierr.Newf(apierr.CodeNotFound, "Ancode %d hat noch keinen Termin. Erst im Prüfungsplan einen Termin setzen, dann festhalten.", ancode)
+		return nil, apierr.Newf(apierr.CodeNotFound, "Ancode %d hat noch keinen Termin. Erst im Prüfungsplan einen Termin setzen, dann fixieren.", ancode)
 	}
 	if locked {
 		return p.dbClient.LockExam(ctx, ancode)

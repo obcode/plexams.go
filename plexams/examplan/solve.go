@@ -246,7 +246,7 @@ type fixedC struct{}
 
 func (fixedC) Info() optimize.Info {
 	return optimize.Info{Name: "fixed", Title: "Feste Termine unverändert", Kind: optimize.KindHard, Tier: 1,
-		Description: "Prüfungen mit festem Termin aus der Vorplanung, fixierte EXaHM/SEB-Prüfungen und die Prüfungen anderer FKs behalten ihren Termin."}
+		Description: "Prüfungen mit im Prüfungsplan fixiertem Termin, fixierte EXaHM/SEB-Prüfungen und die Prüfungen anderer FKs behalten ihren Termin."}
 }
 func (fixedC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation

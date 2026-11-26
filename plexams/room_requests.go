@@ -2,12 +2,17 @@ package plexams
 
 import (
 	"context"
-	"fmt"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 )
+
+// errNoRoomRequest is the NOT_FOUND error for a room request that does not exist (any
+// more), mostly because the requests were regenerated in another tab.
+func errNoRoomRequest(room string, starttime time.Time) error {
+	return apierr.Newf(apierr.CodeNotFound, "Für Raum %s am %s gibt es keine Raum-Anfrage (mehr); vermutlich wurden die Anfragen inzwischen neu erzeugt. Bitte die Seite neu laden.", room, slotLabelDE(starttime))
+}
 
 // RoomRequests returns all building-management room requests of the semester.
 func (p *Plexams) RoomRequests(ctx context.Context) ([]*model.RoomRequest, error) {
@@ -22,7 +27,7 @@ func (p *Plexams) SetRoomRequestApproved(ctx context.Context, room string, start
 		return nil, err
 	}
 	if request == nil {
-		return nil, fmt.Errorf("no room request for %s at %s", room, starttime.Format("02.01. 15:04"))
+		return nil, errNoRoomRequest(room, starttime)
 	}
 	return request, nil
 }
@@ -35,7 +40,7 @@ func (p *Plexams) SetRoomRequestActive(ctx context.Context, room string, startti
 		return nil, err
 	}
 	if request == nil {
-		return nil, fmt.Errorf("no room request for %s at %s", room, starttime.Format("02.01. 15:04"))
+		return nil, errNoRoomRequest(room, starttime)
 	}
 	return request, nil
 }
@@ -95,7 +100,7 @@ func (p *Plexams) AddRoomRequest(ctx context.Context, room string, starttime tim
 		return nil, err
 	}
 	if existing != nil {
-		return nil, apierr.Newf(apierr.CodeAlreadyExists, "Für Raum %s am %s gibt es bereits eine Raum-Anfrage.", room, starttime.Format("02.01. 15:04"))
+		return nil, apierr.Newf(apierr.CodeAlreadyExists, "Für Raum %s am %s gibt es bereits eine Raum-Anfrage. Ändere die bestehende unter „Bestehende Anfragen“.", room, slotLabelDE(starttime))
 	}
 	request := &model.RoomRequest{
 		Room:      room,
@@ -119,7 +124,7 @@ func (p *Plexams) UpdateRoomRequestTime(ctx context.Context, room string, startt
 		return nil, err
 	}
 	if request == nil {
-		return nil, fmt.Errorf("no room request for %s at %s", room, starttime.Format("02.01. 15:04"))
+		return nil, errNoRoomRequest(room, starttime)
 	}
 	return request, nil
 }

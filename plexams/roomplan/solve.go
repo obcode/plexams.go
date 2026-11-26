@@ -3,6 +3,7 @@ package roomplan
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/obcode/plexams.go/plexams/optimize"
 )
@@ -128,7 +129,7 @@ func (allowedRoomC) Check(st *State) []optimize.Violation {
 	for i := range st.roomOf {
 		if r := st.roomOf[i]; r >= 0 && !st.P.allows(i, r) {
 			e := st.P.Seats[i].Exam
-			vs = append(vs, optimize.Violation{Constraint: "allowed-room", Message: "Sitz in unzulässigem Raum (" + st.P.Rooms[r].Name + ")", Refs: []int{st.P.Exams[e].Ancode}})
+			vs = append(vs, optimize.Violation{Constraint: "allowed-room", Message: "Ein Platz liegt in Raum " + st.P.Rooms[r].Name + ", der für diese Prüfung oder zu dieser Zeit nicht erlaubt ist", Refs: []int{st.P.Exams[e].Ancode}})
 		}
 	}
 	return vs
@@ -146,7 +147,7 @@ func (capacityC) Check(st *State) []optimize.Violation {
 		for s := range st.P.Slots {
 			if st.cellUsed[r][s] > st.P.Rooms[r].Seats {
 				vs = append(vs, optimize.Violation{Constraint: "capacity",
-					Message: fmt.Sprintf("Raum %s zum Slot %s überbelegt", st.P.Rooms[r].Name, st.P.Slots[s].Start.Format("02.01. 15:04"))})
+					Message: fmt.Sprintf("Raum %s ist am %s überbelegt: mehr Studierende als Plätze", st.P.Rooms[r].Name, labelDE(st.P.Slots[s].Start))})
 			}
 		}
 	}
@@ -166,7 +167,7 @@ func (ntaAloneC) Check(st *State) []optimize.Violation {
 			if a := st.cellAlone[r][s]; a > 0 {
 				if a > 1 || st.cellUsed[r][s] != a {
 					vs = append(vs, optimize.Violation{Constraint: "nta-alone",
-						Message: fmt.Sprintf("NTA-Alleinraum %s zum Slot %s nicht exklusiv", st.P.Rooms[r].Name, st.P.Slots[s].Start.Format("02.01. 15:04"))})
+						Message: fmt.Sprintf("Raum %s am %s ist für eine Person mit NTA-Anspruch auf einen eigenen Raum vorgesehen, aber dort sitzen noch andere", st.P.Rooms[r].Name, labelDE(st.P.Slots[s].Start))})
 				}
 			}
 		}
@@ -184,7 +185,7 @@ func (prePlannedC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
 	for i := range st.P.Seats {
 		if s := &st.P.Seats[i]; s.Fixed && st.roomOf[i] != s.FixedRoom {
-			vs = append(vs, optimize.Violation{Constraint: "pre-planned", Message: "vorbelegter Sitz verschoben", Refs: []int{st.P.Exams[s.Exam].Ancode}})
+			vs = append(vs, optimize.Violation{Constraint: "pre-planned", Message: "Ein vorgeplanter Raum (📌) wurde nicht eingehalten", Refs: []int{st.P.Exams[s.Exam].Ancode}})
 		}
 	}
 	return vs
@@ -219,8 +220,8 @@ func (overrunC) Check(st *State) []optimize.Violation {
 			gap := int(p.Slots[cur].Start.Sub(p.Slots[prev].Start).Minutes())
 			if gap < dur+lag+prevPost+curPre {
 				vs = append(vs, optimize.Violation{Constraint: "room-overrun",
-					Message: fmt.Sprintf("zu wenig Umbauzeit in Raum %s zwischen %s und %s",
-						p.Rooms[r].Name, p.Slots[prev].Start.Format("02.01. 15:04"), p.Slots[cur].Start.Format("15:04"))})
+					Message: fmt.Sprintf("Zu wenig Zeit zum Umbauen in Raum %s zwischen den Prüfungen am %s und um %s",
+						p.Rooms[r].Name, labelDE(p.Slots[prev].Start), p.Slots[cur].Start.Format("15:04"))})
 			}
 		}
 	}
@@ -249,7 +250,7 @@ func (summerCooldownC) Check(st *State) []optimize.Violation {
 			}
 			if next := p.nextInDay[s]; next >= 0 && st.cellUsed[r][next] > 0 {
 				vs = append(vs, optimize.Violation{Constraint: "summer-cooldown",
-					Message: fmt.Sprintf("Raum %s in zwei aufeinanderfolgenden Slots (%s)", p.Rooms[r].Name, p.Slots[s].Start.Format("02.01. 15:04"))})
+					Message: fmt.Sprintf("Raum %s ist am %s und gleich zur nächsten Startzeit belegt; im Sommer soll er dazwischen abkühlen (Hitzeschutz)", p.Rooms[r].Name, labelDE(p.Slots[s].Start))})
 			}
 		}
 	}
@@ -273,9 +274,9 @@ func (exahmWindowC) Check(st *State) []optimize.Violation {
 		e := p.Seats[i].Exam
 		room := &p.Rooms[r]
 		if p.Exams[e].Exahm && !room.Exahm {
-			vs = append(vs, optimize.Violation{Constraint: "exahm-window", Message: "EXaHM-Prüfung nicht in EXaHM-Raum", Refs: []int{p.Exams[e].Ancode}})
+			vs = append(vs, optimize.Violation{Constraint: "exahm-window", Message: "Eine EXaHM-Prüfung sitzt in einem Raum ohne EXaHM-Ausstattung", Refs: []int{p.Exams[e].Ancode}})
 		} else if p.Exams[e].Seb && !room.Exahm && !room.Seb {
-			vs = append(vs, optimize.Violation{Constraint: "exahm-window", Message: "SEB-Prüfung nicht in SEB/EXaHM-Raum", Refs: []int{p.Exams[e].Ancode}})
+			vs = append(vs, optimize.Violation{Constraint: "exahm-window", Message: "Eine SEB-Prüfung sitzt in einem Raum, der weder für SEB noch für EXaHM ausgestattet ist", Refs: []int{p.Exams[e].Ancode}})
 		}
 	}
 	return vs
@@ -402,4 +403,12 @@ func less2(a, b [2]int) bool {
 		}
 	}
 	return false
+}
+
+// weekdaysDE maps time.Weekday (Sunday=0) to the German two-letter abbreviation.
+var weekdaysDE = [...]string{"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"}
+
+// labelDE renders a start time for planner-facing messages, e.g. "Mo 25.01. 10:30".
+func labelDE(t time.Time) string {
+	return weekdaysDE[int(t.Weekday())] + " " + t.Format("02.01. 15:04")
 }

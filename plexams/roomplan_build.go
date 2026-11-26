@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/plexams/optimize"
 	"github.com/obcode/plexams.go/plexams/roomcalc"
 	"github.com/obcode/plexams.go/plexams/roomplan"
@@ -37,7 +38,7 @@ type RoomPlanResult struct {
 func (p *Plexams) buildRoomPlanProblem(ctx context.Context) (*roomplan.Problem, error) {
 	sc := p.semesterConfig
 	if sc == nil {
-		return nil, fmt.Errorf("no semester config loaded")
+		return nil, apierr.New(apierr.CodeInvalidInput, "Für dieses Semester ist keine Semester-Konfiguration gespeichert. Erst dort Prüfungszeitraum und Startzeiten festlegen.")
 	}
 
 	// --- rooms (all of them, so pre-planned/deactivated rooms can still be referenced) ---
@@ -310,14 +311,14 @@ func (p *Plexams) GenerateRoomPlan(ctx context.Context, dryRun bool, seed int64,
 	if err := p.generationAllowed(ctx, model.PlanningGateRooms); err != nil {
 		return nil, err
 	}
-	reporter.Step("Raumplan-Problem wird aufgebaut …")
+	reporter.Step("Prüfungen, Studierende und Räume werden zusammengestellt …")
 	prob, err := p.buildRoomPlanProblem(ctx)
 	if err != nil {
-		reporter.StopProgressFail("Aufbau fehlgeschlagen: " + err.Error())
-		return nil, err
+		reporter.StopProgressFail("Die Daten für die Raumplanung konnten nicht zusammengestellt werden.")
+		return nil, wrapGerman(err, "Die Daten für die Raumplanung konnten nicht zusammengestellt werden")
 	}
 	totalSeats := len(prob.Seats)
-	reporter.Println(fmt.Sprintf("%d Prüfungen, %d Sitzplätze, %d Räume, %d Slots%s",
+	reporter.Println(fmt.Sprintf("%d Prüfungen, %d Plätze zu vergeben, %d Räume, %d Startzeiten%s",
 		len(prob.Exams), totalSeats, len(prob.Rooms), len(prob.Slots), summerNote(prob.Summer)))
 
 	opts := optimize.DefaultOptions()
@@ -328,16 +329,16 @@ func (p *Plexams) GenerateRoomPlan(ctx context.Context, dryRun bool, seed int64,
 	}
 	opts.ProgressEvery = maxInt(1, opts.Iterations/200)
 	opts.OnProgress = func(pr optimize.Progress) {
-		reporter.Step(fmt.Sprintf("%d/%d, Kosten %.0f, %s", pr.Iteration, pr.Total, pr.BestCost, pr.Detail))
+		reporter.Step(fmt.Sprintf("Durchlauf %d von %d, Kosten %.0f, %s", pr.Iteration, pr.Total, pr.BestCost, pr.Detail))
 	}
 	st, res := roomplan.Solve(prob, opts, keepAssigned)
 
 	reg := prob.Registry()
 	total, byC, _ := reg.Cost(st)
 	hardVs := reg.HardViolations(st)
-	hard := make([]string, 0, len(hardVs))
-	for _, v := range hardVs {
-		hard = append(hard, fmt.Sprintf("%s: %s %v", v.Constraint, v.Message, v.Refs))
+	hard := []string{}
+	if len(hardVs) > 0 {
+		hard = roomHardViolationTexts(hardVs, p.newExamNamer(ctx, nil))
 	}
 
 	assignments := st.Assignments()
@@ -348,34 +349,34 @@ func (p *Plexams) GenerateRoomPlan(ctx context.Context, dryRun bool, seed int64,
 		Iterations: res.Iterations, StoppedEarly: res.StoppedEarly, Seed: int(seed), UnplacedExams: unplacedExams,
 	}
 
-	reporter.Println(fmt.Sprintf("Sitzplätze vergeben %d, ohne Raum %d, Räume genutzt %d, harte Verletzungen %d",
+	reporter.Println(fmt.Sprintf("%d Plätze vergeben, %d Plätze ohne Raum, %d Räume genutzt, %d verletzte harte Regeln",
 		result.PlacedSeats, result.UnplacedSeats, result.Rooms, len(hard)))
 	for _, h := range hard {
-		reporter.Println("  harte Verletzung: " + h)
+		reporter.Println("  verletzte Regel: " + h)
 		log.Warn().Str("violation", h).Msg("room plan hard violation")
 	}
 
 	if dryRun {
-		reporter.StopProgress("Probelauf – nichts geschrieben")
+		reporter.StopProgress("Probelauf: nichts gespeichert")
 		return result, nil
 	}
 	if len(hard) > 0 {
-		reporter.StopProgressFail(fmt.Sprintf("%d harte Verletzungen – nichts geschrieben", len(hard)))
-		return result, fmt.Errorf("refusing to write: %d hard violations", len(hard))
+		reporter.StopProgressFail(fmt.Sprintf("%d harte Regeln verletzt: nichts gespeichert", len(hard)))
+		return result, fmt.Errorf("Der Raumplan verletzt %d harte Regeln und wurde deshalb nicht gespeichert. Die verletzten Regeln stehen oben; die genannten Prüfungen und Räume auf „Raumplanung“ prüfen, vor allem vorgeplante Räume (📌), dann noch einmal generieren", len(hard))
 	}
 
 	plannedRooms := p.assignmentsToPlannedRooms(assignments, roomInfoMap(prob), prePlannedSet(ctx, p))
 	if err := p.dbClient.ReplacePlannedRooms(ctx, plannedRooms); err != nil {
-		reporter.StopProgressFail("Schreiben fehlgeschlagen: " + err.Error())
-		return result, err
+		reporter.StopProgressFail("Der Raumplan konnte nicht gespeichert werden.")
+		return result, wrapGerman(err, "Der Raumplan konnte nicht gespeichert werden")
 	}
 	if err := p.dbClient.ReplaceUnplacedExams(ctx, unplacedExams); err != nil {
-		reporter.StopProgressFail("Schreiben fehlgeschlagen: " + err.Error())
-		return result, err
+		reporter.StopProgressFail("Die Liste der Studierenden ohne Raum konnte nicht gespeichert werden.")
+		return result, wrapGerman(err, "Die Liste der Studierenden ohne Raum konnte nicht gespeichert werden")
 	}
 	result.Written = true
 	p.markCondition(ctx, condRoomsAssigned)
-	reporter.StopProgress(fmt.Sprintf("geschrieben: %d Räume, %d ohne Raum", len(plannedRooms), result.UnplacedSeats))
+	reporter.StopProgress(fmt.Sprintf("gespeichert: %d Raumzuteilungen, %d Plätze ohne Raum", len(plannedRooms), result.UnplacedSeats))
 	return result, nil
 }
 
@@ -429,6 +430,32 @@ func groupUnplaced(seats []roomplan.UnplacedSeat) []*model.UnplacedExam {
 	out := make([]*model.UnplacedExam, 0, len(order))
 	for _, a := range order {
 		out = append(out, byAncode[a])
+	}
+	return out
+}
+
+// roomHardViolationTexts turns the solver's hard violations into planner-facing lines: the
+// message plus the affected exams by name. Violations reported per seat repeat the same
+// text, so identical lines are merged and counted.
+func roomHardViolationTexts(vs []optimize.Violation, names examNamer) []string {
+	count := make(map[string]int, len(vs))
+	var order []string
+	for _, v := range vs {
+		text := v.Message
+		if len(v.Refs) > 0 {
+			text += ": " + names.list(v.Refs)
+		}
+		if count[text] == 0 {
+			order = append(order, text)
+		}
+		count[text]++
+	}
+	out := make([]string, 0, len(order))
+	for _, text := range order {
+		if n := count[text]; n > 1 {
+			text = fmt.Sprintf("%s (%d-mal)", text, n)
+		}
+		out = append(out, text)
 	}
 	return out
 }

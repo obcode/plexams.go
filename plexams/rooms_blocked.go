@@ -2,12 +2,12 @@ package plexams
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 )
 
 // formatBlockedRoomTime renders a room block's absolute start time for user-facing
@@ -16,7 +16,7 @@ func formatBlockedRoomTime(t *time.Time) string {
 	if t == nil {
 		return "unbekannter Zeitpunkt"
 	}
-	return t.Format("02.01. 15:04")
+	return slotLabelDE(*t)
 }
 
 // BlockedRooms returns all room-slot blocks of the semester.
@@ -29,12 +29,8 @@ func (p *Plexams) BlockedRooms(ctx context.Context) ([]*model.BlockedRoom, error
 // The block always succeeds; a conflict with an already-planned room only
 // surfaces as a warning on the next generation.
 func (p *Plexams) BlockRoomForSlot(ctx context.Context, room string, starttime time.Time, reason *string) (*model.BlockedRoom, error) {
-	dbRoom, err := p.dbClient.RoomByName(ctx, room)
-	if err != nil {
+	if err := p.roomMustExist(ctx, room); err != nil {
 		return nil, err
-	}
-	if dbRoom == nil {
-		return nil, fmt.Errorf("room %s not found", room)
 	}
 	block := &model.BlockedRoom{
 		Starttime: &starttime,
@@ -54,7 +50,7 @@ func (p *Plexams) UnblockRoomForSlot(ctx context.Context, room string, starttime
 		return false, err
 	}
 	if !removed {
-		return false, fmt.Errorf("no block for room %s at %s", room, formatBlockedRoomTime(&starttime))
+		return false, apierr.Newf(apierr.CodeNotFound, "Raum %s ist am %s nicht gesperrt; vermutlich wurde die Sperre schon aufgehoben. Bitte die Seite neu laden.", room, formatBlockedRoomTime(&starttime))
 	}
 	return true, nil
 }
@@ -67,7 +63,7 @@ func (p *Plexams) RemovePrePlannedRoom(ctx context.Context, ancode int, roomName
 		return false, err
 	}
 	if !removed {
-		return false, fmt.Errorf("no pre-planned room %s for ancode %d", roomName, ancode)
+		return false, apierr.Newf(apierr.CodeNotFound, "Für %s ist Raum %s nicht vorgeplant; vermutlich wurde die Vorplanung schon entfernt. Bitte die Seite neu laden.", p.newExamNamer(ctx, nil).name(ancode), roomName)
 	}
 	return true, nil
 }
@@ -111,10 +107,10 @@ func (p *Plexams) applyRoomBlocks(ctx context.Context, slotsWithRoomNames map[ti
 		when := formatBlockedRoomTime(b.Starttime)
 		if planned, ok := plannedInSlot[key]; ok && planned.Contains(b.Room) {
 			reporter.Warnf("%s", aurora.Sprintf(
-				aurora.Red("room %s is blocked at %s but currently planned there; it will be dropped on the next rooms-for-exams run"),
+				aurora.Red("Raum %s ist am %s gesperrt, dort aber noch eingeplant; beim nächsten Generieren der Räume wird er dort nicht mehr verwendet"),
 				b.Room, when))
 		} else {
-			reporter.Println(aurora.Sprintf(aurora.Yellow("room %s blocked at %s"), b.Room, when))
+			reporter.Println(aurora.Sprintf(aurora.Yellow("Raum %s ist am %s gesperrt"), b.Room, when))
 		}
 	}
 	return nil

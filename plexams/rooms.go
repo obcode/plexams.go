@@ -2,19 +2,19 @@ package plexams
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/anny"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/rs/zerolog/log"
 )
 
 func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]anny.RoomBooking, error) {
 	dbBookings, err := p.dbClient.AllAnnyBookings(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get anny bookings from db: %w", err)
+		return nil, wrapGerman(err, "Die Anny-Buchungen konnten nicht gelesen werden")
 	}
 	if len(dbBookings) == 0 {
 		return nil, nil
@@ -23,7 +23,7 @@ func (p *Plexams) ExahmRoomsFromAnnyBookings(ctx context.Context) ([]anny.RoomBo
 	// Only consider rooms marked as Anny rooms in the rooms master data (RequestWith==ANNY)
 	allowedRooms, err := p.anny.RoomNames(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get anny rooms: %w", err)
+		return nil, wrapGerman(err, "Die Liste der Anny-Räume konnte nicht gelesen werden")
 	}
 	// only OUR bookings count as available capacity — other faculties' bookings in the
 	// same rooms are in the DB for information only.
@@ -128,7 +128,23 @@ func normalizeRoomRequestWith(room *model.Room) {
 // not used when computing the rooms available for planning. Errors if the room
 // does not exist.
 func (p *Plexams) SetRoomActive(ctx context.Context, name string, active bool) (*model.Room, error) {
+	if err := p.roomMustExist(ctx, name); err != nil {
+		return nil, err
+	}
 	return p.dbClient.SetRoomDeactivated(ctx, name, !active)
+}
+
+// roomMustExist returns a NOT_FOUND error naming the room when there is no room of
+// that name in the master data.
+func (p *Plexams) roomMustExist(ctx context.Context, name string) error {
+	exists, err := p.dbClient.HasRoom(ctx, name)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return apierr.Newf(apierr.CodeNotFound, "Den Raum %s gibt es nicht in den Raum-Stammdaten. Unter Semester → „Räume“ anlegen oder die Seite neu laden.", name)
+	}
+	return nil
 }
 
 func roomInputToRoom(input model.RoomInput) *model.Room {
@@ -157,7 +173,7 @@ func (p *Plexams) AddRoom(ctx context.Context, input model.RoomInput) (*model.Ro
 		return nil, err
 	}
 	if exists {
-		return nil, fmt.Errorf("room %s already exists", input.Name)
+		return nil, apierr.Newf(apierr.CodeAlreadyExists, "Den Raum %s gibt es schon. Ändere ihn in der Liste, statt ihn neu anzulegen.", input.Name)
 	}
 	room, err := p.dbClient.AddRoom(ctx, roomInputToRoom(input))
 	if err != nil {
@@ -172,6 +188,9 @@ func (p *Plexams) AddRoom(ctx context.Context, input model.RoomInput) (*model.Ro
 // UpdateRoom updates an existing room (key: name), keeping its active state.
 // Errors if the room does not exist.
 func (p *Plexams) UpdateRoom(ctx context.Context, input model.RoomInput) (*model.Room, error) {
+	if err := p.roomMustExist(ctx, input.Name); err != nil {
+		return nil, err
+	}
 	existing, err := p.dbClient.RoomByName(ctx, input.Name)
 	if err != nil {
 		return nil, err
@@ -224,6 +243,9 @@ func (p *Plexams) roomsForSlotsMap(ctx context.Context) (map[time.Time][]string,
 }
 
 func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName string, mtknr *string, reserve bool, seats *int) (bool, error) {
+	if err := p.roomMustExist(ctx, roomName); err != nil {
+		return false, err
+	}
 	room, err := p.dbClient.RoomByName(ctx, roomName)
 	if err != nil {
 		log.Error().Err(err).Str("room", roomName).Msg("cannot get room from name")
@@ -232,7 +254,7 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 
 	if room == nil {
 		log.Error().Str("room", roomName).Msg("room not found")
-		return false, fmt.Errorf("room %s not found", roomName)
+		return false, apierr.Newf(apierr.CodeNotFound, "Den Raum %s gibt es nicht in den Raum-Stammdaten.", roomName)
 	}
 
 	if mtknr != nil {
@@ -243,7 +265,7 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 		}
 		if student == nil {
 			log.Error().Str("mtknr", *mtknr).Msg("student not found")
-			return false, fmt.Errorf("student with mtknr %s not found", *mtknr)
+			return false, apierr.Newf(apierr.CodeNotFound, "Zur Matrikelnummer %s ist niemand bekannt. Bitte die Nummer prüfen.", *mtknr)
 		}
 		reserve = false // room for one student is NTA and never reserve
 		seats = nil     // an NTA room is for exactly one student
@@ -251,10 +273,10 @@ func (p *Plexams) PreAddRoomToExam(ctx context.Context, ancode int, roomName str
 
 	if seats != nil {
 		if *seats < 1 {
-			return false, fmt.Errorf("seats must be at least 1")
+			return false, apierr.New(apierr.CodeInvalidInput, "Gib mindestens 1 Platz an.")
 		}
 		if *seats > room.Seats {
-			return false, fmt.Errorf("room %s has only %d seats, cannot plan %d", roomName, room.Seats, *seats)
+			return false, apierr.Newf(apierr.CodeInvalidInput, "Raum %s hat nur %d Plätze; %d Plätze passen nicht hinein.", roomName, room.Seats, *seats)
 		}
 	}
 

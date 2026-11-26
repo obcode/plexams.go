@@ -44,3 +44,11 @@ integration (no mongod in this env) — importing a DC-B/DC-M ZIP + round-trip u
 pickers/ICS/CSV must pass suffixed codes. Builds on [[mucdai-to-joint-generalization]]
 and [[studentreg-dual-ancodes]]; supersedes the 2-letter assumption noted in
 [[mucdai-import-linking]].
+
+**Update 2026-11-26:** `UpsertStudyProgram` validates codes (`validateStudyProgram`):
+new non-retired fk07 programs must match `^[A-Z]{2,4}-[BM]$`, their `zpaCode` must not
+carry the degree and is derived via `defaultZpaCode` when empty; typographic dashes and
+spaces are rejected for every category. Existing programs are not forced into the new
+form. The GUI editor already has the `zpaCode` field, and since 2026-11-26 it also shows
+the rule as a live hint. The Primuss ZIP import now gives a reason for each skipped file
+(not XLSX / no `-XX-B-` in the name / list type not imported).

@@ -274,19 +274,19 @@ func (s *Service) normalizePreplan(ctx context.Context, p db.PreplanPayload) (db
 	p.Module = strings.TrimSpace(p.Module)
 	p.Remark = strings.TrimSpace(p.Remark)
 	if p.ExamKind != "EXaHM" && p.ExamKind != "SEB" {
-		return p, apierr.WithDetail(ErrInvalidInput, "examKind must be EXaHM or SEB")
+		return p, apierr.WithDetail(ErrInvalidInput, "die Prüfungsart muss EXaHM oder SEB sein")
 	}
 	if p.Module == "" || utf8.RuneCountInString(p.Module) > maxModule {
-		return p, apierr.WithDetail(ErrInvalidInput, fmt.Sprintf("module must have 1 to %d characters", maxModule))
+		return p, apierr.WithDetail(ErrInvalidInput, fmt.Sprintf("der Modulname muss 1 bis %d Zeichen haben", maxModule))
 	}
 	if utf8.RuneCountInString(p.Remark) > maxRemark {
-		return p, apierr.WithDetail(ErrInvalidInput, fmt.Sprintf("remark must have at most %d characters", maxRemark))
+		return p, apierr.WithDetail(ErrInvalidInput, fmt.Sprintf("die Bemerkung darf höchstens %d Zeichen haben", maxRemark))
 	}
 	if p.ExpectedStudents < 1 || p.ExpectedStudents > maxStudents {
-		return p, apierr.WithDetail(ErrInvalidInput, fmt.Sprintf("expectedStudents must be between 1 and %d", maxStudents))
+		return p, apierr.WithDetail(ErrInvalidInput, fmt.Sprintf("die erwartete Zahl der Studierenden muss zwischen 1 und %d liegen", maxStudents))
 	}
 	if p.DurationMin != nil && (*p.DurationMin < 1 || *p.DurationMin > maxDuration) {
-		return p, apierr.WithDetail(ErrInvalidInput, fmt.Sprintf("durationMin must be between 1 and %d", maxDuration))
+		return p, apierr.WithDetail(ErrInvalidInput, fmt.Sprintf("die Dauer muss zwischen 1 und %d Minuten liegen", maxDuration))
 	}
 	known, err := s.studyProgramCodes(ctx)
 	if err != nil {
@@ -299,12 +299,12 @@ func (s *Service) normalizePreplan(ctx context.Context, p db.PreplanPayload) (db
 			continue
 		}
 		if !known[code] {
-			return p, apierr.WithDetail(ErrInvalidInput, "unknown study program "+strconv.Quote(code))
+			return p, apierr.WithDetail(ErrInvalidInput, "unbekannter Studiengang „"+code+"“")
 		}
 		programs = append(programs, code)
 	}
 	if len(programs) == 0 {
-		return p, apierr.WithDetail(ErrInvalidInput, "at least one study program is required")
+		return p, apierr.WithDetail(ErrInvalidInput, "mindestens ein Studiengang ist nötig")
 	}
 	sort.Strings(programs)
 	p.Programs = programs
@@ -374,14 +374,14 @@ func (s *Service) SubmitPreplan(ctx context.Context, semester string, in SubmitP
 		case len(pr.TeacherIDs) == 1:
 			teacherID = pr.TeacherIDs[0]
 		default:
-			return nil, apierr.WithDetail(ErrInvalidInput, "onBehalfOf is required")
+			return nil, apierr.WithDetail(ErrInvalidInput, "es fehlt, für wen gemeldet wird")
 		}
 		ok, err := s.mayReportFor(ctx, pr, scope, teacherID)
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
-			return nil, apierr.WithDetail(ErrForbidden, "you may not report for this person")
+			return nil, apierr.WithDetail(ErrForbidden, "für diese Person darf nicht gemeldet werden")
 		}
 		name := s.teacherName(ctx, teacherID)
 		err = s.store.InTransaction(ctx, func(ctx context.Context) error {

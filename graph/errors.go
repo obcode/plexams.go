@@ -36,6 +36,13 @@ func isInternal(err error) bool {
 // clientError reduces err to what a client may see: the message and, where known,
 // a code. A database fault keeps its details in the log and is reported as INTERNAL.
 func clientError(err error) (message, code string) {
+	// gqlgen wraps a resolver's error with its position and path, and Error() of
+	// the wrapper prints them ("input:3:5: createSemester ..."). The planner only
+	// needs the error itself.
+	var gqlErr *gqlerror.Error
+	if errors.As(err, &gqlErr) && gqlErr.Err != nil {
+		err = gqlErr.Err
+	}
 	if c, ok := apierr.As(err); ok {
 		return err.Error(), c.Code
 	}

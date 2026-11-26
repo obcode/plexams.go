@@ -9,6 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/apierr"
+	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func TestClientErrorKeepsCodeAndHidesDatabaseDetails(t *testing.T) {
@@ -25,6 +27,9 @@ func TestClientErrorKeepsCodeAndHidesDatabaseDetails(t *testing.T) {
 		{"server-side database error", &pgconn.PgError{Code: "23505", ConstraintName: "exam_pkey"},
 			apierr.CodeInternal, internalMessage},
 		{"plain domain error", fmt.Errorf("room R1 has only 3 seats"), "", "room R1 has only 3 seats"},
+		{"wrapped by gqlgen with position and path",
+			gqlerror.WrapPath(ast.Path{ast.PathName("createSemester")}, apierr.New(apierr.CodeInvalidInput, "Startzeit fehlt.")),
+			apierr.CodeInvalidInput, "Startzeit fehlt."},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

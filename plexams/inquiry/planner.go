@@ -70,7 +70,7 @@ func (s *Service) SetInquiry(ctx context.Context, semester string, kind Kind, de
 	}
 	intro = strings.TrimSpace(intro)
 	if utf8.RuneCountInString(intro) > 10000 {
-		return nil, apierr.WithDetail(ErrInvalidInput, "intro is too long")
+		return nil, apierr.WithDetail(ErrInvalidInput, "die Einleitung ist zu lang")
 	}
 	r, err := s.store.Q(ctx).UpsertInquiry(ctx, sqlc.UpsertInquiryParams{SemesterID: semester, Kind: string(kind), Deadline: deadline, Intro: intro})
 	if err != nil {
@@ -82,14 +82,14 @@ func (s *Service) SetInquiry(ctx context.Context, semester string, kind Kind, de
 // OpenInquiry opens (or reopens) an inquiry. Only PREPLAN exists so far.
 func (s *Service) OpenInquiry(ctx context.Context, semester string, kind Kind, actor string) (*Inquiry, error) {
 	if kind != KindPreplan {
-		return nil, apierr.WithDetail(ErrInvalidInput, "this kind of inquiry is not available yet")
+		return nil, apierr.WithDetail(ErrInvalidInput, "diese Art von Abfrage gibt es noch nicht")
 	}
 	inq, err := s.inquiry(ctx, semester, kind)
 	if err != nil {
 		return nil, err
 	}
 	if inq == nil {
-		return nil, apierr.WithDetail(ErrInvalidInput, "set the inquiry up first")
+		return nil, apierr.WithDetail(ErrInvalidInput, "die Abfrage muss erst eingerichtet werden")
 	}
 	r, err := s.store.Q(ctx).OpenInquiry(ctx, sqlc.OpenInquiryParams{SemesterID: semester, Kind: string(kind), Actor: actor})
 	if err != nil {
@@ -135,7 +135,7 @@ func (s *Service) Review(ctx context.Context, semester string, id int64, revisio
 	case ReviewApplied, ReviewAppliedModified, ReviewDone:
 	case ReviewRejected:
 		if strings.TrimSpace(note) == "" {
-			return apierr.WithDetail(ErrInvalidInput, "a rejection needs a reason")
+			return apierr.WithDetail(ErrInvalidInput, "eine Ablehnung braucht eine Begründung")
 		}
 	default:
 		return ErrInvalidInput
@@ -342,7 +342,7 @@ func (s *Service) Reapply(ctx context.Context, semester string, id int64, actor 
 			return err
 		}
 		if head.State == SubmissionWithdrawn {
-			return apierr.WithDetail(ErrInvalidInput, "the submission is withdrawn")
+			return apierr.WithDetail(ErrInvalidInput, "die Meldung wurde zurückgezogen")
 		}
 		rev, err := q.GetSubmissionRevision(ctx, sqlc.GetSubmissionRevisionParams{SemesterID: semester, SubmissionID: id, Revision: head.Revision})
 		if err != nil {

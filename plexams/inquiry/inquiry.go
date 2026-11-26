@@ -87,14 +87,14 @@ const closedVisibleDays = 60
 
 // Errors with a fixed code.
 var (
-	ErrForbidden        = apierr.New("FORBIDDEN", "forbidden")
-	ErrReadOnlyToken    = apierr.New("READ_ONLY_TOKEN", "this token may only read")
-	ErrNotFound         = apierr.New("NOT_FOUND", "not found")
-	ErrInvalidInput     = apierr.New("INVALID_INPUT", "invalid input")
-	ErrNotAffected      = apierr.New("NOT_AFFECTED", "this inquiry does not concern you")
-	ErrInquiryClosed    = apierr.New("INQUIRY_CLOSED", "the inquiry is not open")
-	ErrSemesterReadOnly = apierr.New("SEMESTER_READ_ONLY", "the semester is write-protected")
-	ErrRevisionConflict = apierr.New("REVISION_CONFLICT", "the entry was changed in the meantime")
+	ErrForbidden        = apierr.New("FORBIDDEN", "Dafür fehlt die Berechtigung.")
+	ErrReadOnlyToken    = apierr.New("READ_ONLY_TOKEN", "Dieses Token darf nur lesen.")
+	ErrNotFound         = apierr.New("NOT_FOUND", "Der Eintrag wurde nicht gefunden.")
+	ErrInvalidInput     = apierr.New("INVALID_INPUT", "Die Eingabe ist ungültig")
+	ErrNotAffected      = apierr.New("NOT_AFFECTED", "Diese Abfrage betrifft diese Person nicht.")
+	ErrInquiryClosed    = apierr.New("INQUIRY_CLOSED", "Die Abfrage ist nicht geöffnet.")
+	ErrSemesterReadOnly = apierr.New("SEMESTER_READ_ONLY", "Das Semester ist schreibgeschützt.")
+	ErrRevisionConflict = apierr.New("REVISION_CONFLICT", "Der Eintrag wurde inzwischen geändert, etwa in einem anderen Fenster. Bitte die Seite neu laden.")
 )
 
 // Queries is the part of the generated query set this package uses. Narrow on purpose:

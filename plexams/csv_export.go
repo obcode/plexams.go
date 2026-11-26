@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"github.com/obcode/plexams.go/plexams/apierr"
-	"github.com/obcode/plexams.go/principal"
 	"io"
 	"net/http"
 	"sort"
@@ -17,6 +15,8 @@ import (
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
+	"github.com/obcode/plexams.go/principal"
 	"github.com/rs/zerolog/log"
 )
 

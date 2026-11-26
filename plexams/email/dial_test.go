@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"net"
 	"reflect"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/obcode/plexams.go/plexams/apierr"
 )
 
 // fakeSMTP returns a Sender whose dials go to dial instead of the network, and records the

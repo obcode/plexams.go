@@ -3,7 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/url"
 	"regexp"
 	"slices"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/principal"
 )
 

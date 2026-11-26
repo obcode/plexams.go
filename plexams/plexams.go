@@ -3,7 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"github.com/obcode/plexams.go/plexams/inquiry"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/anny"
 	"github.com/obcode/plexams.go/plexams/email"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"github.com/obcode/plexams.go/plexams/planstate"
 	"github.com/obcode/plexams.go/plexams/primuss"
 	"github.com/obcode/plexams.go/plexams/secrets"

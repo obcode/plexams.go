@@ -2,12 +2,12 @@ package plexams
 
 import (
 	"context"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/rs/zerolog/log"
 )
 

@@ -2,7 +2,6 @@ package graph
 
 import (
 	"context"
-	"github.com/obcode/plexams.go/plexams/inquiry"
 	"net"
 	"net/http"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	portalgraph "github.com/obcode/plexams.go/graph/portal"
 	portalgen "github.com/obcode/plexams.go/graph/portal/generated"
 	"github.com/obcode/plexams.go/obs"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"github.com/obcode/plexams.go/plexams/portal"
 	"github.com/obcode/plexams.go/principal"
 	"github.com/rs/zerolog/log"

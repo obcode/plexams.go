@@ -2,10 +2,10 @@ package plexams
 
 import (
 	"context"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 )
 
 // SetPreplanExamConstraints stores the constraints of a pre-exam. It reuses the

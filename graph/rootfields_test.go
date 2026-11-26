@@ -3,7 +3,6 @@ package graph
 import (
 	"context"
 	"encoding/json"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -14,6 +13,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/obcode/plexams.go/graph/generated"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/principal"
 	"github.com/vektah/gqlparser/v2"
 )

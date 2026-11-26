@@ -3,11 +3,11 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"github.com/obcode/plexams.go/principal"
 	"sort"
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/principal"
 	"github.com/obcode/plexams.go/zpa"
 	"github.com/rs/zerolog/log"
 )

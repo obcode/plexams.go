@@ -3,10 +3,10 @@ package plexams
 import (
 	"context"
 	"errors"
-	"github.com/obcode/plexams.go/plexams/apierr"
 
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/rs/zerolog/log"
 )
 

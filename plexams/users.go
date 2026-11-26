@@ -3,12 +3,12 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"github.com/obcode/plexams.go/db"
-	"github.com/obcode/plexams.go/plexams/inquiry"
-	"github.com/obcode/plexams.go/plexams/portal"
 	"strings"
 
+	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/inquiry"
+	"github.com/obcode/plexams.go/plexams/portal"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )

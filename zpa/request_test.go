@@ -1,11 +1,12 @@
 package zpa
 
 import (
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/obcode/plexams.go/plexams/apierr"
 )
 
 func testZPA(handler http.HandlerFunc) (*ZPA, *httptest.Server) {

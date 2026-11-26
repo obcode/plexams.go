@@ -2,7 +2,6 @@ package graph
 
 import (
 	"context"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/http"
 	"slices"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/obs"
 	"github.com/obcode/plexams.go/plexams"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/principal"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"

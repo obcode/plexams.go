@@ -2,11 +2,11 @@ package graph
 
 import (
 	"context"
-	"github.com/obcode/plexams.go/plexams/inquiry"
 	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/plexams"
+	"github.com/obcode/plexams.go/plexams/inquiry"
 	"github.com/obcode/plexams.go/plexams/scheduler"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"

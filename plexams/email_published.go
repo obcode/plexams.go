@@ -3,7 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"os"
 	"sort"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )

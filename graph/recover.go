@@ -2,12 +2,12 @@ package graph
 
 import (
 	"context"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/http"
 	"runtime/debug"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/obcode/plexams.go/obs"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/rs/zerolog/log"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )

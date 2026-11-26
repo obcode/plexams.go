@@ -5,11 +5,11 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 )
 
 // rootFieldPolicyFile names, for every root field of the API, the least role that

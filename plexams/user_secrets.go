@@ -3,10 +3,10 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"strings"
 	"time"
 
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/principal"
 )
 

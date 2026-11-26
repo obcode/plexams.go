@@ -2,10 +2,10 @@ package plexams
 
 import (
 	"context"
-	"github.com/obcode/plexams.go/principal"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/principal"
 	"github.com/rs/zerolog/log"
 )
 

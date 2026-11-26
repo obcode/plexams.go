@@ -3,7 +3,6 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"io"
 	"net/http"
 	"sort"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/jira"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/rs/zerolog/log"
 )
 

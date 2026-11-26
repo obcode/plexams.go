@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"io"
 	"net/http"
 	"sort"
@@ -19,7 +20,7 @@ import (
 // The constructor makes no network call, so building one per request is cheap.
 func (p *Plexams) jiraClient(ctx context.Context) (*jira.Jira, error) {
 	if p.jira.baseurl == "" {
-		return nil, fmt.Errorf("jira not configured: set jira.baseurl in .plexams.yaml")
+		return nil, apierr.New(apierr.CodeInvalidInput, "Jira ist auf diesem Server nicht eingerichtet (jira.baseurl fehlt in der Server-Konfiguration). Bitte an die Plexams-Betreuung wenden.")
 	}
 	token, err := p.jiraTokenForUser(ctx)
 	if err != nil {
@@ -310,24 +311,24 @@ func (p *Plexams) TransitionJiraIssue(ctx context.Context, key, transitionID str
 // POST /upload/jira-attachment  (multipart form: key, file).
 func (p *Plexams) HTTPUploadJiraAttachment(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(64 << 20); err != nil {
-		http.Error(w, "cannot parse upload: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Die hochgeladene Datei kam nicht vollständig an. Bitte noch einmal hochladen.", http.StatusBadRequest)
 		return
 	}
 	key := r.FormValue("key")
 	if key == "" {
-		http.Error(w, "key (issue key, e.g. PLEX-42) is required", http.StatusBadRequest)
+		http.Error(w, "Es fehlt das Jira-Ticket, an das die Datei soll (z. B. PLEX-42).", http.StatusBadRequest)
 		return
 	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "missing file: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Es wurde keine Datei mitgeschickt. Bitte eine Datei auswählen.", http.StatusBadRequest)
 		return
 	}
 	defer file.Close() // nolint:errcheck
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		http.Error(w, "cannot read file: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Die hochgeladene Datei ließ sich nicht lesen. Bitte noch einmal hochladen.", http.StatusInternalServerError)
 		return
 	}
 
@@ -339,7 +340,8 @@ func (p *Plexams) HTTPUploadJiraAttachment(w http.ResponseWriter, r *http.Reques
 	attachments, err := client.AddAttachment(key, header.Filename, data)
 	if err != nil {
 		log.Error().Err(err).Str("key", key).Str("file", header.Filename).Msg("cannot attach file to Jira issue")
-		http.Error(w, "cannot attach file: "+err.Error(), http.StatusBadGateway)
+		log.Error().Err(err).Msg("cannot attach file to jira")
+		http.Error(w, "Jira hat die Datei nicht angenommen. Bitte später noch einmal versuchen; Details stehen im Server-Log.", http.StatusBadGateway)
 		return
 	}
 

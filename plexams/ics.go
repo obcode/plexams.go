@@ -51,12 +51,13 @@ func (p *Plexams) ExportICSString(ctx context.Context, program string) (string, 
 func (p *Plexams) HTTPDownloadICS(w http.ResponseWriter, r *http.Request) {
 	program := chi.URLParam(r, "program")
 	if program == "" {
-		http.Error(w, "program is required", http.StatusBadRequest)
+		http.Error(w, "Es fehlt der Studiengang (program).", http.StatusBadRequest)
 		return
 	}
 	s, err := p.ExportICSString(r.Context(), program)
 	if err != nil {
-		http.Error(w, "cannot generate ics: "+err.Error(), http.StatusInternalServerError)
+		log.Error().Err(err).Msg("cannot generate ics")
+		http.Error(w, "Die Kalenderdatei ließ sich nicht erzeugen. Bitte noch einmal versuchen; Details stehen im Server-Log.", http.StatusInternalServerError)
 		return
 	}
 	filename := fmt.Sprintf("%s_%s.ics", strings.ReplaceAll(p.semester, " ", "_"), program)

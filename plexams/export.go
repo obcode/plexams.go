@@ -171,7 +171,8 @@ func (p *Plexams) PlannedRoomsJSON(ctx context.Context) ([]byte, error) {
 func (p *Plexams) HTTPDownloadPlannedRooms(w http.ResponseWriter, r *http.Request) {
 	b, err := p.PlannedRoomsJSON(r.Context())
 	if err != nil {
-		http.Error(w, "cannot build planned-rooms export: "+err.Error(), http.StatusInternalServerError)
+		log.Error().Err(err).Msg("cannot build planned-rooms export")
+		http.Error(w, "Der Export der Raumplanung ließ sich nicht erzeugen. Details stehen im Server-Log.", http.StatusInternalServerError)
 		return
 	}
 	filename := fmt.Sprintf("%s_planned-rooms.json", strings.ReplaceAll(p.semester, " ", "_"))

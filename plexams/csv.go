@@ -139,7 +139,7 @@ func (p *Plexams) HTTPDownloadCSVDraft(w http.ResponseWriter, r *http.Request) {
 	case "draft":
 		program := r.URL.Query().Get("program")
 		if program == "" {
-			http.Error(w, "program query parameter is required for kind=draft", http.StatusBadRequest)
+			http.Error(w, "Für den Entwurf als CSV fehlt der Studiengang (program).", http.StatusBadRequest)
 			return
 		}
 		data, err = p.CsvForProgramBytes(r.Context(), program)
@@ -151,11 +151,12 @@ func (p *Plexams) HTTPDownloadCSVDraft(w http.ResponseWriter, r *http.Request) {
 		data, err = p.CsvForLBARepeaterBytes(r.Context())
 		filename = "Prüfungsplanung_LBA_Repeater_FK07.csv"
 	default:
-		http.Error(w, fmt.Sprintf("unknown csv kind %q (known: draft, exahm, lba-repeater)", kind), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Unbekannte CSV-Art „%s“ (bekannt: draft, exahm, lba-repeater).", kind), http.StatusBadRequest)
 		return
 	}
 	if err != nil {
-		http.Error(w, "cannot generate csv: "+err.Error(), http.StatusInternalServerError)
+		log.Error().Err(err).Str("kind", kind).Msg("cannot generate csv")
+		http.Error(w, "Die CSV-Datei ließ sich nicht erzeugen. Details stehen im Server-Log.", http.StatusInternalServerError)
 		return
 	}
 

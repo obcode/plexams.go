@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/principal"
 	"io"
 	"net/http"
@@ -1024,7 +1025,7 @@ func firstErr(errs ...error) error {
 func (p *Plexams) DatasetCSV(ctx context.Context, name string) ([]byte, string, error) {
 	ds, ok := p.csvDatasets()[name]
 	if !ok {
-		return nil, "", fmt.Errorf("unknown csv dataset %q", name)
+		return nil, "", apierr.Newf(apierr.CodeNotFound, "Einen Datensatz „%s“ gibt es nicht.", name)
 	}
 	rows, err := ds.exportRows(ctx)
 	if err != nil {
@@ -1042,7 +1043,7 @@ func (p *Plexams) DatasetCSV(ctx context.Context, name string) ([]byte, string, 
 func (p *Plexams) ImportDatasetCSV(ctx context.Context, name string, data []byte) (*CSVImportResult, error) {
 	ds, ok := p.csvDatasets()[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown csv dataset %q", name)
+		return nil, apierr.Newf(apierr.CodeNotFound, "Einen Datensatz „%s“ gibt es nicht.", name)
 	}
 	rows, err := decodeCSV(data, ds.Header)
 	if err != nil {
@@ -1107,7 +1108,8 @@ func (p *Plexams) HTTPDownloadDatasetCSV(w http.ResponseWriter, r *http.Request)
 func (p *Plexams) HTTPDownloadMyInputsCSV(w http.ResponseWriter, r *http.Request) {
 	data, err := p.MyInputsCSVZip(r.Context())
 	if err != nil {
-		http.Error(w, "cannot build csv zip: "+err.Error(), http.StatusInternalServerError)
+		log.Error().Err(err).Msg("cannot build csv zip")
+		http.Error(w, "Die ZIP-Datei mit den CSV-Dateien ließ sich nicht erzeugen. Details stehen im Server-Log.", http.StatusInternalServerError)
 		return
 	}
 	filename := fmt.Sprintf("%s_meine-eingaben-csv.zip", strings.ReplaceAll(p.dbClient.Semester(), " ", "_"))
@@ -1143,7 +1145,7 @@ func (p *Plexams) HTTPDownloadMyInputsCSV(w http.ResponseWriter, r *http.Request
 // POST /upload/dataset-csv  (multipart form: name=<dataset>, file=<csv>)
 func (p *Plexams) HTTPUploadDatasetCSV(w http.ResponseWriter, r *http.Request) {
 	if !p.WritesAllowed() {
-		http.Error(w, "a validation or transfer/email is running, cannot upload now", http.StatusConflict)
+		http.Error(w, "Gerade läuft eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand; Hochladen geht erst danach.", http.StatusConflict)
 		return
 	}
 	if p.IsReadOnly() {
@@ -1151,29 +1153,29 @@ func (p *Plexams) HTTPUploadDatasetCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseMultipartForm(64 << 20); err != nil {
-		http.Error(w, "cannot parse upload: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Die hochgeladene Datei kam nicht vollständig an. Bitte noch einmal hochladen.", http.StatusBadRequest)
 		return
 	}
 	name := r.FormValue("name")
 	if name == "" {
-		http.Error(w, "name is required", http.StatusBadRequest)
+		http.Error(w, "Es fehlt, welcher Datensatz importiert werden soll (name).", http.StatusBadRequest)
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "missing file: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Es wurde keine Datei mitgeschickt. Bitte eine Datei auswählen.", http.StatusBadRequest)
 		return
 	}
 	defer file.Close() //nolint:errcheck
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		http.Error(w, "cannot read file: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Die hochgeladene Datei ließ sich nicht lesen. Bitte noch einmal hochladen.", http.StatusInternalServerError)
 		return
 	}
 	result, err := p.ImportDatasetCSV(r.Context(), name, data)
 	if err != nil {
-		http.Error(w, "import failed: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Import fehlgeschlagen, es wurde nichts geändert: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	p.LogUpload(r.Context(), "uploadDatasetCSV", "dataset", name)

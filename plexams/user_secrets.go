@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"strings"
 	"time"
 
@@ -32,7 +33,7 @@ func (p *Plexams) SetMyJiraToken(ctx context.Context, token string) error {
 		return fmt.Errorf("token must not be empty")
 	}
 	if p.sealer == nil {
-		return fmt.Errorf("secret storage unavailable: set secrets.key in the server config")
+		return apierr.New(apierr.CodeInvalidInput, "Persönliche Zugangsdaten lassen sich auf diesem Server nicht speichern (secrets.key fehlt in der Server-Konfiguration). Bitte an die Plexams-Betreuung wenden.")
 	}
 	sealed, err := p.sealer.Seal(token)
 	if err != nil {
@@ -58,14 +59,14 @@ func (p *Plexams) jiraTokenForUser(ctx context.Context) (string, error) {
 		return "", err
 	}
 	if p.sealer == nil {
-		return "", fmt.Errorf("secret storage unavailable: set secrets.key in the server config")
+		return "", apierr.New(apierr.CodeInvalidInput, "Persönliche Zugangsdaten lassen sich auf diesem Server nicht speichern (secrets.key fehlt in der Server-Konfiguration). Bitte an die Plexams-Betreuung wenden.")
 	}
 	sec, err := p.dbClient.GetUserSecret(ctx, email)
 	if err != nil {
 		return "", err
 	}
 	if sec == nil || sec.Jira == nil {
-		return "", fmt.Errorf("kein Jira-Token hinterlegt — bitte auf 'Mein Account' setzen")
+		return "", apierr.New(apierr.CodeInvalidInput, "Für deinen Zugang ist kein Jira-Token hinterlegt. Unter „Mein Account“ das Token eintragen.")
 	}
 	return p.sealer.Open(*sec.Jira)
 }

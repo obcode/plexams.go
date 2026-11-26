@@ -101,12 +101,13 @@ func (p *Plexams) HTTPDownloadPDF(w http.ResponseWriter, r *http.Request) {
 	kind := chi.URLParam(r, "kind")
 	export, ok := p.pdfExports()[kind]
 	if !ok {
-		http.Error(w, fmt.Sprintf("unknown pdf kind %q (known: %s)", kind, strings.Join(p.PDFExportKinds(), ", ")), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Unbekannte PDF-Art „%s“ (bekannt: %s).", kind, strings.Join(p.PDFExportKinds(), ", ")), http.StatusBadRequest)
 		return
 	}
 	data, err := export.build(r.Context())
 	if err != nil {
-		http.Error(w, "cannot generate pdf: "+err.Error(), http.StatusInternalServerError)
+		log.Error().Err(err).Str("kind", kind).Msg("cannot generate pdf")
+		http.Error(w, "Das PDF ließ sich nicht erzeugen. Bitte noch einmal versuchen; Details stehen im Server-Log.", http.StatusInternalServerError)
 		return
 	}
 	contentType := export.contentType

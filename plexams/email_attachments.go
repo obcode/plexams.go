@@ -102,21 +102,21 @@ func contentTypeFor(given, filename string) string {
 // POST /upload/email-attachment  (multipart form: kind, key, file).
 func (p *Plexams) HTTPUploadEmailAttachment(w http.ResponseWriter, r *http.Request) {
 	if !p.WritesAllowed() {
-		http.Error(w, "a validation or transfer/email is running, cannot upload now", http.StatusConflict)
+		http.Error(w, "Gerade läuft eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand; Hochladen geht erst danach.", http.StatusConflict)
 		return
 	}
 	if err := r.ParseMultipartForm(64 << 20); err != nil {
-		http.Error(w, "cannot parse upload: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Die hochgeladene Datei kam nicht vollständig an. Bitte noch einmal hochladen.", http.StatusBadRequest)
 		return
 	}
 	kind := r.FormValue("kind")
 	if kind == "" {
-		http.Error(w, "kind is required", http.StatusBadRequest)
+		http.Error(w, "Es fehlt, welche Art von Anhang hochgeladen wird (kind).", http.StatusBadRequest)
 		return
 	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "missing file: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Es wurde keine Datei mitgeschickt. Bitte eine Datei auswählen.", http.StatusBadRequest)
 		return
 	}
 	defer file.Close() // nolint:errcheck
@@ -129,20 +129,21 @@ func (p *Plexams) HTTPUploadEmailAttachment(w http.ResponseWriter, r *http.Reque
 		key = keyFromFilename(header.Filename)
 	}
 	if key == "" {
-		http.Error(w, "key is required (or a filename ending in the id, e.g. ..._12345.pdf)", http.StatusBadRequest)
+		http.Error(w, "Es fehlt, zu wem der Anhang gehört. Der Dateiname muss mit der ZPA-Nummer enden, z. B. …_12345.pdf.", http.StatusBadRequest)
 		return
 	}
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		http.Error(w, "cannot read file: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Die hochgeladene Datei ließ sich nicht lesen. Bitte noch einmal hochladen.", http.StatusInternalServerError)
 		return
 	}
 
 	ct := contentTypeFor(header.Header.Get("Content-Type"), header.Filename)
 	if err := p.SaveEmailAttachment(r.Context(), kind, key, header.Filename, ct, data); err != nil {
 		log.Error().Err(err).Str("kind", kind).Str("key", key).Msg("cannot save email attachment")
-		http.Error(w, "cannot store attachment: "+err.Error(), http.StatusInternalServerError)
+		log.Error().Err(err).Msg("cannot store attachment")
+		http.Error(w, "Der Anhang ließ sich nicht speichern. Details stehen im Server-Log.", http.StatusInternalServerError)
 		return
 	}
 
@@ -156,33 +157,33 @@ func (p *Plexams) HTTPUploadEmailAttachment(w http.ResponseWriter, r *http.Reque
 // (e.g. "<prefix>12345.pdf" -> "12345").
 func (p *Plexams) HTTPUploadEmailAttachmentsZip(w http.ResponseWriter, r *http.Request) {
 	if !p.WritesAllowed() {
-		http.Error(w, "a validation or transfer/email is running, cannot upload now", http.StatusConflict)
+		http.Error(w, "Gerade läuft eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand; Hochladen geht erst danach.", http.StatusConflict)
 		return
 	}
 	if err := r.ParseMultipartForm(256 << 20); err != nil {
-		http.Error(w, "cannot parse upload: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Die hochgeladene Datei kam nicht vollständig an. Bitte noch einmal hochladen.", http.StatusBadRequest)
 		return
 	}
 	kind := r.FormValue("kind")
 	if kind == "" {
-		http.Error(w, "kind is required", http.StatusBadRequest)
+		http.Error(w, "Es fehlt, welche Art von Anhang hochgeladen wird (kind).", http.StatusBadRequest)
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "missing file: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Es wurde keine Datei mitgeschickt. Bitte eine Datei auswählen.", http.StatusBadRequest)
 		return
 	}
 	defer file.Close() // nolint:errcheck
 
 	zipData, err := io.ReadAll(file)
 	if err != nil {
-		http.Error(w, "cannot read zip: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Die ZIP-Datei ließ sich nicht lesen. Bitte noch einmal hochladen.", http.StatusInternalServerError)
 		return
 	}
 	zr, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
-		http.Error(w, "not a valid zip: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Die Datei ist keine gültige ZIP-Datei.", http.StatusBadRequest)
 		return
 	}
 

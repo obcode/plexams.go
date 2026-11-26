@@ -356,7 +356,7 @@ func (p *Plexams) ValidateInvigilationsTimeDistance(reporter Reporter) (*model.V
 const (
 	hintReassign    = "Gib die Aufsicht im „Aufsichtsplan“ an eine andere Person."
 	hintExcludedDay = "Gib die Aufsicht im „Aufsichtsplan“ an eine andere Person, oder prüfe die Sperrtage: " +
-		"die aus dem ZPA stehen unter „Aufsichten mit Anforderungen“, zusätzliche unter „Aufsichts-Constraints“."
+		"die aus dem ZPA stehen unter „Aufsichten mit Anforderungen“, zusätzliche unter „Aufsichts-Vorgaben“."
 	hintDuplicate = "Prüfe im „Aufsichtsplan“, wer dort eingeteilt sein soll, und teile unter „Aufsichten einteilen“ neu ein. " +
 		"Bleibt der Fehler, melde ihn der Plexams-Betreuung."
 )

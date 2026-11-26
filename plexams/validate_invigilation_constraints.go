@@ -156,9 +156,9 @@ func invigRuleHint(rule string) string {
 	const reassign = "Gib die Aufsicht im „Aufsichtsplan“ an eine andere Person"
 	switch rule {
 	case "availability":
-		return reassign + ", oder prüfe die Sperrtage: die aus dem ZPA stehen unter „Aufsichten mit Anforderungen“, zusätzliche unter „Aufsichts-Constraints“."
+		return reassign + ", oder prüfe die Sperrtage: die aus dem ZPA stehen unter „Aufsichten mit Anforderungen“, zusätzliche unter „Aufsichts-Vorgaben“."
 	case "time-window":
-		return reassign + ", oder passe die Zeitfenster der Person unter „Aufsichts-Constraints“ an."
+		return reassign + ", oder passe die Zeitfenster der Person unter „Aufsichts-Vorgaben“ an."
 	case "own-exam", "one-per-slot":
 		return reassign + "."
 	case "time-gap":

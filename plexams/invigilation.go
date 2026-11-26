@@ -197,7 +197,7 @@ func (p *Plexams) GetInvigilator(ctx context.Context, invigilatorID int) (*model
 
 	if invigilator == nil {
 		return nil, apierr.Newf(apierr.CodeNotFound,
-			"%s steht nicht in der Liste der Aufsichtspersonen dieses Semesters. Prüfe unter „Aufsichts-Constraints“ und „Dauerhaft keine Aufsicht“, ob die Person von Aufsichten ausgenommen ist.",
+			"%s steht nicht in der Liste der Aufsichtspersonen dieses Semesters. Prüfe unter „Aufsichts-Vorgaben“ und „Dauerhaft keine Aufsicht“, ob die Person von Aufsichten ausgenommen ist.",
 			p.teacherNames(ctx)(invigilatorID))
 	}
 

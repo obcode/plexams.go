@@ -910,11 +910,13 @@ type InvigilatorConstraintsInput struct {
 
 // InvigilatorOutlier: a person whose assigned minutes are furthest from target.
 type InvigilatorOutlier struct {
-	InvigilatorID int     `json:"invigilatorID"`
-	Doing         int     `json:"doing"`
-	Target        int     `json:"target"`
-	Open          int     `json:"open"`
-	Percent       float64 `json:"percent"`
+	InvigilatorID int `json:"invigilatorID"`
+	// The invigilator's full name, for display.
+	Name    *string `json:"name,omitempty"`
+	Doing   int     `json:"doing"`
+	Target  int     `json:"target"`
+	Open    int     `json:"open"`
+	Percent float64 `json:"percent"`
 }
 
 type InvigilatorRequirements struct {
@@ -1721,6 +1723,8 @@ type ServerInfo struct {
 type SoftCostItem struct {
 	Name string  `json:"name"`
 	Cost float64 `json:"cost"`
+	// German label of the rule, for display (name is the stable key).
+	Title *string `json:"title,omitempty"`
 }
 
 // SoftCostReport: the weighted soft-constraint penalty score (lower is better).

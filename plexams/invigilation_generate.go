@@ -188,7 +188,8 @@ func printInvigilationReport(reporter Reporter, problem *invigplan.Problem, plan
 	costItems := make([]*model.SoftCostItem, 0, len(breakdown))
 	for _, b := range breakdown {
 		reporter.Printf("    %-34s %8.0f\n", invigplan.ConstraintLabelDE(b.Name), b.Cost)
-		costItems = append(costItems, &model.SoftCostItem{Name: b.Name, Cost: b.Cost})
+		title := invigplan.ConstraintLabelDE(b.Name)
+		costItems = append(costItems, &model.SoftCostItem{Name: b.Name, Cost: b.Cost, Title: &title})
 	}
 
 	return &model.InvigilationReport{
@@ -260,8 +261,10 @@ func printDeviationOutliers(reporter Reporter, problem *invigplan.Problem, plan 
 		} else {
 			reporter.Printf("    %s\n", aurora.Gray(16, line))
 		}
+		name := problem.Name(d.InvigilatorID)
 		outliers = append(outliers, &model.InvigilatorOutlier{
 			InvigilatorID: d.InvigilatorID,
+			Name:          &name,
 			Doing:         d.Doing,
 			Target:        d.Target,
 			Open:          d.Open,

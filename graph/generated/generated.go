@@ -690,6 +690,7 @@ type ComplexityRoot struct {
 	InvigilatorOutlier struct {
 		Doing         func(childComplexity int) int
 		InvigilatorID func(childComplexity int) int
+		Name          func(childComplexity int) int
 		Open          func(childComplexity int) int
 		Percent       func(childComplexity int) int
 		Target        func(childComplexity int) int
@@ -1666,8 +1667,9 @@ type ComplexityRoot struct {
 	}
 
 	SoftCostItem struct {
-		Cost func(childComplexity int) int
-		Name func(childComplexity int) int
+		Cost  func(childComplexity int) int
+		Name  func(childComplexity int) int
+		Title func(childComplexity int) int
 	}
 
 	SoftCostReport struct {
@@ -5103,6 +5105,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.InvigilatorOutlier.InvigilatorID(childComplexity), true
+	case "InvigilatorOutlier.name":
+		if e.ComplexityRoot.InvigilatorOutlier.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InvigilatorOutlier.Name(childComplexity), true
 	case "InvigilatorOutlier.open":
 		if e.ComplexityRoot.InvigilatorOutlier.Open == nil {
 			break
@@ -10312,6 +10320,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.SoftCostItem.Name(childComplexity), true
+	case "SoftCostItem.title":
+		if e.ComplexityRoot.SoftCostItem.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SoftCostItem.Title(childComplexity), true
 
 	case "SoftCostReport.breakdown":
 		if e.ComplexityRoot.SoftCostReport.Breakdown == nil {
@@ -15432,6 +15446,8 @@ type MinutesReport {
 """InvigilatorOutlier: a person whose assigned minutes are furthest from target."""
 type InvigilatorOutlier {
   invigilatorID: Int!
+  "The invigilator's full name, for display."
+  name: String
   doing: Int!
   target: Int!
   open: Int!
@@ -15463,6 +15479,8 @@ type SoftCostReport {
 type SoftCostItem {
   name: String!
   cost: Float!
+  "German label of the rule, for display (name is the stable key)."
+  title: String
 }
 
 type Subscription {
@@ -17284,6 +17302,8 @@ func (ec *executionContext) childFields_InvigilatorOutlier(ctx context.Context, 
 	switch field.Name {
 	case "invigilatorID":
 		return ec.fieldContext_InvigilatorOutlier_invigilatorID(ctx, field)
+	case "name":
+		return ec.fieldContext_InvigilatorOutlier_name(ctx, field)
 	case "doing":
 		return ec.fieldContext_InvigilatorOutlier_doing(ctx, field)
 	case "target":
@@ -18694,6 +18714,8 @@ func (ec *executionContext) childFields_SoftCostItem(ctx context.Context, field 
 		return ec.fieldContext_SoftCostItem_name(ctx, field)
 	case "cost":
 		return ec.fieldContext_SoftCostItem_cost(ctx, field)
+	case "title":
+		return ec.fieldContext_SoftCostItem_title(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type SoftCostItem", field.Name)
 }
@@ -33990,6 +34012,29 @@ func (ec *executionContext) _InvigilatorOutlier_invigilatorID(ctx context.Contex
 }
 func (ec *executionContext) fieldContext_InvigilatorOutlier_invigilatorID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("InvigilatorOutlier", field, false, false, "Int")
+}
+
+func (ec *executionContext) _InvigilatorOutlier_name(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorOutlier) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_InvigilatorOutlier_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_InvigilatorOutlier_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("InvigilatorOutlier", field, false, false, "String")
 }
 
 func (ec *executionContext) _InvigilatorOutlier_doing(ctx context.Context, field graphql.CollectedField, obj *model.InvigilatorOutlier) (ret graphql.Marshaler) {
@@ -55502,6 +55547,29 @@ func (ec *executionContext) fieldContext_SoftCostItem_cost(_ context.Context, fi
 	return graphql.NewScalarFieldContext("SoftCostItem", field, false, false, "Float")
 }
 
+func (ec *executionContext) _SoftCostItem_title(ctx context.Context, field graphql.CollectedField, obj *model.SoftCostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SoftCostItem_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_SoftCostItem_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SoftCostItem", field, false, false, "String")
+}
+
 func (ec *executionContext) _SoftCostReport_total(ctx context.Context, field graphql.CollectedField, obj *model.SoftCostReport) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -69339,6 +69407,11 @@ func (ec *executionContext) _InvigilatorOutlier(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "name":
+			out.Values[i] = ec._InvigilatorOutlier_name(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		case "doing":
 			out.Values[i] = ec._InvigilatorOutlier_doing(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -75756,6 +75829,11 @@ func (ec *executionContext) _SoftCostItem(ctx context.Context, sel ast.Selection
 		case "cost":
 			out.Values[i] = ec._SoftCostItem_cost(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._SoftCostItem_title(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:

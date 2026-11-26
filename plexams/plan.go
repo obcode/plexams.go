@@ -32,11 +32,36 @@ func (p *Plexams) SetExamTime(ctx context.Context, ancode int, starttime time.Ti
 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist or does not need to be planned")
 		return false, apierr.Newf(apierr.CodeNotFound, "Ancode %d ist keine aufbereitete Prüfung und lässt sich deshalb nicht einplanen. Unter „Aufbereitete Prüfungen“ neu generieren; fehlt sie dann noch, unter „Prüfungen auswählen & Vorgaben“ prüfen, ob sie geplant werden soll.", ancode)
 	}
+	// A lock survives a move by hand: it says "the generator keeps this exam where
+	// the planner put it", and moving it is exactly that. The generator never calls
+	// this for a locked exam, so its runs are unaffected.
+	locked := false
+	if existing, err := p.dbClient.PlanEntry(ctx, ancode); err != nil {
+		return false, err
+	} else if existing != nil {
+		locked = existing.Locked
+	}
 	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
 		Starttime: &starttime,
 		Ancode:    ancode,
-		Locked:    false,
+		Locked:    locked,
 	})
+}
+
+// SetExamLocked locks or unlocks the time of a planned exam: "Terminplan generieren"
+// keeps a locked exam where it is. An exam without a time cannot be locked.
+func (p *Plexams) SetExamLocked(ctx context.Context, ancode int, locked bool) (*model.PlanEntry, error) {
+	entry, err := p.dbClient.PlanEntry(ctx, ancode)
+	if err != nil {
+		return nil, err
+	}
+	if entry == nil || entry.Starttime == nil {
+		return nil, apierr.Newf(apierr.CodeNotFound, "Ancode %d hat noch keinen Termin. Erst im Prüfungsplan einen Termin setzen, dann festhalten.", ancode)
+	}
+	if locked {
+		return p.dbClient.LockExam(ctx, ancode)
+	}
+	return p.dbClient.UnlockExam(ctx, ancode)
 }
 
 func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, slottime time.Time) (bool, error) {
@@ -452,28 +477,4 @@ func (p *Plexams) SlotForAncode(ctx context.Context, ancode int) (*model.Slot, e
 
 func (p *Plexams) LockPlan(ctx context.Context) error {
 	return p.dbClient.LockPlan(ctx)
-}
-
-func (p *Plexams) LockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.AssembledExam, error) {
-	planEntry, err := p.dbClient.LockExam(ctx, ancode)
-	if err != nil {
-		return nil, nil, err
-	}
-	exam, err := p.dbClient.GetAssembledExam(ctx, ancode)
-	if err != nil {
-		return planEntry, nil, err
-	}
-	return planEntry, exam, nil
-}
-
-func (p *Plexams) UnlockExam(ctx context.Context, ancode int) (*model.PlanEntry, *model.AssembledExam, error) {
-	planEntry, err := p.dbClient.UnlockExam(ctx, ancode)
-	if err != nil {
-		return nil, nil, err
-	}
-	exam, err := p.dbClient.GetAssembledExam(ctx, ancode)
-	if err != nil {
-		return planEntry, nil, err
-	}
-	return planEntry, exam, nil
 }

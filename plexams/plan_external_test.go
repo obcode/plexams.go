@@ -2,13 +2,13 @@ package plexams
 
 import (
 	"context"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/internal/pgtest"
+	"github.com/obcode/plexams.go/plexams/apierr"
 )
 
 // A ZPA exam without any constraints row is one nobody marked as planned

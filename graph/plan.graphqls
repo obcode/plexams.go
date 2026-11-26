@@ -32,6 +32,12 @@ extend type Mutation {
   standard start times (semesterConfig.starttimes).
   """
   setExamTime(ancode: Int!, starttime: Time!): Boolean!
+  """
+  Lock or unlock the time of a planned exam. "Terminplan generieren" keeps a locked
+  exam where it is; a manual move keeps the lock. Fails with NOT_FOUND when the exam
+  has no time yet.
+  """
+  setExamLocked(ancode: Int!, locked: Boolean!): PlanEntry!
 }
 
 type Emails {

@@ -86,6 +86,7 @@ Mutation.setAnnyPersonalizationNames PLANER
 Mutation.setDryRunTestMail PLANER
 Mutation.setEmailTemplate PLANER
 Mutation.setExamDuration PLANER
+Mutation.setExamLocked PLANER
 Mutation.setExamTime PLANER
 Mutation.setExamsCanShareSlot PLANER
 Mutation.setExternalExamTime PLANER

@@ -904,6 +904,7 @@ type ComplexityRoot struct {
 		SetDryRunTestMail             func(childComplexity int, email string) int
 		SetEmailTemplate              func(childComplexity int, name string, markdown string) int
 		SetExamDuration               func(childComplexity int, ancode int, duration int) int
+		SetExamLocked                 func(childComplexity int, ancode int, locked bool) int
 		SetExamTime                   func(childComplexity int, ancode int, starttime time.Time) int
 		SetExamsCanShareSlot          func(childComplexity int, ancode1 int, ancode2 int) int
 		SetExternalExamTime           func(childComplexity int, ancode int, date string, time string) int
@@ -2110,6 +2111,7 @@ type MutationResolver interface {
 	AddNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int, reason string) (*model.NtaRoomAloneWaiver, error)
 	RemoveNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int) (bool, error)
 	SetExamTime(ctx context.Context, ancode int, starttime time.Time) (bool, error)
+	SetExamLocked(ctx context.Context, ancode int, locked bool) (*model.PlanEntry, error)
 	SetSemesterPlaner(ctx context.Context, name *string, email *string, testMail *string, cc *string, noreplyMail *string, noreplyName *string) (*model.Planer, error)
 	ResetSemesterPlaner(ctx context.Context) (*model.Planer, error)
 	SetDryRunTestMail(ctx context.Context, email string) (*model.DryRunTestMailStatus, error)
@@ -6430,6 +6432,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetExamDuration(childComplexity, args["ancode"].(int), args["duration"].(int)), true
+	case "Mutation.setExamLocked":
+		if e.ComplexityRoot.Mutation.SetExamLocked == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setExamLocked_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetExamLocked(childComplexity, args["ancode"].(int), args["locked"].(bool)), true
 	case "Mutation.setExamTime":
 		if e.ComplexityRoot.Mutation.SetExamTime == nil {
 			break
@@ -14135,6 +14148,12 @@ extend type Mutation {
   standard start times (semesterConfig.starttimes).
   """
   setExamTime(ancode: Int!, starttime: Time!): Boolean!
+  """
+  Lock or unlock the time of a planned exam. "Terminplan generieren" keeps a locked
+  exam where it is; a manual move keeps the lock. Fails with NOT_FOUND when the exam
+  has no time yet.
+  """
+  setExamLocked(ancode: Int!, locked: Boolean!): PlanEntry!
 }
 
 type Emails {
@@ -20757,6 +20776,28 @@ func (ec *executionContext) field_Mutation_setExamDuration_args(ctx context.Cont
 		return nil, err
 	}
 	args["duration"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setExamLocked_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ancode",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["ancode"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "locked",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["locked"] = arg1
 	return args, nil
 }
 
@@ -38868,6 +38909,50 @@ func (ec *executionContext) fieldContext_Mutation_setExamTime(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setExamTime_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setExamLocked(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setExamLocked(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetExamLocked(ctx, fc.Args["ancode"].(int), fc.Args["locked"].(bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.PlanEntry) graphql.Marshaler {
+			return ec.marshalNPlanEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanEntry(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setExamLocked(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PlanEntry(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setExamLocked_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -70773,6 +70858,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setExamLocked":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setExamLocked(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setSemesterPlaner":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setSemesterPlaner(ctx, field)
@@ -80084,6 +80176,14 @@ func (ec *executionContext) marshalNPermanentNonInvigilator2ᚖgithubᚗcomᚋob
 		return graphql.Null
 	}
 	return ec._PermanentNonInvigilator(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPlanEntry2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlanEntry(ctx context.Context, sel ast.SelectionSet, v *model.PlanEntry) graphql.Marshaler {
+	if v == nil {
+		graphql.AddInvalidNullError(ctx, "PlanEntry!")
+		return graphql.Null
+	}
+	return ec._PlanEntry(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPlaner2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐPlaner(ctx context.Context, sel ast.SelectionSet, v *model.Planer) graphql.Marshaler {

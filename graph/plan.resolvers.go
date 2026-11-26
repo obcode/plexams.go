@@ -17,6 +17,11 @@ func (r *mutationResolver) SetExamTime(ctx context.Context, ancode int, starttim
 	return r.plexams.SetExamTime(ctx, ancode, starttime)
 }
 
+// SetExamLocked is the resolver for the setExamLocked field.
+func (r *mutationResolver) SetExamLocked(ctx context.Context, ancode int, locked bool) (*model.PlanEntry, error) {
+	return r.plexams.SetExamLocked(ctx, ancode, locked)
+}
+
 // AllProgramsInPlan is the resolver for the allProgramsInPlan field.
 func (r *queryResolver) AllProgramsInPlan(ctx context.Context) ([]string, error) {
 	return r.plexams.AllProgramsInPlan(ctx)

@@ -13,7 +13,7 @@ import (
 )
 
 func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile string, reporter Reporter) ([]*model.ZPAStudentReg, []*model.RegWithError, error) {
-	reporter.Step("collecting student registrations")
+	reporter.Step("stelle die Anmeldungen zusammen")
 	if err := p.SetZPA(); err != nil {
 		return nil, nil, err
 	}
@@ -74,7 +74,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 		}
 	}
 
-	reporter.Step(fmt.Sprintf("uploading %d student regs in chunks of %d to ZPA", len(zpaStudentRegs), chunkSize))
+	reporter.Step(fmt.Sprintf("übertrage %d Anmeldungen in Paketen zu je %d ins ZPA", len(zpaStudentRegs), chunkSize))
 
 	for from := 0; from <= len(zpaStudentRegs); from += chunkSize {
 		to := from + chunkSize
@@ -82,7 +82,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 			to = len(zpaStudentRegs)
 		}
 
-		reporter.Step(fmt.Sprintf("uploading chunk of regs %d-%d", from, to-1))
+		reporter.Step(fmt.Sprintf("übertrage Anmeldungen %d bis %d", from, to-1))
 
 		_, body, err := p.zpa.client.PostStudentRegsToZPA(zpaStudentRegs[from:to])
 		if err != nil {
@@ -115,7 +115,7 @@ func (p *Plexams) PostStudentRegsToZPA(ctx context.Context, jsonOutputFile strin
 	}
 
 	p.markCondition(ctx, condStudentRegsUploaded)
-	reporter.StopProgress(fmt.Sprintf("uploaded %d regs, %d with errors", len(zpaStudentRegs), len(regsWithErrors)))
+	reporter.StopProgress(fmt.Sprintf("%d Anmeldungen übertragen, %d davon hat das ZPA nicht angenommen", len(zpaStudentRegs), len(regsWithErrors)))
 
 	p.logSync(ctx, &model.SyncLogEntry{
 		Operation: "zpa-upload-studentregs",
@@ -138,13 +138,13 @@ func noZPAStudRegError(zpaStudentRegError *model.ZPAStudentRegError) bool {
 }
 
 func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, upload bool, reporter Reporter) ([]*model.ZPAExamPlan, error) {
-	what := "exams"
+	what := "Prüfungen"
 	if withInvigilators {
-		what = "exams with rooms and invigilators"
+		what = "Prüfungen mit Räumen und Aufsichten"
 	} else if withRooms {
-		what = "exams with rooms"
+		what = "Prüfungen mit Räumen"
 	}
-	reporter.Step("building plan: " + what)
+	reporter.Step("stelle den Plan zusammen: " + what)
 
 	if err := p.SetZPA(); err != nil {
 		return nil, err
@@ -168,7 +168,7 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 			continue
 		}
 		if exam.Constraints != nil && exam.Constraints.DoNotPublish {
-			reporter.Printf("do not publish: %d", exam.Ancode)
+			reporter.Printf("wird nicht übertragen (als „nicht veröffentlichen“ markiert): Ancode %d", exam.Ancode)
 			continue
 		}
 
@@ -302,13 +302,13 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 		return nil, err
 	}
 	for _, exam := range additionalExams {
-		reporter.Printf("additional exam: %d. %s. %s", exam.AnCode, exam.Date, exam.Time)
+		reporter.Printf("zusätzliche Prüfung: Ancode %d am %s um %s", exam.AnCode, exam.Date, exam.Time)
 		exams = append(exams, exam)
 	}
 
 	if upload {
 		// post to ZPA
-		reporter.Step(fmt.Sprintf("posting %d exams to ZPA", len(exams)))
+		reporter.Step(fmt.Sprintf("übertrage %d Prüfungen ins ZPA", len(exams)))
 		status, body, postErr := p.zpa.client.PostExams(exams)
 		if postErr != nil {
 			// a rejected upload (non-2xx) or a transport error: surface ZPA's
@@ -316,14 +316,14 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 			// CLI and, via the streaming reporter, in the GUI.
 			log.Error().Err(postErr).Str("status", status).Msg("error while posting exams on zpa")
 			if msg := strings.TrimSpace(string(body)); msg != "" {
-				reporter.Warnf("ZPA response: %s", msg)
+				reporter.Warnf("Antwort des ZPA: %s", msg)
 			}
-			reporter.StopProgressFail(fmt.Sprintf("upload to ZPA failed (status %s)", status))
-			return exams, fmt.Errorf("upload to ZPA failed: %w", postErr)
+			reporter.StopProgressFail(fmt.Sprintf("Die Übertragung ins ZPA ist fehlgeschlagen (%s). Prüfe mit der ZPA-Validierung, was im ZPA steht, bevor du es erneut versuchst.", status))
+			return exams, fmt.Errorf("Übertragung ins ZPA fehlgeschlagen: %w", postErr)
 		}
 
 		log.Info().Str("status", status).Msg("exams posted to zpa")
-		reporter.StopProgress(fmt.Sprintf("uploaded %d exams to ZPA (status %s)", len(exams), status))
+		reporter.StopProgress(fmt.Sprintf("%d Prüfungen ins ZPA übertragen (%s)", len(exams), status))
 		reporter.Println(string(body))
 
 		scope := "exams"
@@ -341,7 +341,7 @@ func (p *Plexams) UploadPlan(ctx context.Context, withRooms, withInvigilators, u
 			Summary:   fmt.Sprintf("%d Prüfungen hochgeladen (%s)", len(exams), what),
 		})
 	} else {
-		reporter.StopProgress(fmt.Sprintf("dry run: %d exams prepared, nothing uploaded", len(exams)))
+		reporter.StopProgress(fmt.Sprintf("Probelauf: %d Prüfungen zusammengestellt, nichts übertragen", len(exams)))
 	}
 
 	return exams, err

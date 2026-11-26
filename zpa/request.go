@@ -31,7 +31,7 @@ func (zpa *ZPA) get(path string, v any) error {
 
 	resp, err := zpa.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("cannot reach ZPA for %s: %w", path, err)
+		return unreachable("Abruf von "+path, err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 	body, _ := io.ReadAll(resp.Body)
@@ -39,11 +39,11 @@ func (zpa *ZPA) get(path string, v any) error {
 	// A non-2xx status carries ZPA's (often plain-text/HTML) error message – surface
 	// it instead of failing later on a confusing JSON unmarshal error.
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("ZPA returned %s for %s: %s", resp.Status, path, bodySnippet(body))
+		return refused("Abruf von "+path, resp, body)
 	}
 
 	if err := json.Unmarshal(body, v); err != nil {
-		return fmt.Errorf("ZPA returned an unexpected (non-JSON) response for %s: %s", path, bodySnippet(body))
+		return garbled("Abruf von "+path, body)
 	}
 
 	return nil
@@ -65,7 +65,7 @@ func (zpa *ZPA) post(path string, rawBody any) (status string, body []byte, err 
 
 	resp, err := zpa.client.Do(req)
 	if err != nil {
-		return "", nil, fmt.Errorf("cannot reach ZPA for %s: %w", path, err)
+		return "", nil, unreachable("Übertragung nach "+path, err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
@@ -74,7 +74,7 @@ func (zpa *ZPA) post(path string, rawBody any) (status string, body []byte, err 
 	// (keeping the response body, which carries ZPA's error message) so callers
 	// don't mistake a rejected upload for a successful one.
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return resp.Status, body, fmt.Errorf("ZPA returned %s: %s", resp.Status, bodySnippet(body))
+		return resp.Status, body, refused("Übertragung nach "+path, resp, body)
 	}
 	return resp.Status, body, nil
 }

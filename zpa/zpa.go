@@ -67,17 +67,17 @@ func NewZPA(baseurl, username, password, tokenFromConfig, semester string) (*ZPA
 
 		resp, err := c.Do(req)
 		if err != nil {
-			return nil, fmt.Errorf("cannot reach ZPA for authentication: %w", err)
+			return nil, unreachable("Anmeldung", err)
 		}
 		defer resp.Body.Close() //nolint:errcheck
 		body, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return nil, fmt.Errorf("ZPA authentication failed (%s): %s", resp.Status, bodySnippet(body))
+			return nil, refused("Anmeldung", resp, body)
 		}
 
 		var token Token
 		if err := json.Unmarshal(body, &token); err != nil {
-			return nil, fmt.Errorf("ZPA returned an unexpected authentication response: %s", bodySnippet(body))
+			return nil, garbled("Anmeldung", body)
 		}
 
 		zpa.token = token
@@ -87,10 +87,10 @@ func NewZPA(baseurl, username, password, tokenFromConfig, semester string) (*ZPA
 	// failure here (e.g. a wrong semester) is surfaced so the caller/GUI sees it
 	// instead of an empty result. Supervisor requirements are loaded on demand.
 	if err := zpa.getTeachers(); err != nil {
-		return nil, fmt.Errorf("cannot load teachers from ZPA: %w", err)
+		return nil, fmt.Errorf("Dozierende konnten nicht aus dem ZPA geladen werden: %w", err)
 	}
 	if err := zpa.getExams(); err != nil {
-		return nil, fmt.Errorf("cannot load exams from ZPA: %w", err)
+		return nil, fmt.Errorf("Prüfungen konnten nicht aus dem ZPA geladen werden: %w", err)
 	}
 
 	return &zpa, nil

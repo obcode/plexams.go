@@ -17,30 +17,30 @@ import (
 // update emails).
 func (p *Plexams) HTTPUploadPrimussZip(w http.ResponseWriter, r *http.Request) {
 	if !p.WritesAllowed() {
-		http.Error(w, "a validation or transfer/email is running, cannot upload now", http.StatusConflict)
+		http.Error(w, "Gerade läuft eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand; der Upload geht erst danach.", http.StatusConflict)
 		return
 	}
 	if err := r.ParseMultipartForm(256 << 20); err != nil {
-		http.Error(w, "cannot parse upload: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Der Upload konnte nicht gelesen werden; bitte die Datei noch einmal auswählen. ("+err.Error()+")", http.StatusBadRequest)
 		return
 	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "missing file: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Es wurde keine Datei mitgeschickt; bitte das ZIP mit den Sammellisten auswählen. ("+err.Error()+")", http.StatusBadRequest)
 		return
 	}
 	defer file.Close() //nolint:errcheck
 
 	zipData, err := io.ReadAll(file)
 	if err != nil {
-		http.Error(w, "cannot read zip: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Die hochgeladene Datei konnte nicht gelesen werden. ("+err.Error()+")", http.StatusInternalServerError)
 		return
 	}
 
 	ctx := r.Context()
 	result, err := p.ImportPrimussZip(ctx, zipData)
 	if err != nil {
-		http.Error(w, "import failed: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Der Import ist fehlgeschlagen; es wurde nichts übernommen. "+err.Error(), http.StatusBadRequest)
 		return
 	}
 

@@ -15,6 +15,8 @@ const (
 	FindingNTARoomNotAlone = "NTA_ROOM_NOT_ALONE"
 	// FindingNTARoomWaived: the same situation with a recorded waiver.
 	FindingNTARoomWaived = "NTA_ROOM_WAIVED"
+	// FindingPlanEntryNotAssembled: an exam has a time but no assembled exam.
+	FindingPlanEntryNotAssembled = "PLAN_ENTRY_NOT_ASSEMBLED"
 )
 
 // ptr returns a pointer to v, for the optional reference fields of a finding.
@@ -45,6 +47,12 @@ type ref struct {
 	// for it. Hint tells the planner what to do about it.
 	Code string
 	Hint string
+}
+
+// hint returns r with the advice for the planner set: what to do about the finding.
+func (r ref) hint(s string) ref {
+	r.Hint = s
+	return r
 }
 
 // newValidation starts a validator: name is the stable machine name (used in the

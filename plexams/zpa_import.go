@@ -43,7 +43,7 @@ func (p *Plexams) logSync(ctx context.Context, entry *model.SyncLogEntry) {
 // ImportTeachersFromZPA fetches the teachers from ZPA, caches them and streams a
 // CLI-style listing via the reporter. It returns the number fetched.
 func (p *Plexams) ImportTeachersFromZPA(ctx context.Context, reporter Reporter) (int, error) {
-	reporter.Step("fetching teachers from ZPA")
+	reporter.Step("lade Dozierende aus dem ZPA")
 	falseVal := false
 	oldTeachers, err := p.GetTeachers(ctx, &falseVal) // current DB state, before the fetch overwrites it
 	if err != nil {
@@ -77,14 +77,14 @@ func (p *Plexams) ImportTeachersFromZPA(ctx context.Context, reporter Reporter) 
 		len(teachers), rec.Added, rec.Changed, rec.Removed)
 	p.logSync(ctx, rec)
 	p.markCondition(ctx, condZPAPersonsImported)
-	reporter.StopProgress(fmt.Sprintf("fetched %d teachers", len(teachers)))
+	reporter.StopProgress(fmt.Sprintf("%d Dozierende geladen", len(teachers)))
 	return len(teachers), nil
 }
 
 // ImportExamsFromZPA fetches the exams from ZPA, caches them and streams a
 // CLI-style listing via the reporter. It returns the number fetched.
 func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (int, error) {
-	reporter.Step("fetching exams from ZPA")
+	reporter.Step("lade Prüfungen aus dem ZPA")
 	falseVal := false
 	oldExams, err := p.GetZPAExams(ctx, &falseVal) // current DB state, before the fetch overwrites it
 	if err != nil {
@@ -122,7 +122,7 @@ func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (in
 		len(exams), rec.Added, rec.Changed, rec.Removed)
 	p.logSync(ctx, rec)
 	p.markCondition(ctx, condZPAImported)
-	reporter.StopProgress(fmt.Sprintf("fetched %d exams", len(exams)))
+	reporter.StopProgress(fmt.Sprintf("%d Prüfungen geladen", len(exams)))
 
 	// pre-select the planning status of exams that have no decision yet: written and
 	// practical exams ("schriftliche/praktische Prüfung") are to be planned, everything
@@ -130,7 +130,7 @@ func (p *Plexams) ImportExamsFromZPA(ctx context.Context, reporter Reporter) (in
 	if toPlan, notToPlan, err := p.autoPreselectExamsToPlan(ctx); err != nil {
 		log.Error().Err(err).Msg("cannot pre-select exams to plan")
 	} else if toPlan+notToPlan > 0 {
-		reporter.Step(fmt.Sprintf("Vorauswahl: %d Prüfungen zu planen, %d nicht planen (nur bisher unentschiedene)", toPlan, notToPlan))
+		reporter.Step(fmt.Sprintf("Vorauswahl für bisher unentschiedene Prüfungen: %d zu planen, %d nicht planen (bitte unter „Prüfungen auswählen & Vorgaben“ prüfen)", toPlan, notToPlan))
 	}
 
 	return len(exams), nil
@@ -168,7 +168,7 @@ func (p *Plexams) autoPreselectExamsToPlan(ctx context.Context) (toPlanAdded, no
 // ZPA, streams which invigilators are still missing and returns the number of
 // requirements fetched.
 func (p *Plexams) ImportInvigilatorRequirementsFromZPA(ctx context.Context, reporter Reporter) (int, error) {
-	reporter.Step("fetching invigilator requirements from ZPA")
+	reporter.Step("lade Aufsichts-Anforderungen aus dem ZPA")
 
 	// snapshot the stored requirements before the fetch overwrites them, so we
 	// can tell whether anything actually changed.
@@ -181,7 +181,7 @@ func (p *Plexams) ImportInvigilatorRequirementsFromZPA(ctx context.Context, repo
 	if err != nil {
 		return 0, err
 	}
-	reporter.Printf("fetched %d invigilator requirements", len(reqs))
+	reporter.Printf("%d Aufsichts-Anforderungen geladen", len(reqs))
 
 	invigilators, err := p.GetInvigilators(ctx)
 	if err != nil {
@@ -192,13 +192,17 @@ func (p *Plexams) ImportInvigilatorRequirementsFromZPA(ctx context.Context, repo
 	for _, invigilator := range invigilators {
 		if !invigilator.HasSubmittedRequirements {
 			missing++
-			reporter.Printf("  - missing: %s (%s)", invigilator.Teacher.Fullname, invigilator.Teacher.Email)
+			reporter.Printf("  - fehlt noch: %s (%s)", invigilator.Teacher.Fullname, invigilator.Teacher.Email)
 		}
 	}
 	if missing == 0 {
-		reporter.StopProgress(fmt.Sprintf("%d requirements fetched, all invigilators have submitted", len(reqs)))
+		reporter.StopProgress(fmt.Sprintf("%d Anforderungen geladen, alle Aufsichtführenden haben ihre Angaben gemacht", len(reqs)))
 	} else {
-		reporter.StopProgressFail(fmt.Sprintf("%d requirements fetched, %d invigilator(s) still missing", len(reqs), missing))
+		// Open answers are not a failed import: report them as a warning, so the
+		// GUI does not show the import as broken.
+		reporter.StopProgress(fmt.Sprintf("%d Anforderungen geladen", len(reqs)))
+		reporter.Warnf("Von %d Aufsichtführenden fehlen die Angaben noch (siehe Liste oben). "+
+			"Erinnerung unter „E-Mails“ verschicken und danach erneut laden.", missing)
 	}
 
 	// report what changed; if anything did, rebuild the invigilator todos right
@@ -231,11 +235,11 @@ func (p *Plexams) ImportInvigilatorRequirementsFromZPA(ctx context.Context, repo
 		len(reqs), rec.Added, rec.Changed, rec.Removed, missing)
 	p.logSync(ctx, rec)
 	if rec.Added+rec.Changed+rec.Removed > 0 {
-		reporter.Step("requirements changed — rebuilding invigilator todos")
+		reporter.Step("Anforderungen haben sich geändert, berechne den Aufsichtsbedarf je Person neu")
 		if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
-			reporter.Warnf("cannot rebuild invigilator todos: %v", err)
+			reporter.Warnf("Der Aufsichtsbedarf je Person konnte nicht neu berechnet werden: %v", err)
 		} else {
-			reporter.StopProgress("invigilator todos rebuilt")
+			reporter.StopProgress("Aufsichtsbedarf je Person neu berechnet")
 		}
 	}
 

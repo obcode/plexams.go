@@ -1,6 +1,6 @@
 # Linter configuration. The enabled set is deliberately left at the golangci-lint
 # default (errcheck, govet, ineffassign, staticcheck, unused) -- this file exists
-# only to bound resource use.
+# to bound resource use, and to allow German sentences as error strings (see below).
 #
 # Why: the analysis workers each hold the package ASTs of a 173k-LOC repo, 111k of
 # which is graph/generated/generated.go. With the worker count left at GOMAXPROCS
@@ -15,3 +15,14 @@ version: "2"
 
 run:
   concurrency: 4
+
+linters:
+  settings:
+    staticcheck:
+      # ST1005 wants error strings to start lower-case and carry no punctuation. That
+      # is right for errors a developer reads in a log, and wrong here: many errors
+      # are shown to the planner in the GUI, and those are German sentences, where a
+      # noun at the start is capitalised and a full stop ends the sentence.
+      # The rest is golangci-lint's default selection, spelled out because setting
+      # `checks` replaces it.
+      checks: ["all", "-ST1000", "-ST1003", "-ST1005", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]

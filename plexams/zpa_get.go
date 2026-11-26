@@ -267,7 +267,7 @@ func (p *Plexams) GetSupervisorRequirements(ctx context.Context) ([]*zpa.Supervi
 	}
 	supervisorRequirements, err := p.zpa.client.GetSupervisorRequirements()
 	if err != nil {
-		return nil, fmt.Errorf("cannot get supervisor requirements: %w", err)
+		return nil, fmt.Errorf("Aufsichts-Anforderungen konnten nicht aus dem ZPA geladen werden: %w", err)
 	}
 
 	reqInterface := make([]interface{}, 0, len(supervisorRequirements))

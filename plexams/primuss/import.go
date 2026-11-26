@@ -93,7 +93,7 @@ func skipReason(base string) string {
 func (s *Service) ImportZip(ctx context.Context, zipData []byte) (*ImportResult, error) {
 	zr, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
-		return nil, fmt.Errorf("not a valid zip: %w", err)
+		return nil, fmt.Errorf("Die Datei ist kein gültiges ZIP-Archiv. Erwartet wird das ZIP mit den Sammellisten aus Primuss (eine XLSX-Datei je Studiengang): %w", err)
 	}
 
 	// program -> kind -> xlsx bytes (last one wins)
@@ -138,7 +138,7 @@ func (s *Service) ImportZip(ctx context.Context, zipData []byte) (*ImportResult,
 	for _, program := range programs {
 		prog, err := s.importProgram(ctx, program, files[program])
 		if err != nil {
-			return nil, fmt.Errorf("program %s: %w", program, err)
+			return nil, fmt.Errorf("Studiengang %s: %w", program, err)
 		}
 		result.Programs = append(result.Programs, prog)
 	}
@@ -192,7 +192,7 @@ func (s *Service) importProgram(ctx context.Context, program string, byKind map[
 	if data, ok := byKind["exams"]; ok {
 		sh, err := parseSheet(data)
 		if err != nil {
-			return nil, fmt.Errorf("exams: %w", err)
+			return nil, fmt.Errorf("Prüfungsliste konnte nicht gelesen werden: %w", err)
 		}
 		rows, errs := convertExams(sh)
 		addProblems(errs)
@@ -212,7 +212,7 @@ func (s *Service) importProgram(ctx context.Context, program string, byKind map[
 		}
 		sh, err := parseSheet(data)
 		if err != nil {
-			return nil, fmt.Errorf("studentregs: %w", err)
+			return nil, fmt.Errorf("Anmeldungen konnten nicht gelesen werden: %w", err)
 		}
 		rows, errs := convertStudentRegs(sh)
 		addProblems(errs)
@@ -237,7 +237,7 @@ func (s *Service) importProgram(ctx context.Context, program string, byKind map[
 	if data, ok := byKind["count"]; ok {
 		sh, err := parseSheet(data)
 		if err != nil {
-			return nil, fmt.Errorf("count: %w", err)
+			return nil, fmt.Errorf("Anmeldezahlen konnten nicht gelesen werden: %w", err)
 		}
 		rows, errs := convertCounts(sh)
 		addProblems(errs)
@@ -253,7 +253,7 @@ func (s *Service) importProgram(ctx context.Context, program string, byKind map[
 	if data, ok := byKind["conflicts"]; ok {
 		sh, err := parseSheet(data)
 		if err != nil {
-			return nil, fmt.Errorf("conflicts: %w", err)
+			return nil, fmt.Errorf("Konfliktliste konnte nicht gelesen werden: %w", err)
 		}
 		rows, errs := convertConflicts(sh)
 		addProblems(errs)
@@ -264,7 +264,7 @@ func (s *Service) importProgram(ctx context.Context, program string, byKind map[
 		if examRows, ok := byKind["exams"]; ok {
 			known, err := knownAncodes(examRows)
 			if err != nil {
-				return nil, fmt.Errorf("conflicts: %w", err)
+				return nil, fmt.Errorf("Konfliktliste konnte nicht gelesen werden: %w", err)
 			}
 			var dropped []ConvertError
 			rows, dropped = dropConflictsWithUnknownExams(rows, known)
@@ -307,14 +307,14 @@ func xlsxRows(data []byte) ([][]string, error) {
 	defer f.Close() //nolint:errcheck
 	sheets := f.GetSheetList()
 	if len(sheets) == 0 {
-		return nil, fmt.Errorf("xlsx has no sheet")
+		return nil, fmt.Errorf("die XLSX-Datei enthält kein Tabellenblatt")
 	}
 	rows, err := f.GetRows(sheets[0])
 	if err != nil {
 		return nil, err
 	}
 	if len(rows) < 1 {
-		return nil, fmt.Errorf("xlsx is empty")
+		return nil, fmt.Errorf("die XLSX-Datei ist leer")
 	}
 	width := len(rows[0])
 	for i, r := range rows {

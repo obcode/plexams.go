@@ -25,7 +25,7 @@ func (p *Plexams) examByAncode(ctx context.Context, ancode int) (*model.ZPAExam,
 // Primuss), so the findings are info, not errors.
 func (p *Plexams) ValidateStudentRegs(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "student-regs", "validating student regs")
+	v := newValidation(reporter, "student-regs", "prüfe die Anmeldungen")
 
 	if ok, err := p.hasStudentRegs(ctx); err != nil {
 		return nil, err
@@ -61,8 +61,8 @@ func (p *Plexams) ValidateStudentRegs(reporter Reporter) (*model.ValidationRepor
 				fmt.Fprintf(&sb, "%s/%d: %s (%s); ", reg.Program, reg.PrimussAncode, exam.Module, exam.MainExamer)
 			}
 
-			v.infof(ref{StudentMtknr: ptr(studentReg.Mtknr)},
-				"regs from more than one program for student %s (%s/%s): %v: %s",
+			v.infof(ref{StudentMtknr: ptr(studentReg.Mtknr)}.hint("Nur zur Kenntnis. Auffällig ist das nur, wenn die Person nicht in einem gemeinsamen Studiengang oder im Doppelstudium ist; dann im Prüfungsamt nachfragen."),
+				"%s (%s, Matrikelnummer %s) ist in mehreren Studiengängen zu Prüfungen angemeldet: %v: %s",
 				studentReg.Name, studentReg.Program, studentReg.Mtknr, programs.ToSlice(), sb.String())
 		}
 	}

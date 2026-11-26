@@ -2,7 +2,6 @@ package plexams
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -76,7 +75,7 @@ func TestValidateDBPlanEntriesReportsAPlanEntryWithoutAssembledExam(t *testing.T
 	}
 	var found []*model.ValidationFinding
 	for _, f := range report.Findings {
-		if f.Ancode != nil && *f.Ancode == 101 && strings.Contains(f.Message, "no assembled exam") {
+		if f.Ancode != nil && *f.Ancode == 101 && f.Code != nil && *f.Code == FindingPlanEntryNotAssembled {
 			found = append(found, f)
 		}
 		if f.Ancode != nil && *f.Ancode == 100 {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/plexams/zpaimport"
 	"github.com/rs/zerolog/log"
 )
@@ -96,12 +97,12 @@ type DiffWindow struct {
 // names at query time, not filtered away here. window restricts the change report (not
 // the store) to the exam period.
 func (s *Service) Fetch(ctx context.Context, reporter Reporter, window DiffWindow) error {
-	reporter.Step("fetching bookings from anny.eu")
+	reporter.Step("rufe die Buchungen aus Anny ab")
 	personalizationNames := s.PersonalizationNames(ctx)
 
 	token := strings.TrimSpace(s.cfg.Token)
 	if token == "" {
-		return fmt.Errorf("anny token is empty")
+		return apierr.New(apierr.CodeExternalAnny, "Für Anny ist kein Zugangs-Token hinterlegt. Das muss die Plexams-Betreuung in der Server-Konfiguration eintragen.")
 	}
 
 	authToken := token
@@ -133,7 +134,7 @@ func (s *Service) Fetch(ctx context.Context, reporter Reporter, window DiffWindo
 
 		resp, err := client.Do(req)
 		if err != nil {
-			return fmt.Errorf("cannot fetch anny bookings: %w", err)
+			return annyUnreachable(err)
 		}
 
 		body, readErr := io.ReadAll(resp.Body)
@@ -146,12 +147,12 @@ func (s *Service) Fetch(ctx context.Context, reporter Reporter, window DiffWindo
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("anny request failed with status %s: %s", resp.Status, string(body))
+			return annyRefused(resp.Status, body)
 		}
 
 		var page bookingsPage
 		if err := json.Unmarshal(body, &page); err != nil {
-			return fmt.Errorf("cannot decode anny response: %w", err)
+			return annyGarbled(err)
 		}
 
 		for _, raw := range page.Data {
@@ -205,11 +206,11 @@ func (s *Service) Fetch(ctx context.Context, reporter Reporter, window DiffWindo
 	}
 
 	if err := s.db.SaveAnnyBookings(ctx, dbBookings); err != nil {
-		return fmt.Errorf("cannot save anny bookings: %w", err)
+		return fmt.Errorf("Die Anny-Buchungen konnten nicht gespeichert werden: %w", err)
 	}
 
 	summary(bookings, personalizationNames, reporter)
-	reporter.StopProgress(fmt.Sprintf("saved %d anny bookings to the database", len(dbBookings)))
+	reporter.StopProgress(fmt.Sprintf("%d Anny-Buchungen gespeichert", len(dbBookings)))
 
 	rec := diffBookings(oldBookings, dbBookings, window, time.Now(), personalizationNames)
 	for _, m := range rec.msgs {
@@ -504,4 +505,26 @@ func parseRFC3339LocalOptional(value string) (*time.Time, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+// annyUnreachable, annyRefused and annyGarbled turn a failed request into a message
+// for the planner. The response body of Anny is JSON or a web page; neither helps in
+// the GUI, so it goes to the log only.
+func annyUnreachable(err error) error {
+	log.Error().Err(err).Msg("cannot reach anny")
+	return apierr.New(apierr.CodeExternalAnny,
+		"Anny war nicht erreichbar. Das liegt am Netz oder an Anny selbst; die bisher gespeicherten Buchungen sind unverändert.")
+}
+
+func annyRefused(status string, body []byte) error {
+	log.Error().Str("status", status).Str("body", string(body)).Msg("anny refused the request")
+	return apierr.Newf(apierr.CodeExternalAnny,
+		"Anny hat die Abfrage abgelehnt (%s). Vermutlich ist das Zugangs-Token abgelaufen; das muss die Plexams-Betreuung erneuern. "+
+			"Die bisher gespeicherten Buchungen sind unverändert.", status)
+}
+
+func annyGarbled(err error) error {
+	log.Error().Err(err).Msg("cannot decode anny response")
+	return apierr.New(apierr.CodeExternalAnny,
+		"Anny hat etwas Unerwartetes geantwortet. Die bisher gespeicherten Buchungen sind unverändert; später noch einmal versuchen.")
 }

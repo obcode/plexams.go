@@ -1,6 +1,7 @@
 package zpa
 
 import (
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -29,7 +30,7 @@ func TestGetNon2xxSurfacesBody(t *testing.T) {
 	}
 }
 
-func TestGetNonJSONSurfacesBody(t *testing.T) {
+func TestGetNonJSONIsReportedWithoutMarkup(t *testing.T) {
 	zpa, srv := testZPA(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("<html>Internal Server Error</html>"))
 	})
@@ -40,8 +41,9 @@ func TestGetNonJSONSurfacesBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error for a non-JSON 200 response")
 	}
-	if !strings.Contains(err.Error(), "non-JSON") || !strings.Contains(err.Error(), "Internal Server Error") {
-		t.Errorf("error should mention non-JSON and carry the body, got: %v", err)
+	// The planner gets a coded message; the markup stays in the log.
+	if apierr.Code(err) != apierr.CodeExternalZPA || strings.Contains(err.Error(), "<html>") {
+		t.Errorf("want a coded ZPA error without the markup, got: %v", err)
 	}
 }
 

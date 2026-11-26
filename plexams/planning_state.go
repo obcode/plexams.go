@@ -79,9 +79,9 @@ var planningConditionDefs = []planstate.CondDef{
 	{Key: condExamPlanningInfoSent, Title: "Prüfungsplanungs-Info an Prüfende verschickt", Phase: "phase0"},
 	{Key: condPrimussImported, Title: "Primuss-Anmeldedaten importiert", Phase: "phase0"},
 	{Key: condZpaPrimussConnected, Title: "ZPA- & Primuss-Prüfungen verknüpft", Phase: "phase0"},
-	{Key: condConstraintsEntered, Title: "Constraints eingepflegt", Phase: "phase0"},
+	{Key: condConstraintsEntered, Title: "Vorgaben der Prüfungen eingetragen", Phase: "phase0"},
 	{Key: condAssembledExams, Title: "Aufbereitete Prüfungen erstellt", Phase: "phase0"},
-	{Key: condStudentRegs, Title: "Anmeldungen erstellt", Phase: "phase0"},
+	{Key: condStudentRegs, Title: "Anmeldungen je Studierender:m erstellt", Phase: "phase0"},
 	{Key: condStudentRegsUploaded, Title: "Anmeldungen ins ZPA hochgeladen", Phase: "phase0"},
 	{Key: condPrimussDataAllSent, Title: "Primuss-Daten an alle verschickt", Phase: "phase0"},
 	{Key: condNTARoomAloneSent, Title: "Info an NTAs mit eigenem Raum verschickt", Phase: "phase0"},
@@ -102,7 +102,7 @@ var planningConditionDefs = []planstate.CondDef{
 	{Key: condInvigilationPlanPublished, Title: "Aufsichtenplan veröffentlicht (E-Mail)", Phase: "phase3", Gate: model.PlanningGateInvigilations},
 	{Key: condInvigSecretariatSent, Title: "Info 'Aufsichten veröffentlicht' ans Sekretariat verschickt", Phase: "phase3"},
 	{Key: condNTAPlannedSent, Title: "Info an NTAs zu ihren Räumen verschickt", Phase: "phase3"},
-	{Key: condLbaRepeatersSent, Title: "Info Wiederholungsprüfungen LBAs ans LBA-BA verschickt", Phase: "phase3"},
+	{Key: condLbaRepeatersSent, Title: "Wiederholungsprüfungen der Lehrbeauftragten an die LBA-Beauftragten verschickt", Phase: "phase3"},
 	{Key: condCoverPagesSent, Title: "Deckblätter an alle verschickt (letzter Schritt)", Phase: "phase3"},
 }
 

@@ -51,7 +51,7 @@ func fmtStart(t *time.Time) string {
 	if t == nil {
 		return "nicht geplant"
 	}
-	return t.Format("02.01.06 15:04")
+	return t.Format("02.01.2006 15:04")
 }
 
 // validStarttimes returns the set (by startKey) of allowed exam start times a plan
@@ -87,7 +87,7 @@ func sameDate(a, b time.Time) bool {
 // fields are mutually consistent.
 func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-plan-entries", "validating plan entries")
+	v := newValidation(reporter, "db-plan-entries", "prüfe die gespeicherten Termine")
 
 	planEntries, err := p.dbClient.PlanEntries(ctx)
 	if err != nil {
@@ -122,37 +122,37 @@ func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationRep
 		externalAncodes[exam.AnCode] = true
 	}
 
-	v.step("validating plan entries")
+	v.step("prüfe die gespeicherten Termine")
 	planEntryMap := make(map[int]*model.PlanEntry)
 	for _, planEntry := range planEntries {
 		if other, ok := planEntryMap[planEntry.Ancode]; ok {
-			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
-				"more than one plan entry for ancode %d: %s and %s",
+			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime}.hint("Im Prüfungsplan die Prüfung auf den richtigen Termin setzen; bleibt der Fehler, der Plexams-Betreuung melden."),
+				"Die Prüfung mit Ancode %d hat zwei Termine gleichzeitig: %s und %s.",
 				planEntry.Ancode, fmtStart(other.Starttime), fmtStart(planEntry.Starttime))
 			continue
 		}
 		planEntryMap[planEntry.Ancode] = planEntry
 
 		if !known[planEntry.Ancode] {
-			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
-				"plan entry for ancode %d, but no such exam (neither to-plan nor external)", planEntry.Ancode)
+			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime}.hint("Vermutlich wurde die Prüfung nach dem Planen abgewählt oder im ZPA entfernt. Unter „Prüfungen auswählen & Vorgaben“ prüfen, ob sie geplant werden soll."),
+				"Für Ancode %d ist ein Termin gespeichert, aber es gibt dazu keine Prüfung mehr (weder zu planen noch von einer anderen Fakultät).", planEntry.Ancode)
 		} else if !externalAncodes[planEntry.Ancode] && !assembledAncodes[planEntry.Ancode] {
-			v.warnf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
-				"plan entry for ancode %d, but no assembled exam: it is left out of its slot until the exams are assembled again",
+			v.warnf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime, Code: FindingPlanEntryNotAssembled}.hint("Unter „Aufbereitete Prüfungen“ neu generieren."),
+				"Die Prüfung mit Ancode %d hat einen Termin, ist aber noch nicht aufbereitet. Solange erscheint sie nicht im Prüfungsplan und wird bei Räumen und Aufsichten nicht berücksichtigt.",
 				planEntry.Ancode)
 		}
 
 		switch {
 		case planEntry.Starttime == nil:
 			// present in the plan but carries no start time → not actually placed.
-			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
-				"ancode %d has no start time (not planned)", planEntry.Ancode)
+			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime}.hint("Im Prüfungsplan einen Termin setzen."),
+				"Die Prüfung mit Ancode %d ist im Plan eingetragen, hat aber keinen Termin.", planEntry.Ancode)
 		case !validStarts[startKey(*planEntry.Starttime)] && !planEntry.External:
 			// a start time that matches no allowed slot start is only legitimate for an
 			// external exam whose time lies outside our exam period.
-			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime},
-				"ancode %d is placed at %s, which is not an allowed start time in the semester config",
-				planEntry.Ancode, planEntry.Starttime.Format("02.01.06 15:04"))
+			v.errorf(ref{Ancode: ptr(planEntry.Ancode), Starttime: planEntry.Starttime}.hint("Die Prüfung im Prüfungsplan auf eine erlaubte Startzeit verschieben, oder die Startzeiten in der Semester-Konfiguration ergänzen."),
+				"Die Prüfung mit Ancode %d liegt am %s. Diese Startzeit sieht die Semester-Konfiguration nicht vor.",
+				planEntry.Ancode, planEntry.Starttime.Format("02.01.2006 15:04"))
 		}
 	}
 
@@ -166,7 +166,7 @@ func (p *Plexams) ValidateDBPlanEntries(reporter Reporter) (*model.ValidationRep
 // by ValidateConstraints and deliberately not repeated here.
 func (p *Plexams) ValidateDBConstraints(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-constraints", "validating constraints entries")
+	v := newValidation(reporter, "db-constraints", "prüfe die gespeicherten Vorgaben")
 
 	constraints, err := p.dbClient.GetConstraints(ctx)
 	if err != nil {
@@ -192,20 +192,20 @@ func (p *Plexams) ValidateDBConstraints(reporter Reporter) (*model.ValidationRep
 	v.step("validating constraints")
 	for _, c := range constraints {
 		if !known[c.Ancode] {
-			v.warnf(ref{Ancode: ptr(c.Ancode)},
-				"constraints for ancode %d, but no such exam (neither to-plan nor external)", c.Ancode)
+			v.warnf(ref{Ancode: ptr(c.Ancode)}.hint("Meist harmlos: die Prüfung wurde abgewählt oder im ZPA entfernt. Die Vorgaben wirken nicht."),
+				"Für Ancode %d sind Vorgaben gespeichert, aber es gibt dazu keine Prüfung mehr.", c.Ancode)
 		}
 
 		if c.FixedDay != nil {
 			pe, ok := planEntryMap[c.Ancode]
 			switch {
 			case !ok || pe.Starttime == nil:
-				v.warnf(ref{Ancode: ptr(c.Ancode)},
-					"ancode %d is fixed to day %s but is not planned", c.Ancode, c.FixedDay.Format("2006-01-02"))
+				v.warnf(ref{Ancode: ptr(c.Ancode)}.hint("Die Prüfung im Prüfungsplan an diesem Tag einplanen oder den Terminplan generieren."),
+					"Die Prüfung mit Ancode %d ist per Vorgabe auf den %s festgelegt, hat aber noch keinen Termin.", c.Ancode, c.FixedDay.Format("02.01.2006"))
 			case !sameDate(*pe.Starttime, *c.FixedDay):
-				v.errorf(ref{Ancode: ptr(c.Ancode), Starttime: pe.Starttime},
-					"ancode %d is fixed to day %s but is planned on %s",
-					c.Ancode, c.FixedDay.Format("2006-01-02"), pe.Starttime.Format("2006-01-02"))
+				v.errorf(ref{Ancode: ptr(c.Ancode), Starttime: pe.Starttime}.hint("Die Prüfung auf den festgelegten Tag verschieben, oder die Vorgabe ändern, wenn der neue Tag gewollt ist."),
+					"Die Prüfung mit Ancode %d ist per Vorgabe auf den %s festgelegt, liegt aber am %s.",
+					c.Ancode, c.FixedDay.Format("02.01.2006"), pe.Starttime.Format("02.01.2006"))
 			}
 		}
 	}
@@ -221,7 +221,7 @@ func (p *Plexams) ValidateDBConstraints(reporter Reporter) (*model.ValidationRep
 // reference.
 func (p *Plexams) ValidateDBRooms(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-rooms", "validating planned rooms")
+	v := newValidation(reporter, "db-rooms", "prüfe die gespeicherten Räume")
 
 	plannedRooms, err := p.dbClient.PlannedRooms(ctx)
 	if err != nil {
@@ -269,7 +269,7 @@ func (p *Plexams) ValidateDBRooms(reporter Reporter) (*model.ValidationReport, e
 	// seated twice for the same exam.
 	seatedForAncode := make(map[int]map[string]string) // ancode -> mtknr -> roomName
 
-	v.step("validating planned rooms")
+	v.step("prüfe die gespeicherten Räume")
 	for _, pr := range plannedRooms {
 		roomRef := ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), Starttime: pr.Starttime}
 
@@ -277,37 +277,37 @@ func (p *Plexams) ValidateDBRooms(reporter Reporter) (*model.ValidationReport, e
 		pe, ok := planEntryMap[pr.Ancode]
 		switch {
 		case !ok:
-			v.errorf(roomRef, "planned room %s at %s for ancode %d, but that exam is not planned",
+			v.errorf(roomRef.hint("Unter „Räume generieren“ die Räume neu generieren."), "Raum %s ist am %s für die Prüfung mit Ancode %d eingetragen, aber diese Prüfung hat keinen Termin mehr.",
 				pr.RoomName, fmtStart(pr.Starttime), pr.Ancode)
 		case pe.Starttime == nil:
-			v.errorf(roomRef, "planned room %s for ancode %d, but the exam has no start time (external?)",
+			v.errorf(roomRef.hint("Der Prüfung einen Termin geben und danach die Räume neu generieren."), "Raum %s ist für die Prüfung mit Ancode %d eingetragen, aber die Prüfung hat keinen Termin.",
 				pr.RoomName, pr.Ancode)
 		case pr.Starttime == nil || !pr.Starttime.Equal(*pe.Starttime):
-			v.errorf(roomRef, "planned room %s for ancode %d is at %s but the exam is planned at %s — stale after a move?",
+			v.errorf(roomRef.hint("Unter „Räume generieren“ die Räume neu generieren."), "Raum %s ist für die Prüfung mit Ancode %d am %s eingetragen, die Prüfung liegt aber am %s. Die Prüfung wurde wohl nach der Raumplanung verschoben.",
 				pr.RoomName, pr.Ancode, fmtStart(pr.Starttime), fmtStart(pe.Starttime))
 		}
 
 		// room must exist in the global room master data and be active.
 		if room, ok := roomMap[pr.RoomName]; !ok {
-			v.warnf(roomRef, "planned room %s (ancode %d) is not in the global room list", pr.RoomName, pr.Ancode)
+			v.warnf(roomRef.hint("Den Raum unter Stammdaten → Räume anlegen oder der Prüfung einen anderen Raum geben."), "Der eingeplante Raum %s (Ancode %d) steht nicht in den Stammdaten der Räume.", pr.RoomName, pr.Ancode)
 		} else if room.Deactivated {
-			v.warnf(roomRef, "planned room %s (ancode %d) is deactivated", pr.RoomName, pr.Ancode)
+			v.warnf(roomRef.hint("Den Raum wieder aktivieren oder die Räume neu generieren."), "Der eingeplante Raum %s (Ancode %d) ist in den Stammdaten deaktiviert.", pr.RoomName, pr.Ancode)
 		}
 
 		// a reserve room must not seat students.
 		if pr.Reserve && len(pr.StudentsInRoom) > 0 {
-			v.warnf(roomRef, "reserve room %s (ancode %d) has %d student(s) seated",
+			v.warnf(roomRef.hint("Die Räume neu generieren oder den Raum nicht mehr als Reserve führen."), "Im Reserveraum %s (Ancode %d) sitzen %d Studierende. Ein Reserveraum soll frei bleiben.",
 				pr.RoomName, pr.Ancode, len(pr.StudentsInRoom))
 		}
 
 		// NtaMtknr must reference a known, non-deactivated NTA and be seated in the room.
 		if pr.NtaMtknr != nil {
 			if nta, ok := ntaMap[*pr.NtaMtknr]; !ok {
-				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: pr.NtaMtknr, Starttime: pr.Starttime},
-					"planned room %s (ancode %d) references NTA %s, but no such NTA exists", pr.RoomName, pr.Ancode, *pr.NtaMtknr)
+				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: pr.NtaMtknr, Starttime: pr.Starttime}.hint("Den Nachteilsausgleich unter NTA-Stammdaten prüfen und danach die Räume neu generieren."),
+					"Raum %s (Ancode %d) ist für einen Nachteilsausgleich mit Matrikelnummer %s eingeplant, den es in den Stammdaten nicht gibt.", pr.RoomName, pr.Ancode, *pr.NtaMtknr)
 			} else if nta.Deactivated {
-				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: pr.NtaMtknr, Starttime: pr.Starttime},
-					"planned room %s (ancode %d) references deactivated NTA %s", pr.RoomName, pr.Ancode, *pr.NtaMtknr)
+				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: pr.NtaMtknr, Starttime: pr.Starttime}.hint("Die aufbereiteten Prüfungen und danach die Räume neu generieren."),
+					"Raum %s (Ancode %d) ist für den Nachteilsausgleich mit Matrikelnummer %s eingeplant, der inzwischen deaktiviert ist.", pr.RoomName, pr.Ancode, *pr.NtaMtknr)
 			}
 		}
 
@@ -320,12 +320,12 @@ func (p *Plexams) ValidateDBRooms(reporter Reporter) (*model.ValidationReport, e
 		}
 		for _, mtknr := range pr.StudentsInRoom {
 			if ancodeRegs != nil && !ancodeRegs[mtknr] {
-				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: ptr(mtknr), Starttime: pr.Starttime},
-					"student %s is seated in room %s for ancode %d but is not registered for it", mtknr, pr.RoomName, pr.Ancode)
+				v.warnf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: ptr(mtknr), Starttime: pr.Starttime}.hint("Die Räume neu generieren."),
+					"Matrikelnummer %s hat einen Platz in Raum %s für die Prüfung mit Ancode %d, ist aber nicht (mehr) dazu angemeldet.", mtknr, pr.RoomName, pr.Ancode)
 			}
 			if otherRoom, dup := seated[mtknr]; dup {
-				v.errorf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: ptr(mtknr), Starttime: pr.Starttime},
-					"student %s is seated twice for ancode %d: in %s and %s", mtknr, pr.Ancode, otherRoom, pr.RoomName)
+				v.errorf(ref{Ancode: ptr(pr.Ancode), Room: ptr(pr.RoomName), StudentMtknr: ptr(mtknr), Starttime: pr.Starttime}.hint("Die Räume neu generieren."),
+					"Matrikelnummer %s hat für die Prüfung mit Ancode %d zwei Plätze: in %s und in %s.", mtknr, pr.Ancode, otherRoom, pr.RoomName)
 			} else {
 				seated[mtknr] = pr.RoomName
 			}
@@ -362,7 +362,7 @@ func (p *Plexams) regsPerAncode(ctx context.Context) (map[int]map[string]bool, e
 // that no NTA is silently dropped because its program disagrees with the registration.
 func (p *Plexams) ValidateDBNtas(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-ntas", "validating ntas")
+	v := newValidation(reporter, "db-ntas", "prüfe die Nachteilsausgleiche")
 
 	ntas, err := p.dbClient.Ntas(ctx)
 	if err != nil {
@@ -370,20 +370,20 @@ func (p *Plexams) ValidateDBNtas(reporter Reporter) (*model.ValidationReport, er
 		return nil, err
 	}
 
-	v.step("validating ntas")
+	v.step("prüfe die Nachteilsausgleiche")
 	seen := make(map[string]string) // mtknr -> name
 	for _, n := range ntas {
 		if n.Mtknr == "" {
-			v.errorf(ref{}, "NTA for %q has no Matrikelnummer", n.Name)
+			v.errorf(ref{}.hint("Unter NTA-Stammdaten die Matrikelnummer eintragen."), "Der Nachteilsausgleich für %q hat keine Matrikelnummer und kann deshalb niemandem zugeordnet werden.", n.Name)
 			continue
 		}
 		if n.DeltaDurationPercent < 0 || n.DeltaDurationPercent > 100 {
-			v.warnf(ref{StudentMtknr: ptr(n.Mtknr)},
-				"NTA %s (%s) has an implausible duration delta of %d%%", n.Mtknr, n.Name, n.DeltaDurationPercent)
+			v.warnf(ref{StudentMtknr: ptr(n.Mtknr)}.hint("Unter NTA-Stammdaten die Zeitverlängerung prüfen; üblich sind Werte zwischen 0 und 100 Prozent."),
+				"Der Nachteilsausgleich %s (%s) hat eine Zeitverlängerung von %d%%. Das ist unplausibel.", n.Mtknr, n.Name, n.DeltaDurationPercent)
 		}
 		if firstName, dup := seen[n.Mtknr]; dup {
-			v.warnf(ref{StudentMtknr: ptr(n.Mtknr)},
-				"duplicate NTA for Matrikelnummer %s: %q and %q", n.Mtknr, firstName, n.Name)
+			v.warnf(ref{StudentMtknr: ptr(n.Mtknr)}.hint("Unter NTA-Stammdaten einen der beiden Einträge deaktivieren."),
+				"Für Matrikelnummer %s gibt es zwei Nachteilsausgleiche: %q und %q.", n.Mtknr, firstName, n.Name)
 		} else {
 			seen[n.Mtknr] = n.Name
 		}
@@ -478,7 +478,7 @@ func ntasNotApplied(ntas []*model.NTA, students []*model.Student) []ntaNotApplie
 // exams that exist: duration overrides, canShareSlot pairs and MUC.DAI links.
 func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "db-references", "validating cross references")
+	v := newValidation(reporter, "db-references", "prüfe die Verweise zwischen den Daten")
 
 	known, err := p.knownAncodes(ctx)
 	if err != nil {
@@ -493,8 +493,8 @@ func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationRepo
 	}
 	for _, o := range overrides {
 		if !known[o.Ancode] {
-			v.warnf(ref{Ancode: ptr(o.Ancode)},
-				"duration override (%d min) for ancode %d, but no such exam", o.Duration, o.Ancode)
+			v.warnf(ref{Ancode: ptr(o.Ancode)}.hint("Meist harmlos: die Prüfung wurde abgewählt oder im ZPA entfernt."),
+				"Eine abweichende Dauer (%d Minuten) ist für Ancode %d gespeichert, aber es gibt dazu keine Prüfung mehr.", o.Duration, o.Ancode)
 		}
 	}
 
@@ -507,8 +507,8 @@ func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationRepo
 	for _, pair := range pairs {
 		for _, ancode := range pair {
 			if !known[ancode] {
-				v.warnf(ref{Ancode: ptr(ancode), RelatedAncodes: []int{pair[0], pair[1]}},
-					"canShareSlot pair (%d, %d) references ancode %d, but no such exam", pair[0], pair[1], ancode)
+				v.warnf(ref{Ancode: ptr(ancode), RelatedAncodes: []int{pair[0], pair[1]}}.hint("Meist harmlos: die Freigabe wirkt nicht mehr."),
+					"Das Paar (%d, %d) ist als „darf zeitgleich“ eingetragen, aber zu Ancode %d gibt es keine Prüfung mehr.", pair[0], pair[1], ancode)
 			}
 		}
 	}
@@ -529,8 +529,8 @@ func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationRepo
 			return nil, err
 		}
 		for _, d := range duplicates {
-			v.warnf(ref{Ancode: ptr(d.Ancode)},
-				"%s/%d: Matrikelnummer %s ist %dx zur selben Prüfung angemeldet (aus den Primuss-Daten)",
+			v.warnf(ref{Ancode: ptr(d.Ancode)}.hint("Im Prüfungsamt nachfragen, wenn die Teilnehmerzahl dadurch nicht stimmt; für die Planung zählt die Person einmal."),
+				"Studiengang %s, Prüfung %d: Matrikelnummer %s ist %d-mal zur selben Prüfung angemeldet. So steht es in den Primuss-Daten.",
 				d.Program, d.Ancode, d.Mtknr, d.Count)
 		}
 
@@ -543,13 +543,13 @@ func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationRepo
 			// Report text is rendered in the GUI, so it is German like the rest of the
 			// planner-facing output.
 			if m.Recorded == db.NoCountDocument {
-				v.warnf(ref{Ancode: ptr(m.Ancode)},
-					"%s/%d: %d Anmeldungen gespeichert, aber kein Zähler-Dokument von Primuss",
+				v.warnf(ref{Ancode: ptr(m.Ancode)}.hint("Unter „Prüfungslisten aus Primuss“ prüfen, ob die Sammelliste vollständig importiert wurde."),
+					"Studiengang %s, Prüfung %d: %d Anmeldungen sind gespeichert, aber Primuss hat für diese Prüfung keine Anmeldezahl geliefert.",
 					m.Program, m.Ancode, m.Stored)
 				continue
 			}
-			v.warnf(ref{Ancode: ptr(m.Ancode)},
-				"%s/%d: %d Anmeldungen gespeichert, Primuss-Zähler sagt %d — nach einzelnem Hinzufügen/Entfernen auseinandergelaufen?",
+			v.warnf(ref{Ancode: ptr(m.Ancode)}.hint("Wenn die Abweichung so gewollt ist, nichts tun; sonst die Sammelliste neu importieren."),
+				"Studiengang %s, Prüfung %d: %d Anmeldungen sind gespeichert, Primuss nennt %d. Das passiert, wenn einzelne Anmeldungen von Hand ergänzt oder entfernt wurden.",
 				m.Program, m.Ancode, m.Stored, m.Recorded)
 		}
 	}
@@ -563,12 +563,12 @@ func (p *Plexams) ValidateDBReferences(reporter Reporter) (*model.ValidationRepo
 	for _, l := range links {
 		switch {
 		case l.Status == "linked" && l.Ancode == nil:
-			v.errorf(ref{}, "MUC.DAI link %s/%d is marked linked but has no ancode", l.Program, l.PrimussAncode)
+			v.errorf(ref{}.hint("Unter „Prüfungen gemeinsamer Studiengänge“ die Verknüpfung entfernen und neu setzen."), "Die Verknüpfung %s/%d (gemeinsamer Studiengang) gilt als verknüpft, zeigt aber auf keine Prüfung.", l.Program, l.PrimussAncode)
 		case l.Ancode != nil && !known[*l.Ancode]:
-			v.warnf(ref{Ancode: l.Ancode},
-				"MUC.DAI link %s/%d points to ancode %d, but no such exam", l.Program, l.PrimussAncode, *l.Ancode)
+			v.warnf(ref{Ancode: l.Ancode}.hint("Unter „Prüfungen gemeinsamer Studiengänge“ neu verknüpfen."),
+				"Die Verknüpfung %s/%d (gemeinsamer Studiengang) zeigt auf Ancode %d, aber diese Prüfung gibt es nicht mehr.", l.Program, l.PrimussAncode, *l.Ancode)
 		case l.Status == "unresolved":
-			v.infof(ref{}, "MUC.DAI link %s/%d is still unresolved", l.Program, l.PrimussAncode)
+			v.infof(ref{}.hint("Unter „Prüfungen gemeinsamer Studiengänge“ verknüpfen."), "Die Prüfung %s/%d eines gemeinsamen Studiengangs ist noch mit keiner Prüfung verknüpft.", l.Program, l.PrimussAncode)
 		}
 	}
 

@@ -11,7 +11,7 @@ import (
 )
 
 func (p *Plexams) ValidateZPADateTimes(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "zpa-date-times", "validating zpa dates and times")
+	v := newValidation(reporter, "zpa-date-times", "vergleiche Termine mit dem ZPA")
 
 	v.step("fetching exams from ZPA")
 	if err := p.SetZPA(); err != nil {
@@ -65,8 +65,8 @@ func (p *Plexams) ValidateZPADateTimes(reporter Reporter) (*model.ValidationRepo
 		}
 		if zpaExam.Date != plannedExamDate ||
 			zpaExam.Starttime != plannedExamStarttime {
-			v.errorf(ref{Ancode: ptr(zpaExam.AnCode), Starttime: plannedStart},
-				"wrong date for %d. %s (%s), want: %s %s, got: %s %s",
+			v.errorf(ref{Ancode: ptr(zpaExam.AnCode), Starttime: plannedStart}.hint("Unter „ZPA-Import & Veröffentlichung“ den aktuellen Stand erneut ins ZPA übertragen und danach noch einmal prüfen."),
+				"Im ZPA steht ein anderer Termin für %d. %s (%s): in Plexams geplant am %s um %s, im ZPA am %s um %s.",
 				zpaExam.AnCode, zpaExam.Module, zpaExam.MainExamer,
 				plannedExamDate, plannedExamStarttime, zpaExam.Date, zpaExam.Starttime)
 		}
@@ -74,8 +74,8 @@ func (p *Plexams) ValidateZPADateTimes(reporter Reporter) (*model.ValidationRepo
 
 	for _, zpaExam := range examsMap {
 		if zpaExam.Date != "-" || zpaExam.Starttime != "-" {
-			v.errorf(ref{Ancode: ptr(zpaExam.AnCode)},
-				"exam %d. %s (%s) has date %s %s, but should not be planned",
+			v.errorf(ref{Ancode: ptr(zpaExam.AnCode)}.hint("Prüfen, ob die Prüfung geplant werden soll. Wenn nicht, den Plan erneut ins ZPA übertragen, damit der Termin dort verschwindet."),
+				"Im ZPA hat %d. %s (%s) den Termin %s %s, in Plexams ist die Prüfung aber nicht geplant.",
 				zpaExam.AnCode, zpaExam.Module, zpaExam.MainExamer, zpaExam.Date, zpaExam.Starttime)
 		}
 	}
@@ -84,7 +84,7 @@ func (p *Plexams) ValidateZPADateTimes(reporter Reporter) (*model.ValidationRepo
 }
 
 func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "zpa-rooms", "validating zpa rooms")
+	v := newValidation(reporter, "zpa-rooms", "vergleiche Räume mit dem ZPA")
 
 	v.step("fetching exams from ZPA")
 	if err := p.SetZPA(); err != nil {
@@ -133,8 +133,8 @@ func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, 
 				}
 			}
 			if !found {
-				v.errorf(ref{Ancode: ptr(plannedExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedStart},
-					"room %s for exam %d. %s (%s) not found in ZPA",
+				v.errorf(ref{Ancode: ptr(plannedExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedStart}.hint("Unter „ZPA-Import & Veröffentlichung“ den aktuellen Stand erneut ins ZPA übertragen und danach noch einmal prüfen."),
+					"Raum %s für %d. %s (%s) steht in Plexams, fehlt aber im ZPA.",
 					room.RoomName, plannedExam.Ancode, plannedExam.ZpaExam.Module, plannedExam.ZpaExam.MainExamer)
 			}
 		}
@@ -147,7 +147,7 @@ func (p *Plexams) ValidateZPARooms(reporter Reporter) (*model.ValidationReport, 
 }
 
 func (p *Plexams) ValidateZPAInvigilators(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "zpa-invigilators", "validating zpa invigilations")
+	v := newValidation(reporter, "zpa-invigilators", "vergleiche Aufsichten mit dem ZPA")
 
 	v.step("fetching exams from ZPA")
 	if err := p.SetZPA(); err != nil {
@@ -199,14 +199,14 @@ func (p *Plexams) ValidateZPAInvigilators(reporter Reporter) (*model.ValidationR
 				if room.Ancode == zpaExam.Ancode &&
 					roomNameOK(room.RoomName, zpaExam.RoomName) {
 					if zpaExam.ReserveSupervisor != shorterName(reserveInvigilator.Shortname) {
-						v.errorf(ref{Ancode: ptr(zpaExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedExam.PlanEntry.Starttime},
-							"%d. %s (%s), %s %s: wrong reserve invigilator in zpa: %s, wanted: %s",
+						v.errorf(ref{Ancode: ptr(zpaExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedExam.PlanEntry.Starttime}.hint("Unter „ZPA-Import & Veröffentlichung“ den aktuellen Stand erneut ins ZPA übertragen und danach noch einmal prüfen."),
+							"%d. %s (%s), %s %s: Im ZPA steht als Reserveaufsicht %s, in Plexams ist %s eingeteilt.",
 							zpaExam.Ancode, zpaExam.Module, zpaExam.MainExamer, zpaExam.Date, zpaExam.Starttime,
 							zpaExam.ReserveSupervisor, shorterName(reserveInvigilator.Shortname))
 					}
 					if zpaExam.Supervisor != shorterName(invigilator.Shortname) {
-						v.errorf(ref{Ancode: ptr(zpaExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedExam.PlanEntry.Starttime},
-							"%d. %s (%s), %s %s: wrong invigilator in zpa: %s, wanted: %s",
+						v.errorf(ref{Ancode: ptr(zpaExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedExam.PlanEntry.Starttime}.hint("Unter „ZPA-Import & Veröffentlichung“ den aktuellen Stand erneut ins ZPA übertragen und danach noch einmal prüfen."),
+							"%d. %s (%s), %s %s: Im ZPA steht als Aufsicht %s, in Plexams ist %s eingeteilt.",
 							zpaExam.Ancode, zpaExam.Module, zpaExam.MainExamer, zpaExam.Date, zpaExam.Starttime,
 							zpaExam.Supervisor, shorterName(invigilator.Shortname))
 					}
@@ -214,8 +214,8 @@ func (p *Plexams) ValidateZPAInvigilators(reporter Reporter) (*model.ValidationR
 				}
 			}
 			if !found {
-				v.errorf(ref{Ancode: ptr(plannedExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedExam.PlanEntry.Starttime},
-					"%d. %s (%s), %s: ancode or room not found, supervisor or reserve supervisor not found in ZPA",
+				v.errorf(ref{Ancode: ptr(plannedExam.Ancode), Room: ptr(room.RoomName), Starttime: plannedExam.PlanEntry.Starttime}.hint("Unter „ZPA-Import & Veröffentlichung“ den aktuellen Stand erneut ins ZPA übertragen und danach noch einmal prüfen."),
+					"%d. %s (%s), %s: Im ZPA fehlt diese Prüfung, ihr Raum oder ihre Aufsicht.",
 					plannedExam.Ancode, plannedExam.ZpaExam.Module, plannedExam.ZpaExam.MainExamer,
 					examStart)
 			}

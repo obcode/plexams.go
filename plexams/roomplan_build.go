@@ -23,11 +23,13 @@ type RoomPlanResult struct {
 	HardViolations   []string
 	Cost             float64
 	CostByConstraint map[string]float64
-	Iterations       int
-	StoppedEarly     bool
-	Written          bool
-	Seed             int
-	UnplacedExams    []*model.UnplacedExam
+	// CostTitles maps a CostByConstraint key to its German label.
+	CostTitles    map[string]string
+	Iterations    int
+	StoppedEarly  bool
+	Written       bool
+	Seed          int
+	UnplacedExams []*model.UnplacedExam
 }
 
 // buildRoomPlanProblem assembles the room-allocation optimization problem from the current
@@ -345,7 +347,7 @@ func (p *Plexams) GenerateRoomPlan(ctx context.Context, dryRun bool, seed int64,
 	unplacedExams := groupUnplaced(st.Unplaced())
 	result := &RoomPlanResult{
 		Exams: len(prob.Exams), PlacedSeats: totalSeats - st.UnplacedCount(), UnplacedSeats: st.UnplacedCount(),
-		Rooms: distinctRooms(assignments), HardViolations: hard, Cost: total, CostByConstraint: byC,
+		Rooms: distinctRooms(assignments), HardViolations: hard, Cost: total, CostByConstraint: byC, CostTitles: constraintTitles(reg.Describe()),
 		Iterations: res.Iterations, StoppedEarly: res.StoppedEarly, Seed: int(seed), UnplacedExams: unplacedExams,
 	}
 

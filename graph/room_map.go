@@ -11,7 +11,11 @@ import (
 func roomPlanReport(r *plexams.RoomPlanResult) *model.RoomPlanReport {
 	costs := make([]*model.ConstraintCost, 0, len(r.CostByConstraint))
 	for name, cost := range r.CostByConstraint {
-		costs = append(costs, &model.ConstraintCost{Name: name, Cost: cost})
+		c := &model.ConstraintCost{Name: name, Cost: cost}
+		if title, ok := r.CostTitles[name]; ok && title != "" {
+			c.Title = &title
+		}
+		costs = append(costs, c)
 	}
 	sort.Slice(costs, func(i, j int) bool { return costs[i].Cost > costs[j].Cost })
 

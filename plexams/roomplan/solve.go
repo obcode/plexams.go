@@ -122,7 +122,7 @@ type allowedRoomC struct{}
 
 func (allowedRoomC) Info() optimize.Info {
 	return optimize.Info{Name: "allowed-room", Title: "Raum passt & ist verfügbar", Kind: optimize.KindHard, Tier: 1,
-		Description: "Jede Prüfung nur in Räumen, die zu ihr passen und in ihrem Slot verfügbar sind: EXaHM/SEB/Lab/Steckdose/erlaubte-Räume erfüllt, nicht gesperrt/deaktiviert, und Handicap-Räume nur für NTA."}
+		Description: "Jede Prüfung nur in Räumen, die zu ihr passen und zu ihrem Termin verfügbar sind: EXaHM, SEB, Labor, Steckdosen und erlaubte Räume passen, der Raum ist nicht gesperrt oder deaktiviert, und barrierefreie Räume nur für Nachteilsausgleiche."}
 }
 func (allowedRoomC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
@@ -138,8 +138,8 @@ func (allowedRoomC) Check(st *State) []optimize.Violation {
 type capacityC struct{}
 
 func (capacityC) Info() optimize.Info {
-	return optimize.Info{Name: "capacity", Title: "Raumkapazität pro Slot", Kind: optimize.KindHard, Tier: 2,
-		Description: "Belegte Sitze je (Raum, Slot) – inkl. der aus Nachbarslots hereinlaufenden Nachlauf-Belegung – dürfen die Sitzplätze des Raums nicht übersteigen. Räume werden von mehreren Prüfungen geteilt."}
+	return optimize.Info{Name: "capacity", Title: "Plätze je Raum und Termin", Kind: optimize.KindHard, Tier: 2,
+		Description: "Je Raum und Termin nicht mehr Studierende als Plätze, auch wenn eine Prüfung der vorigen Startzeit noch läuft. Ein Raum kann von mehreren Prüfungen geteilt werden."}
 }
 func (capacityC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
@@ -157,8 +157,8 @@ func (capacityC) Check(st *State) []optimize.Violation {
 type ntaAloneC struct{}
 
 func (ntaAloneC) Info() optimize.Info {
-	return optimize.Info{Name: "nta-alone", Title: "NTA mit eigenem Raum wirklich allein", Kind: optimize.KindHard, Tier: 3,
-		Description: "Ein NTA, der einen Raum allein braucht, belegt seine (Raum, Slot)-Zelle exklusiv – niemand sonst und keine Nachlauf-Belegung im selben Raum."}
+	return optimize.Info{Name: "nta-alone", Title: "Nachteilsausgleich mit eigenem Raum sitzt wirklich allein", Kind: optimize.KindHard, Tier: 3,
+		Description: "Wer mit Nachteilsausgleich einen eigenen Raum braucht, sitzt zu diesem Termin allein darin; auch keine noch laufende Prüfung teilt sich den Raum."}
 }
 func (ntaAloneC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
@@ -195,7 +195,7 @@ type overrunC struct{}
 
 func (overrunC) Info() optimize.Info {
 	return optimize.Info{Name: "room-overrun", Title: "Raum-Umbauzeit zwischen zwei Nutzungen", Kind: optimize.KindHard, Tier: 5,
-		Description: "Zwischen zwei Prüfungen im selben Raum an einem Tag muss genug Umbauzeit liegen (übliche Umbauzeit plus zusätzlicher Vor-/Nachlauf, z. B. bei EXaHM). Eine lange Prüfung belegt ihren Raum bis in Nachbarslots hinein."}
+		Description: "Zwischen zwei Prüfungen im selben Raum an einem Tag muss genug Umbauzeit liegen (übliche Umbauzeit plus zusätzlicher Vor-/Nachlauf, z. B. bei EXaHM). Eine lange Prüfung belegt ihren Raum bis in die nächste Startzeit hinein."}
 }
 func (overrunC) Check(st *State) []optimize.Violation {
 	p := st.P
@@ -232,7 +232,7 @@ type summerCooldownC struct{}
 
 func (summerCooldownC) Info() optimize.Info {
 	return optimize.Info{Name: "summer-cooldown", Title: "Sommer: eigener Raum nicht zweimal hintereinander", Kind: optimize.KindHard, Tier: 6,
-		Description: "Hitzeschutz: im Sommer darf ein eigener (nicht gebuchter) Raum nicht in zwei direkt aufeinanderfolgenden Slots eines Tages genutzt werden – Zeit zum Abkühlen/Lüften. Gebuchte Räume sind ausgenommen."}
+		Description: "Hitzeschutz: im Sommer darf ein eigener (nicht gebuchter) Raum nicht zu zwei direkt aufeinanderfolgenden Startzeiten eines Tages genutzt werden – Zeit zum Abkühlen/Lüften. Gebuchte Räume sind ausgenommen."}
 }
 func (summerCooldownC) Check(st *State) []optimize.Violation {
 	p := st.P
@@ -261,7 +261,7 @@ type exahmWindowC struct{}
 
 func (exahmWindowC) Info() optimize.Info {
 	return optimize.Info{Name: "exahm-window", Title: "EXaHM/SEB nur in gebuchten T-Bau-Räumen", Kind: optimize.KindHard, Tier: 7,
-		Description: "EXaHM/SEB-Prüfungen liegen nur in gebuchten T-Bau-Räumen, deren Anny-Buchung das Prüfungsfenster (Dauer + Vor-/Nachlauf) abdeckt. EXaHM braucht EXaHM-Räume; SEB akzeptiert EXaHM- oder SEB-Räume. (Über die erlaubten Räume je Slot erzwungen.)"}
+		Description: "EXaHM/SEB-Prüfungen liegen nur in gebuchten T-Bau-Räumen, deren Anny-Buchung das Prüfungsfenster (Dauer + Vor-/Nachlauf) abdeckt. EXaHM braucht EXaHM-Räume; SEB akzeptiert EXaHM- oder SEB-Räume."}
 }
 func (exahmWindowC) Check(st *State) []optimize.Violation {
 	p := st.P
@@ -355,7 +355,7 @@ type exahmBookedC struct{}
 
 func (exahmBookedC) Info() optimize.Info {
 	return optimize.Info{Name: "exahm-booked", Title: "EXaHM bevorzugt in gebuchten T-Bau-Räumen", Kind: optimize.KindSoft, Tier: 16,
-		Description: "EXaHM-Prüfungen (inkl. NTA-Alleinräume) bevorzugt in die gebuchten T-Bau-Räume; ein eigener EXaHM-Raum im R-Bau (z. B. der 1-Platz-NTA-Raum R1.011) wird nur als Ausweichlösung genutzt, wenn kein gebuchter T-Bau-Raum verfügbar ist (etwa der NTA-Raum T3.021)."}
+		Description: "EXaHM-Prüfungen (auch eigene Räume bei Nachteilsausgleich) bevorzugt in die gebuchten T-Bau-Räume; ein eigener EXaHM-Raum im R-Bau (z. B. der Einzelraum R1.011) wird nur als Ausweichlösung genutzt, wenn kein gebuchter T-Bau-Raum verfügbar ist (etwa der Einzelraum T3.021)."}
 }
 func (exahmBookedC) Cost(st *State) (float64, []optimize.Violation) {
 	var total float64

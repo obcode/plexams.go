@@ -17,12 +17,12 @@ import (
 // The two refusals of a stream that cannot start. Coded, so the GUI tells "busy"
 // from a failure without reading the text.
 var (
-	errBusy           = apierr.New(apierr.CodeBusy, "a validation or another transfer/email is running, cannot start now")
-	errValidationBusy = apierr.New(apierr.CodeBusy, "a ZPA transfer is running, cannot validate now")
+	errBusy           = apierr.New(apierr.CodeBusy, "Gerade läuft eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand; der Vorgang kann erst danach starten.")
+	errValidationBusy = apierr.New(apierr.CodeBusy, "Gerade läuft ein Import, eine Übertragung oder ein E-Mail-Versand; die Validierung kann erst danach starten.")
 )
 
 // internalMessage is all a client learns about a fault it cannot do anything about.
-const internalMessage = "internal error"
+const internalMessage = "Interner Fehler in Plexams. Das liegt nicht an der Eingabe; bitte noch einmal versuchen."
 
 // isInternal reports whether err is a database fault rather than something the
 // planner did: a missing row nobody translated, or an error the server itself
@@ -75,7 +75,7 @@ func codedResponse(code, message string) graphql.ResponseHandler {
 // emitError streams err as an ERROR line, with its code where it has one.
 func (r *streamReporter) emitError(err error) {
 	message, code := clientError(err)
-	line := &model.LogLine{Level: model.LogLevelError, Text: strings.TrimSuffix("error: "+message, "\n")}
+	line := &model.LogLine{Level: model.LogLevelError, Text: strings.TrimSuffix("Fehler: "+message, "\n")}
 	if code != "" {
 		line.Code = &code
 	}

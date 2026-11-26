@@ -162,8 +162,7 @@ func (m *Machine) EmailSendAllowed(ctx context.Context, condKey string, run bool
 	for _, key := range setKeys {
 		if key == condKey {
 			def, _ := m.condDefByKey(condKey)
-			return apierr.Newf(apierr.CodeAlreadySent, "email already sent (%s: %s); unset the planning condition to send it again",
-				condKey, def.Title)
+			return apierr.Newf(apierr.CodeAlreadySent, "Diese E-Mail wurde bereits verschickt (Schritt „%s“). Zum erneuten Senden zuerst auf der Startseite das Häkchen bei diesem Schritt zurücknehmen.", def.Title)
 		}
 	}
 	return nil
@@ -182,8 +181,8 @@ func (m *Machine) GenerationAllowed(ctx context.Context, area model.PlanningGate
 	}
 	for _, cd := range m.conds {
 		if cd.Gate == area && set[cd.Key] {
-			return apierr.Newf(apierr.CodePublishedLocked, "%s is published (%s); generation is locked. "+
-				"Make explicit changes instead, or unset the condition to regenerate", cd.Title, cd.Key)
+			return apierr.Newf(apierr.CodePublishedLocked, "Neu-Generieren ist gesperrt, weil der Schritt „%s“ erledigt ist. "+
+				"Einzelne Änderungen von Hand bleiben möglich; zum Neu-Generieren zuerst auf der Startseite das Häkchen zurücknehmen.", cd.Title)
 		}
 	}
 	return nil

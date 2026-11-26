@@ -50,7 +50,7 @@ func (p *Plexams) AssembledExamsState(ctx context.Context) (*model.AssembledExam
 // running.
 func (p *Plexams) ResetAssembledExams(ctx context.Context) (int, error) {
 	if !p.WritesAllowed() {
-		return 0, apierr.New(apierr.CodeBusy, "a validation or transfer/email is running, cannot reset now")
+		return 0, apierr.New(apierr.CodeBusy, "Gerade läuft eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand; Zurücksetzen geht erst danach.")
 	}
 	n, err := p.dbClient.DropAssembledExams(ctx)
 	if err != nil {

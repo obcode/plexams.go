@@ -238,7 +238,7 @@ func (p *Plexams) DeleteTodo(ctx context.Context, id int) (bool, error) {
 	}
 	if user := principal.UserFromContext(ctx); user == nil ||
 		user.Role != model.RoleAdmin && user.Email != todo.CreatedBy {
-		return false, apierr.New(apierr.CodeForbidden, "forbidden: only the creator or an ADMIN may delete a todo")
+		return false, apierr.New(apierr.CodeForbidden, "Ein Todo löschen darf nur, wer es angelegt hat, oder ein:e Administrator:in. Erledigte Todos lassen sich stattdessen abhaken.")
 	}
 	return p.dbClient.DeleteTodo(ctx, id)
 }

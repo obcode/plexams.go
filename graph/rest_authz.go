@@ -44,7 +44,7 @@ func requireWriter(state gateState, allowedOrigins []string, semesterData bool) 
 				return
 			}
 			if !roleCanWrite(user.Role) {
-				http.Error(w, "forbidden: your role is read-only", http.StatusForbidden)
+				http.Error(w, "Dein Zugang darf nur lesen (Rolle VIEWER).", http.StatusForbidden)
 				return
 			}
 			if !sameOrAllowedOrigin(r, allowed) {
@@ -52,7 +52,7 @@ func requireWriter(state gateState, allowedOrigins []string, semesterData bool) 
 				return
 			}
 			if semesterData && state.IsReadOnly() {
-				http.Error(w, "semester is read-only", http.StatusLocked)
+				http.Error(w, "Das Semester ist geschützt (nur lesen); es wurde nichts importiert.", http.StatusLocked)
 				return
 			}
 			next.ServeHTTP(w, r)

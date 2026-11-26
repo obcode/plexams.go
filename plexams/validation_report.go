@@ -117,15 +117,15 @@ func (v *validation) finish() *model.ValidationReport {
 
 	switch {
 	case errs == 0 && warns == 0 && infos == 0:
-		v.reporter.StopProgress(aurora.Sprintf(aurora.Green("✓ no problems found")))
+		v.reporter.StopProgress(aurora.Sprintf(aurora.Green("✓ keine Probleme gefunden")))
 	case errs == 0 && warns == 0:
 		// only infos: not a problem, but show them.
-		v.reporter.StopProgress(aurora.Sprintf(aurora.Green("✓ no problems found, %d info(s)"), infos))
+		v.reporter.StopProgress(aurora.Sprintf(aurora.Green("✓ keine Probleme gefunden, %d Hinweis(e)"), infos))
 		for _, f := range v.findings {
 			v.reporter.Println(renderFinding(f))
 		}
 	default:
-		v.reporter.StopProgressFail(aurora.Sprintf(aurora.Red("✗ %d error(s), %d warning(s), %d info(s)"), errs, warns, infos))
+		v.reporter.StopProgressFail(aurora.Sprintf(aurora.Red("✗ %d Fehler, %d Warnung(en), %d Hinweis(e)"), errs, warns, infos))
 		for _, f := range v.findings {
 			v.reporter.Println(renderFinding(f))
 		}

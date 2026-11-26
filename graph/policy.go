@@ -83,7 +83,7 @@ func rootFieldPolicyMiddleware(policy map[string]model.Role) graphql.FieldMiddle
 		}
 		user := UserFromContext(ctx)
 		if user == nil {
-			return nil, apierr.New(apierr.CodeForbidden, "forbidden: no authenticated user")
+			return nil, apierr.New(apierr.CodeForbidden, "Kein angemeldeter Benutzer; bitte neu anmelden.")
 		}
 		name := fc.Field.Name
 		if strings.HasPrefix(name, "__") {
@@ -92,10 +92,10 @@ func rootFieldPolicyMiddleware(policy map[string]model.Role) graphql.FieldMiddle
 		}
 		need, ok := policy[fc.Object+"."+name]
 		if !ok {
-			return nil, apierr.Newf(apierr.CodeForbidden, "forbidden: %s.%s has no access rule", fc.Object, name)
+			return nil, apierr.Newf(apierr.CodeForbidden, "Für %s.%s ist keine Zugriffsregel hinterlegt; der Aufruf ist deshalb gesperrt.", fc.Object, name)
 		}
 		if roleRank[user.Role] < roleRank[need] {
-			return nil, apierr.Newf(apierr.CodeForbidden, "forbidden: %s requires role %s", name, need)
+			return nil, apierr.Newf(apierr.CodeForbidden, "Für %s wird die Rolle %s benötigt.", name, need)
 		}
 		return next(ctx)
 	}

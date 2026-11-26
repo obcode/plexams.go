@@ -60,8 +60,8 @@ func (p *Plexams) ApplyRoomRequestsPreview(ctx context.Context, force bool) (int
 				approved++
 			}
 		}
-		return 0, apierr.Newf(apierr.CodeAlreadyExists, "%d room requests already exist (%d approved); "+
-			"use force to discard them and regenerate", len(existing), approved)
+		return 0, apierr.Newf(apierr.CodeAlreadyExists, "Es gibt bereits %d Raum-Anfragen (%d davon genehmigt). "+
+			"Beim Übernehmen würden sie verworfen und neu angelegt.", len(existing), approved)
 	}
 
 	preview, err := p.GenerateRoomRequestsPreview(ctx)
@@ -95,7 +95,7 @@ func (p *Plexams) AddRoomRequest(ctx context.Context, room string, starttime tim
 		return nil, err
 	}
 	if existing != nil {
-		return nil, apierr.Newf(apierr.CodeAlreadyExists, "room request for %s at %s already exists", room, starttime.Format("02.01. 15:04"))
+		return nil, apierr.Newf(apierr.CodeAlreadyExists, "Für Raum %s am %s gibt es bereits eine Raum-Anfrage.", room, starttime.Format("02.01. 15:04"))
 	}
 	request := &model.RoomRequest{
 		Room:      room,

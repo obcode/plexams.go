@@ -115,18 +115,18 @@ func operationGate(state gateState) graphql.OperationMiddleware {
 			// closed instead of skipping the role check.
 			user := UserFromContext(ctx)
 			if user == nil {
-				return codedResponse(apierr.CodeForbidden, "forbidden: no authenticated user")
+				return codedResponse(apierr.CodeForbidden, "Kein angemeldeter Benutzer; bitte neu anmelden.")
 			}
 			if !roleCanWrite(user.Role) && isWriteOperation(oc) {
-				return codedResponse(apierr.CodeReadOnlyRole, "forbidden: your role is read-only")
+				return codedResponse(apierr.CodeReadOnlyRole, "Dein Zugang darf nur lesen (Rolle VIEWER); es wurde nichts geändert.")
 			}
 			if op == ast.Mutation && !state.WritesAllowed() && !isTodoOnlyOperation(oc) {
-				return codedResponse(apierr.CodeBusy, "writes are blocked while a validation is running")
+				return codedResponse(apierr.CodeBusy, "Gerade läuft eine Validierung; solange sind Änderungen gesperrt. Bitte danach noch einmal versuchen.")
 			}
 			// read-only database: reject data-changing operations, but allow queries,
 			// validations, switching the semester, toggling read-only and todos.
 			if state.IsReadOnly() && isDataChangingOperation(oc) && !isTodoOnlyOperation(oc) {
-				return codedResponse(apierr.CodeSemesterReadOnly, "semester is read-only")
+				return codedResponse(apierr.CodeSemesterReadOnly, "Das Semester ist geschützt (nur lesen); es wurde nichts geändert.")
 			}
 		}
 		return next(ctx)

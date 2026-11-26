@@ -72,7 +72,7 @@ func (p *Plexams) SetSemesterReadOnly(ctx context.Context, readOnly bool) (*mode
 // config yet) — the config is then nil until created/imported.
 func (p *Plexams) SwitchSemester(ctx context.Context, name string) (*model.Semester, error) {
 	if !p.WritesAllowed() {
-		return nil, apierr.New(apierr.CodeBusy, "cannot switch semester while an operation (validation/import/email/upload) is running")
+		return nil, apierr.New(apierr.CodeBusy, "Das Semester lässt sich nicht wechseln, solange eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand läuft.")
 	}
 	if !db.IsSemester(name) {
 		return nil, fmt.Errorf("invalid semester %q (expected YYYY-SS or YYYY-WS)", name)

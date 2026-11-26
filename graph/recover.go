@@ -61,7 +61,7 @@ func recoverFunc(ctx context.Context, err any) error {
 	event.Msg("panic in GraphQL resolver")
 
 	return &gqlerror.Error{
-		Message:    "internal system error",
+		Message:    internalMessage,
 		Extensions: map[string]any{"code": apierr.CodeInternal},
 	}
 }

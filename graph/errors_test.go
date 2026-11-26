@@ -47,7 +47,7 @@ func TestEmitErrorCarriesTheCode(t *testing.T) {
 	if coded.Level != model.LogLevelError || coded.Code == nil || *coded.Code != apierr.CodeBusy {
 		t.Errorf("coded line = %+v, want an ERROR line with code %s", coded, apierr.CodeBusy)
 	}
-	if plain.Code != nil || plain.Text != "error: plain" {
-		t.Errorf("plain line = %+v, want text %q without a code", plain, "error: plain")
+	if plain.Code != nil || plain.Text != "Fehler: plain" {
+		t.Errorf("plain line = %+v, want text %q without a code", plain, "Fehler: plain")
 	}
 }

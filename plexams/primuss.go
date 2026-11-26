@@ -26,7 +26,7 @@ func (p *Plexams) ImportPrimussDir(ctx context.Context, dir string) (*primuss.Im
 // running.
 func (p *Plexams) ResetPrimussData(ctx context.Context) ([]string, error) {
 	if !p.WritesAllowed() {
-		return nil, apierr.New(apierr.CodeBusy, "a validation or transfer/email is running, cannot reset now")
+		return nil, apierr.New(apierr.CodeBusy, "Gerade läuft eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand; Zurücksetzen geht erst danach.")
 	}
 	programs, err := p.dbClient.DropPrimussData(ctx)
 	if err != nil {

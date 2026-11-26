@@ -45,8 +45,8 @@ func TestRecoverFuncLogsThroughZerolog(t *testing.T) {
 	if err == nil {
 		t.Fatal("recoverFunc must return an error for the client")
 	}
-	if got := err.Error(); !strings.Contains(got, "internal system error") {
-		t.Errorf("client message changed, was %q -- DefaultRecover's wording is deliberate", got)
+	if got := err.Error(); !strings.Contains(got, internalMessage) || strings.Contains(got, "boom") {
+		t.Errorf("client message = %q, want the neutral internal message without the panic value", got)
 	}
 
 	entry := decode(t, buf)

@@ -31,12 +31,24 @@ func wrapGerman(err error, format string, a ...any) error {
 type examNamer struct {
 	info  map[int]examInfo
 	start map[int]time.Time
+	// lookup finds exams that are not assembled (yet): ZPA exams and exams of other
+	// faculties. May be nil.
+	lookup func(ancode int) (module, examer string, ok bool)
 }
 
 // newExamNamer reads module and examiner of the assembled exams; entries supply the
 // planned start times (may be nil).
 func (p *Plexams) newExamNamer(ctx context.Context, entries []*model.PlanEntry) examNamer {
 	n := examNamer{info: p.examInfoMap(ctx), start: make(map[int]time.Time, len(entries))}
+	n.lookup = func(ancode int) (string, string, bool) {
+		if zpa, err := p.GetZpaExamByAncode(ctx, ancode); err == nil && zpa != nil {
+			return zpa.Module, zpa.MainExamer, true
+		}
+		if ext, err := p.dbClient.ExternalExam(ctx, ancode); err == nil && ext != nil {
+			return ext.Module, ext.MainExamer, true
+		}
+		return "", "", false
+	}
 	for _, e := range entries {
 		if e != nil && e.Starttime != nil {
 			n.start[e.Ancode] = *e.Starttime
@@ -47,7 +59,14 @@ func (p *Plexams) newExamNamer(ctx context.Context, entries []*model.PlanEntry) 
 
 // name is "Modul (Prüfer:in, Ancode 123)", or "Ancode 123" for an exam it does not know.
 func (n examNamer) name(ancode int) string {
-	if i, ok := n.info[ancode]; ok && i.module != "" {
+	i, ok := n.info[ancode]
+	if (!ok || i.module == "") && n.lookup != nil {
+		if module, examer, found := n.lookup(ancode); found {
+			i, ok = examInfo{module: module, examer: examer}, true
+			n.info[ancode] = i
+		}
+	}
+	if ok && i.module != "" {
 		if i.examer != "" {
 			return fmt.Sprintf("%s (%s, Ancode %d)", i.module, i.examer, ancode)
 		}

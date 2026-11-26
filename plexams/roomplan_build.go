@@ -331,7 +331,7 @@ func (p *Plexams) GenerateRoomPlan(ctx context.Context, dryRun bool, seed int64,
 	}
 	opts.ProgressEvery = maxInt(1, opts.Iterations/200)
 	opts.OnProgress = func(pr optimize.Progress) {
-		reporter.Step(fmt.Sprintf("Durchlauf %d von %d, Kosten %.0f, %s", pr.Iteration, pr.Total, pr.BestCost, pr.Detail))
+		reporter.Step(fmt.Sprintf("Durchlauf %d von %d, Strafpunkte %.0f, %s", pr.Iteration, pr.Total, pr.BestCost, pr.Detail))
 	}
 	st, res := roomplan.Solve(prob, opts, keepAssigned)
 

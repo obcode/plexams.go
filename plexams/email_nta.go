@@ -3,13 +3,11 @@ package plexams
 import (
 	"context"
 	"fmt"
-	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
-
-	// TODO: Ersetzen durch github.com/wneessen/go-mail
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/plexams/email"
 	"github.com/rs/zerolog/log"
 )
@@ -278,12 +276,15 @@ type NewNTA struct {
 }
 
 func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, reporter Reporter) error {
-	reporter.Step(fmt.Sprintf("informiere die Prüfenden über einen neuen Nachteilsausgleich (%s)", mtknr))
 	student, err := p.StudentByMtknr(ctx, mtknr)
 	if err != nil {
 		log.Error().Err(err).Str("mtknr", mtknr).Msg("cannot get nta")
 		return err
 	}
+	if student == nil {
+		return apierr.New(apierr.CodeNotFound, "Zu dieser Matrikelnummer gibt es keine Anmeldungen.")
+	}
+	reporter.Step(fmt.Sprintf("informiere die Prüfenden über den Nachteilsausgleich von %s", student.Name))
 	if student.Nta == nil {
 		log.Error().Str("mtknr", mtknr).Msg("student is not an nta")
 		return apierr.New(apierr.CodeInvalidInput, "Diese Person hat keinen Nachteilsausgleich eingetragen.")

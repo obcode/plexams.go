@@ -19,7 +19,7 @@ func (p *Plexams) GetZPAStudents(ctx context.Context) ([]*model.ZPAStudent, erro
 }
 
 func (p *Plexams) GetStudentsFromZPA(ctx context.Context, reporter Reporter) (studentsFound int, studentsNotFound int, err error) {
-	reporter.Step("getting students from ZPA...")
+	reporter.Step("lese die Studierenden aus dem ZPA …")
 
 	programs, err := p.dbClient.GetPrograms(ctx)
 	if err != nil {
@@ -48,7 +48,7 @@ func (p *Plexams) GetStudentsFromZPA(ctx context.Context, reporter Reporter) (st
 	}
 
 	for i, mtknr := range mtknrs.ToSlice() {
-		reporter.Step(fmt.Sprintf("getting student with mtknr %s (%d of %d to go)...", mtknr, mtknrs.Cardinality()-i, mtknrs.Cardinality()))
+		reporter.Step(fmt.Sprintf("lese Studierende aus dem ZPA: %d von %d", i+1, mtknrs.Cardinality()))
 		zpaStudents, err := p.zpa.client.GetStudents(mtknr)
 		if err != nil {
 			return 0, 0, err

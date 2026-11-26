@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -24,10 +25,62 @@ func (p *Plexams) UpsertStudyProgram(ctx context.Context, program *model.StudyPr
 	if program.Category == "" {
 		program.Category = "misc"
 	}
+	program.ZpaCode = strings.TrimSpace(program.ZpaCode)
+	isNew := true
+	if existing, err := p.dbClient.StudyPrograms(ctx); err == nil {
+		for _, e := range existing {
+			if e.Shortname == program.Shortname {
+				isNew = false
+				break
+			}
+		}
+	} else {
+		return nil, err
+	}
+	if err := validateStudyProgram(program, isNew); err != nil {
+		return nil, err
+	}
+	if program.Category == "fk07" && program.ZpaCode == "" {
+		program.ZpaCode = defaultZpaCode(program.Shortname)
+	}
 	if err := p.dbClient.UpsertStudyProgram(ctx, program); err != nil {
 		return nil, err
 	}
 	return program, nil
+}
+
+var (
+	// fk07ShortnameRE is the form of a new FK07 program Kürzel: the ZPA code plus the
+	// degree, joined by an ASCII hyphen — exactly what the Primuss file names carry.
+	fk07ShortnameRE = regexp.MustCompile(`^[A-Z]{2,4}-[BM]$`)
+	// fk07ZpaCodeRE is the ZPA code of an FK07 program: no degree suffix.
+	fk07ZpaCodeRE = regexp.MustCompile(`^[A-Z]{2,4}$`)
+	// typographicDashRE matches dashes that look like "-" but are not.
+	typographicDashRE = regexp.MustCompile(`[\x{2010}-\x{2015}\x{2212}]`)
+)
+
+// validateStudyProgram checks the codes of a study program before it is stored.
+// The degree-suffixed form is only enforced for new FK07 programs, so existing
+// (archival 2-letter) programs can still be edited. Messages are shown in the GUI.
+func validateStudyProgram(program *model.StudyProgram, isNew bool) error {
+	for field, value := range map[string]string{"Kürzel": program.Shortname, "ZPA-Code": program.ZpaCode} {
+		if typographicDashRE.MatchString(value) {
+			return fmt.Errorf("%s %q enthält einen typografischen Strich — bitte den normalen Bindestrich „-“ verwenden", field, value)
+		}
+		if strings.ContainsAny(value, " \t") {
+			return fmt.Errorf("%s %q darf keine Leerzeichen enthalten", field, value)
+		}
+	}
+	if program.Category != "fk07" || program.Retired {
+		return nil
+	}
+	if isNew && !fk07ShortnameRE.MatchString(program.Shortname) {
+		return fmt.Errorf("neues FK07-Kürzel %q: FK07-Studiengänge brauchen die Form „XX-B“ bzw. „XX-M“ (z. B. IF-B, DC-M), wie in den Primuss-Dateinamen", program.Shortname)
+	}
+	if program.ZpaCode != "" && !fk07ZpaCodeRE.MatchString(program.ZpaCode) {
+		return fmt.Errorf("ZPA-Code %q: ohne Abschluss angeben (z. B. DC für DC-B und DC-M) oder leer lassen", program.ZpaCode)
+	}
+	return nil
 }
 
 // DeleteStudyProgram removes one study program by shortname.

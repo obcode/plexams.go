@@ -69,6 +69,22 @@ func detectPrimussFile(base string) (program, kind string) {
 	return program, kind
 }
 
+// skipReason explains, in German for the GUI, why a file in the ZIP is not imported,
+// or returns "" if it is one of the four imported Sammellisten types.
+func skipReason(base string) string {
+	if !strings.EqualFold(filepath.Ext(base), ".xlsx") {
+		return "keine XLSX-Datei — bitte die Excel-Sammellisten aus Primuss verwenden"
+	}
+	program, kind := detectPrimussFile(base)
+	if program == "" {
+		return "Studiengang im Dateinamen nicht erkannt (erwartet z. B. „-IF-B-“)"
+	}
+	if kind == "" {
+		return "kein importierter Listentyp"
+	}
+	return ""
+}
+
 // ImportZip imports the Primuss XLSX files from an uploaded ZIP. The program is derived
 // from each filename; only the four known file types are imported (drop+insert per
 // program). Only the programs/collections actually present in the ZIP are touched
@@ -91,20 +107,20 @@ func (s *Service) ImportZip(ctx context.Context, zipData []byte) (*ImportResult,
 		if strings.HasPrefix(base, ".") || strings.HasPrefix(f.Name, "__MACOSX") {
 			continue
 		}
-		program, kind := detectPrimussFile(base)
-		if kind == "" {
-			result.Skipped = append(result.Skipped, base)
+		if reason := skipReason(base); reason != "" {
+			result.Skipped = append(result.Skipped, base+" ("+reason+")")
 			continue
 		}
+		program, kind := detectPrimussFile(base)
 		rc, err := f.Open()
 		if err != nil {
-			result.Skipped = append(result.Skipped, base+" (cannot open)")
+			result.Skipped = append(result.Skipped, base+" (nicht lesbar)")
 			continue
 		}
 		data, err := io.ReadAll(rc)
 		rc.Close() //nolint:errcheck
 		if err != nil {
-			result.Skipped = append(result.Skipped, base+" (cannot read)")
+			result.Skipped = append(result.Skipped, base+" (nicht lesbar)")
 			continue
 		}
 		if files[program] == nil {

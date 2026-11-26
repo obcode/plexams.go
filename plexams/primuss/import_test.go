@@ -2,6 +2,7 @@ package primuss
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/obcode/plexams.go/db"
@@ -28,6 +29,30 @@ func TestDetectPrimussFile(t *testing.T) {
 			prog, kind := detectPrimussFile(tt.base)
 			if prog != tt.wantProgram || kind != tt.wantKind {
 				t.Errorf("detectPrimussFile(%q) = (%q,%q), want (%q,%q)", tt.base, prog, kind, tt.wantProgram, tt.wantKind)
+			}
+		})
+	}
+}
+
+func TestSkipReason(t *testing.T) {
+	tests := []struct {
+		base     string
+		wantSkip bool
+		contains string
+	}{
+		{"Prüfungsanmeldungen-IF-B-126.xlsx", false, ""},
+		{"Prüfungsanmeldungen-IF-B-126.XLSX", false, ""},
+		{"Pruefungsanmeldungen-IF.csv", true, "keine XLSX"},
+		{"Pruefungsanmeldungen-IF-B-126.csv", true, "keine XLSX"},
+		{"Pruefungsanmeldungen-IF.xlsx", true, "Studiengang"},
+		{"Prüfungsanmeldungen-IF–B-126.xlsx", true, "Studiengang"}, // en dash
+		{"Prüfungsüberschneidungen-IF-B-126.xlsx", true, "Listentyp"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.base, func(t *testing.T) {
+			got := skipReason(tt.base)
+			if (got != "") != tt.wantSkip || !strings.Contains(got, tt.contains) {
+				t.Errorf("skipReason(%q) = %q, want skip=%v containing %q", tt.base, got, tt.wantSkip, tt.contains)
 			}
 		})
 	}

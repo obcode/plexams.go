@@ -212,10 +212,18 @@ func (p *Plexams) notInvigilating(ctx context.Context) (func(teacherID int) bool
 // too, so the GUI can keep an explicit "no constraints" entry.
 func (p *Plexams) SetInvigilatorConstraints(ctx context.Context, input model.InvigilatorConstraintsInput) (*model.InvigilatorConstraints, error) {
 	timeWindows := make([]*model.InvigilationTimeWindow, 0, len(input.TimeWindows))
+	// One window per date: the table's key is (semester, teacher, date). The optimizer
+	// could handle several, but a second one would fail as a database error.
+	windowDates := make(map[string]bool, len(input.TimeWindows))
 	for _, w := range input.TimeWindows {
 		if w == nil {
 			continue
 		}
+		dateKey := w.Date.In(time.Local).Format("2006-01-02")
+		if windowDates[dateKey] {
+			return nil, apierr.Newf(apierr.CodeInvalidInput, "Für den %s ist mehr als ein Zeitfenster eingetragen. Je Tag ist nur eines möglich; fasse sie zu einem zusammen.", dayLabelDE(w.Date))
+		}
+		windowDates[dateKey] = true
 		if w.From == nil && w.Until == nil {
 			return nil, apierr.Newf(apierr.CodeInvalidInput, "Das Zeitfenster am %s hat weder einen Beginn noch ein Ende. Trage mindestens eines davon ein oder lösche das Zeitfenster.", dayLabelDE(w.Date))
 		}

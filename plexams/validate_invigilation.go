@@ -218,7 +218,9 @@ func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.Validation
 				roomWithoutInvigilatorDay[dayKey]++
 				invigsMissing++
 			} else if len(invigilations) > 1 {
-				v.warnf(ref{Room: ptr(room), Starttime: &slot.Starttime}.hint(hintDuplicate),
+				// Same level as a doubled reserve and as ValidateInvigilationDups: a room
+				// has exactly one invigilation position per start time.
+				v.errorf(ref{Room: ptr(room), Starttime: &slot.Starttime}.hint(hintDuplicate),
 					"Für Raum %s am %s sind mehrere Aufsichten eingeteilt: %s.",
 					room, slotLabelDE(slot.Starttime), invigilatorNamesDE(invigilations, name))
 			}

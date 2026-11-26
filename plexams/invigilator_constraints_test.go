@@ -1,7 +1,11 @@
 package plexams
 
 import (
+	"context"
 	"testing"
+	"time"
+
+	"github.com/obcode/plexams.go/plexams/apierr"
 
 	"github.com/obcode/plexams.go/graph/model"
 )
@@ -69,5 +73,23 @@ func TestPermanentAppliesTo(t *testing.T) {
 		if got != c.applies {
 			t.Errorf("%s: permanentAppliesTo() = %v, want %v", c.name, got, c.applies)
 		}
+	}
+}
+
+// The table keeps one window per date; a second one must be refused before it
+// reaches the database as a key violation.
+func TestSetInvigilatorConstraintsRefusesTwoWindowsOnOneDay(t *testing.T) {
+	day := time.Date(2027, 1, 25, 0, 0, 0, 0, time.Local)
+	at := func(h int) *time.Time { v := day.Add(time.Duration(h) * time.Hour); return &v }
+	p := &Plexams{}
+	_, err := p.SetInvigilatorConstraints(context.Background(), model.InvigilatorConstraintsInput{
+		TeacherID: 1,
+		TimeWindows: []*model.InvigilationTimeWindowInput{
+			{Date: day, From: at(8), Until: at(11)},
+			{Date: day, From: at(14)},
+		},
+	})
+	if apierr.Code(err) != apierr.CodeInvalidInput {
+		t.Fatalf("err = %v, want INVALID_INPUT", err)
 	}
 }

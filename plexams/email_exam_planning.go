@@ -53,6 +53,15 @@ func (p *Plexams) SendExamPlanningInfoMails(ctx context.Context, teacherIDs []in
 	if err != nil {
 		return err
 	}
+	// Send-once applies to the mail to everybody: once the step is ticked, a real
+	// send to all candidates is refused. A send to some examiners (e.g. one added
+	// later) stays possible, like the single NTA room mail.
+	toAll := coversAllWithEmail(recipients, teacherIDs)
+	if toAll {
+		if err := p.emailSendAllowed(ctx, condExamPlanningInfoSent, run); err != nil {
+			return err
+		}
+	}
 	if len(teacherIDs) > 0 {
 		want := make(map[int]bool, len(teacherIDs))
 		for _, id := range teacherIDs {
@@ -102,7 +111,7 @@ func (p *Plexams) SendExamPlanningInfoMails(ctx context.Context, teacherIDs []in
 		sent++
 	}
 
-	if run {
+	if run && toAll {
 		p.markCondition(ctx, condExamPlanningInfoSent)
 	}
 	// StopProgress (not Println) so the last transient per-recipient line is replaced
@@ -153,4 +162,22 @@ func constraintsText(c *model.Constraints) string {
 		parts = append(parts, "fester Tag gewünscht")
 	}
 	return strings.Join(parts, "; ")
+}
+
+// coversAllWithEmail reports whether a send to teacherIDs (empty = all) reaches every
+// candidate that has an email address.
+func coversAllWithEmail(recipients []*model.ExamPlanningMailRecipient, teacherIDs []int) bool {
+	if len(teacherIDs) == 0 {
+		return true
+	}
+	want := make(map[int]bool, len(teacherIDs))
+	for _, id := range teacherIDs {
+		want[id] = true
+	}
+	for _, r := range recipients {
+		if strings.TrimSpace(r.Teacher.Email) != "" && !want[r.Teacher.ID] {
+			return false
+		}
+	}
+	return true
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -56,6 +57,31 @@ const (
 	conflictSameDay  = "same day"
 )
 
+// conflictText names a conflict kind for the planner.
+func conflictText(problem string, notTooCloseMinutes int) string {
+	switch problem {
+	case conflictOverlap:
+		return "Zeitkonflikt (die Prüfungen überschneiden sich oder folgen ohne die nötige Pause aufeinander)"
+	case conflictTooClose:
+		return fmt.Sprintf("Zu nah (selber Tag, Beginn weniger als %d Minuten auseinander)", notTooCloseMinutes)
+	default:
+		return "Selber Tag"
+	}
+}
+
+// conflictHint says what to do about a conflict that is neither allowed nor accepted.
+// Same day needs nothing: it is only info.
+func conflictHint(problem string) string {
+	switch problem {
+	case conflictOverlap:
+		return "Eine der beiden Prüfungen im Prüfungsplan verschieben. Schreiben die Betroffenen sie nicht wirklich beide (z. B. falsche Anmeldung), unter „Terminplan generieren“ den Konflikt je Studierende:n akzeptieren oder „darf zeitgleich“ setzen."
+	case conflictTooClose:
+		return "Wenn möglich eine der beiden Prüfungen auf einen anderen Tag oder weiter auseinander legen. Ist der Abstand vertretbar (z. B. bei Wiederholungsprüfungen), den Konflikt unter „Terminplan generieren“ je Studierende:n akzeptieren."
+	default:
+		return ""
+	}
+}
+
 // conflictSeverityRank orders the conflict kinds by their inherent (original) severity,
 // most severe first: overlap (0) > too close (1) > same day (2).
 func conflictSeverityRank(problem string) int {
@@ -102,7 +128,7 @@ func levelRank(level model.ValidationLevel) int {
 func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter Reporter) (*model.ValidationReport, error) {
 	knownConflictsCount = 0
 	ctx := context.Background()
-	v := newValidation(reporter, "conflicts", "validating conflicts")
+	v := newValidation(reporter, "conflicts", "prüfe die Konflikte der Studierenden")
 
 	if ok, err := p.planGenerated(ctx); err != nil {
 		return nil, err
@@ -112,7 +138,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 
 	validationMessages := make(map[conflictingAncodes]*problemWithStudents)
 
-	v.step("get planned ancodes")
+	v.step("lese die geplanten Prüfungen")
 	planAncodeEntries, err := p.dbClient.PlannedAncodes(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get plan entries")
@@ -135,7 +161,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		}
 	}
 
-	v.step("get student regs")
+	v.step("lese die Anmeldungen")
 	students, err := p.StudentRegsPerStudentPlanned(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get student registries per student")
@@ -147,7 +173,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 	// and, for backwards compatibility, the legacy knownConflicts in the semester YAML.
 	accepted := set.NewSet[studentPair]()
 
-	v.step("get accepted conflicts")
+	v.step("lese die akzeptierten Konflikte")
 	if decisions, err := p.dbClient.StudentConflictDecisions(ctx); err != nil {
 		log.Error().Err(err).Msg("cannot get student conflict decisions")
 	} else {
@@ -189,13 +215,14 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		locByAncode[a] = locationOf(c)
 	}
 
-	v.step("validating students")
+	v.step("prüfe je Studierende:n die Abstände der Prüfungen")
 	for _, student := range students {
 		p.validateStudentReg(student, planAncodeEntries, foreignAncodes, onlyPlannedByMe,
 			accepted, ancode, durByAncode, locByAncode, &validationMessages)
 	}
 
 	conflictingAncodesSlice, normalizedValidationMessages := p.sortConflictingAncodes(validationMessages)
+	examNames := p.newExamNamer(ctx, planAncodeEntries)
 
 	// Pair-level allowances: exam pairs the user permits to share a slot, so any same-slot
 	// (or closer) proximity between them is not a problem, only info. Two sources: the
@@ -231,9 +258,9 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		key := normPair(ca.ancode1, ca.ancode2)
 		switch {
 		case sameSlotConstraintPairs.Contains(key):
-			return "sameSlot-Constraint", true
+			return "Vorgabe „zur selben Zeit wie“", true
 		case canSharePairs.Contains(key):
-			return "canShareSlot", true
+			return "„darf zeitgleich“", true
 		default:
 			return "", false
 		}
@@ -248,6 +275,7 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		level    model.ValidationLevel
 		proxRank int
 		message  string
+		hint     string
 	}
 	graded := make([]gradedConflict, 0, len(conflictingAncodesSlice))
 	for _, ca := range conflictingAncodesSlice {
@@ -259,20 +287,22 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 			proxRank: conflictSeverityRank(problem.problem),
 			level:    conflictLevel(problem.problem, real, isAllowed),
 		}
+		names := examNames.pair(ca.ancode1, ca.ancode2)
 		switch {
 		case isAllowed:
-			g.message = fmt.Sprintf("%s (%s): %d student(s) affected between exam %d and %d",
-				problem.problem, reason, real+acc, ca.ancode1, ca.ancode2)
+			g.message = fmt.Sprintf("Erlaubt (%s): %s. Betroffen: %d Studierende.",
+				reason, names, real+acc)
 		case real == 0: // all affected students explicitly accepted
-			g.message = fmt.Sprintf("%s (akzeptiert): %d student(s) affected between exam %d and %d",
-				problem.problem, acc, ca.ancode1, ca.ancode2)
+			g.message = fmt.Sprintf("Akzeptiert: %s. Alle %d Betroffenen sind akzeptiert.",
+				names, acc)
 		default:
 			suffix := ""
 			if acc > 0 {
-				suffix = fmt.Sprintf(" (+%d akzeptiert)", acc)
+				suffix = fmt.Sprintf(" Weitere %d sind akzeptiert.", acc)
 			}
-			g.message = fmt.Sprintf("%s: %d student(s) affected between exam %d and %d%s",
-				problem.problem, real, ca.ancode1, ca.ancode2, suffix)
+			g.message = fmt.Sprintf("%s: %d Studierende schreiben %s.%s",
+				conflictText(problem.problem, p.semesterConfig.NotTooCloseMinutes), real, names, suffix)
+			g.hint = conflictHint(problem.problem)
 		}
 		graded = append(graded, g)
 	}
@@ -286,104 +316,35 @@ func (p *Plexams) ValidateConflicts(onlyPlannedByMe bool, ancode int, reporter R
 		return levelRank(graded[i].level) < levelRank(graded[j].level)
 	})
 	for _, g := range graded {
-		v.add(g.level, ref{Ancode: ptr(g.ca.ancode1), RelatedAncodes: []int{g.ca.ancode2}}, "%s", g.message)
+		v.add(g.level, ref{Ancode: ptr(g.ca.ancode1), RelatedAncodes: []int{g.ca.ancode2}, Hint: g.hint}, "%s", g.message)
 	}
 
 	if len(validationMessages) > 0 {
 		errs, warns, infos := v.counts()
-		summary := aurora.Sprintf(aurora.Yellow("%d accepted conflicts; %d error(s), %d warning(s), %d info(s)"),
-			knownConflictsCount, errs, warns, infos)
+		summary := aurora.Sprintf(aurora.Yellow("%d Fehler, %d Warnung(en), %d Hinweis(e); %d Konflikte einzelner Studierender sind akzeptiert"),
+			errs, warns, infos, knownConflictsCount)
 		if errs > 0 {
 			v.reporter.StopProgressFail(summary)
 		} else {
 			v.reporter.StopProgress(summary)
 		}
 
-		// Stream the copy-pasteable knownConflicts YAML snippet for the pairs that are NOT
-		// yet accepted, like the CLI (so they can be accepted).
-		v.reporter.Println("")
-		v.reporter.Println("knownConflicts:")
-		v.reporter.Println("  studentRegs:")
-		for _, conflictingAncodes := range conflictingAncodesSlice {
-			problemWithStudents := normalizedValidationMessages[conflictingAncodes]
-			if _, ok := allowedReason(conflictingAncodes); ok {
-				continue // pair may share a slot (sameSlot constraint / canShareSlot): nothing to accept
-			}
-			if len(problemWithStudents.students) == 0 {
-				continue // fully accepted: nothing left to accept
-			}
-			exam1, err := p.PlannedExam(ctx, conflictingAncodes.ancode1)
-			if err != nil {
-				log.Debug().Err(err).Msg("cannot get planned exam")
+		// Who is affected, per pair that is neither allowed nor fully accepted. A
+		// conflict is accepted per student on "Terminplan generieren".
+		for _, ca := range conflictingAncodesSlice {
+			problem := normalizedValidationMessages[ca]
+			if _, ok := allowedReason(ca); ok || len(problem.students) == 0 {
 				continue
 			}
-			exam2, err := p.PlannedExam(ctx, conflictingAncodes.ancode2)
-			if err != nil {
-				log.Debug().Err(err).Msg("cannot get planned exam")
-				continue
-			}
-
-			oneIsMucdai := false
-			if exam1.Ancode > 999 || exam2.Ancode > 999 {
-				oneIsMucdai = true
-			}
-
-			log.Debug().Interface("exam1", exam1).Interface("exam2", exam2).Msg("found conflicting exams")
-			v.reporter.Printf("%s", aurora.Sprintf(aurora.Red("\n    # %s"), problemWithStudents.problem))
-			for _, exam := range []*model.PlannedExam{exam1, exam2} {
-				repeater := ""
-				if exam.ZpaExam.IsRepeaterExam {
-					repeater = "-- Wiederholungsprüfung"
-				}
-
-				ancode := exam.Ancode
-				ancodeStr := fmt.Sprintf("%3d", ancode)
-				zpaAncode := ""
-				if oneIsMucdai {
-					ancodeStr = fmt.Sprintf("%6d", ancode)
-					zpaAncode = "           "
-
-					if ancode > 999 {
-						// External (MUC.DAI) exam: render its Primuss identity from the exam's
-						// own PrimussAncodes, not from ancode arithmetic (the old ancode%1000
-						// decode assumed a base+primussAncode scheme that the import never uses).
-						if pas := exam.ZpaExam.PrimussAncodes; len(pas) > 0 {
-							ancodeStr = fmt.Sprintf("%s/%d", pas[0].Program, pas[0].Ancode)
-							zpaAncode = fmt.Sprintf(" (ZPA: %d)", exam.Ancode)
-						}
-					} else {
-						for _, primussExam := range exam.PrimussExams {
-							if primussExam.Exam.AnCode != exam.Ancode {
-								ancodeStr = fmt.Sprintf("%6d", primussExam.Exam.AnCode)
-								zpaAncode = fmt.Sprintf(" (ZPA: %d)", exam.Ancode)
-								break
-							}
-						}
-					}
-				}
-
-				planEntry := exam.PlanEntry
-				var startTime time.Time
-				if planEntry.Starttime != nil {
-					startTime = *planEntry.Starttime
-				}
-
-				v.reporter.Printf("%s", aurora.Sprintf(aurora.Red("    # %s: %s. %s (%s): %s %s %s"),
-					startTime.Format("02.01.06, 15:04 Uhr"),
-					aurora.Magenta(ancodeStr),
-					aurora.Cyan(exam.ZpaExam.Module), aurora.Cyan(exam.ZpaExam.MainExamer),
-					aurora.Yellow(exam.ZpaExam.Groups),
-					aurora.Cyan(repeater),
-					zpaAncode,
-				))
-			}
-			for _, studentStr := range problemWithStudents.students {
-				v.reporter.Printf("%s", studentStr)
+			v.reporter.Println("")
+			v.reporter.Printf("%s", aurora.Sprintf(aurora.Red("%s: %s"),
+				conflictText(problem.problem, p.semesterConfig.NotTooCloseMinutes), examNames.pair(ca.ancode1, ca.ancode2)))
+			for _, student := range problem.students {
+				v.reporter.Printf("  - %s", student)
 			}
 		}
-
 	} else {
-		v.reporter.StopProgress(aurora.Sprintf(aurora.Green("%d known conflicts, no further problems found"),
+		v.reporter.StopProgress(aurora.Sprintf(aurora.Green("✓ keine Konflikte; %d Konflikte einzelner Studierender sind akzeptiert"),
 			knownConflictsCount))
 	}
 
@@ -561,10 +522,7 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 						students: make([]string, 0),
 					}
 				}
-				studentLine := aurora.Sprintf(aurora.Yellow("    - [\"%s\", \"%d\", \"%d\"] # %s (%s%s / %s)"),
-					aurora.Magenta(student.Mtknr), aurora.Magenta(p[i].Ancode), aurora.Magenta(p[j].Ancode),
-					aurora.Cyan(student.Name), aurora.Cyan(student.Program), aurora.Cyan(student.Group), aurora.Cyan(student.Mtknr),
-				)
+				studentLine := fmt.Sprintf("%s (%s %s)", student.Name, student.Program, student.Group)
 				if isAccepted {
 					validationMessageForProblem.accepted = append(validationMessageForProblem.accepted, studentLine)
 				} else {
@@ -578,7 +536,7 @@ func (plexams *Plexams) validateStudentReg(student *model.Student, planAncodeEnt
 
 func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "constraints", "validating constraints")
+	v := newValidation(reporter, "constraints", "prüfe die Vorgaben der Prüfungen")
 
 	if ok, err := p.planGenerated(ctx); err != nil {
 		return nil, err
@@ -586,7 +544,7 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 		return v.skip(skipNoPlan), nil
 	}
 
-	v.step("get constraints")
+	v.step("lese die Vorgaben")
 	constraints, err := p.Constraints(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get constraints")
@@ -597,15 +555,16 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 		constraintsMap[constraint.Ancode] = constraint
 	}
 
-	v.step("get booked entries")
+	v.step("lese die Anny-Buchungen")
 	annyRoomBookings, err := p.ExahmRoomsFromAnnyBookings(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get entries from anny_bookings")
 		return nil, err
 	}
 
+	examNames := p.newExamNamer(ctx, nil)
 	for _, constraint := range constraints {
-		v.step("check constraints for exam %d", constraint.Ancode)
+		v.step("prüfe die Vorgaben von Ancode %d", constraint.Ancode)
 		slot, err := p.SlotForAncode(ctx, constraint.Ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", constraint.Ancode).Msg("cannot get slot for ancode")
@@ -628,16 +587,16 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 					continue
 				}
 
-				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}, Starttime: &slot.Starttime},
-					"Exams %d and %d must be in the same slot, %d is at %s and %d is not planned",
-					constraint.Ancode, otherAncode, constraint.Ancode, slot.Starttime.Format("02.01.06 15:04"), otherAncode)
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}, Starttime: &slot.Starttime}.hint("Im Prüfungsplan die zweite Prüfung auf denselben Termin legen."),
+					"%s soll zur selben Zeit liegen wie %s. Die erste liegt am %s, die zweite hat keinen Termin.",
+					examNames.name(constraint.Ancode), examNames.name(otherAncode), slotLabelDE(slot.Starttime))
 				continue
 			}
 
 			if !slot.Starttime.Equal(otherSlot.Starttime) {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}, Starttime: &slot.Starttime},
-					"Exams %d and %d must be in the same slot, are at %s and %s",
-					constraint.Ancode, otherAncode, slot.Starttime.Format("02.01.06 15:04"), otherSlot.Starttime.Format("02.01.06 15:04"))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), RelatedAncodes: []int{otherAncode}, Starttime: &slot.Starttime}.hint("Im Prüfungsplan beide Prüfungen auf denselben Termin legen, oder unter „Prüfungen auswählen & Vorgaben“ die Vorgabe „zur selben Zeit wie“ entfernen."),
+					"%s soll zur selben Zeit liegen wie %s, liegt aber am %s und die andere am %s.",
+					examNames.name(constraint.Ancode), examNames.name(otherAncode), slotLabelDE(slot.Starttime), slotLabelDE(otherSlot.Starttime))
 			}
 		}
 
@@ -652,42 +611,40 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 				fixed.Month() != slot.Starttime.Month() ||
 				fixed.Hour() != slot.Starttime.Hour() ||
 				fixed.Minute() != slot.Starttime.Minute() {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
-					"Exam %d has fixed slot %s, is %s", constraint.Ancode, fixed.Format("02.01.06 15:04"), constraint.FixedTime.Format("02.01.06 15:04"))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime}.hint("Im Prüfungsplan die Prüfung auf den festen Termin legen."),
+					"%s hat den festen Termin %s, liegt aber am %s.", examNames.name(constraint.Ancode), slotLabelDE(*fixed), slotLabelDE(slot.Starttime))
 			}
 		}
 
 		for _, day := range constraint.ExcludeDays {
 			if day.Equal(time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)) {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
-					"Exam %d planned on excluded day %s", constraint.Ancode, day.Format("02.01.06"))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime}.hint("Im Prüfungsplan die Prüfung auf einen anderen Tag legen."),
+					"%s liegt am %s, an diesem Tag soll sie aber nicht stattfinden (Sperrtag der Prüfung).", examNames.name(constraint.Ancode), slotLabelDE(slot.Starttime))
 			}
 		}
 
 		if len(constraint.PossibleDays) > 0 {
+			plannedDay := time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)
+			possible := make([]string, 0, len(constraint.PossibleDays))
 			possibleDaysOk := false
-			var dayPlanned *time.Time
 			for _, day := range constraint.PossibleDays {
-				if day.Equal(time.Date(slot.Starttime.Year(), slot.Starttime.Month(), slot.Starttime.Day(), 0, 0, 0, 0, time.Local)) {
+				if day.Equal(plannedDay) {
 					possibleDaysOk = true
-					dayPlanned = day
-					break
 				}
+				possible = append(possible, weekdaysDE[int(day.Weekday())]+" "+day.Format("02.01."))
 			}
 			if !possibleDaysOk {
-				dayStr := "-"
-				if dayPlanned != nil {
-					dayStr = dayPlanned.Format("02.01.06")
-				}
-				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
-					"Exam %d planned on day %s which is not a possible day", constraint.Ancode, dayStr)
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime}.hint("Im Prüfungsplan die Prüfung auf einen der möglichen Tage legen."),
+					"%s liegt am %s, darf aber nur an diesen Tagen stattfinden: %s.",
+					examNames.name(constraint.Ancode), slotLabelDE(slot.Starttime), strings.Join(possible, ", "))
 			}
 		}
 
 		if constraint.RoomConstraints != nil && (constraint.RoomConstraints.Exahm || constraint.RoomConstraints.Seb) {
 			if !anny.RoomBookedDuringExamTime(annyRoomBookings, slot) {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
-					"Exam %d planned at %s, but no room booked", constraint.Ancode, slot.Starttime.Format("02.01.06 15:04"))
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime}.hint("Die Prüfung im Prüfungsplan in eine Zeit legen, für die ein Raum im T-Bau gebucht ist, oder für diese Zeit einen Raum in Anny buchen und die Buchungen neu laden."),
+					"%s ist eine Rechnerprüfung (EXaHM/SEB) und liegt am %s, aber zu dieser Zeit ist in Anny kein passender Raum gebucht.",
+					examNames.name(constraint.Ancode), slotLabelDE(slot.Starttime))
 			}
 		}
 
@@ -702,13 +659,13 @@ func (p *Plexams) ValidateConstraints(reporter Reporter) (*model.ValidationRepor
 			}
 			for _, room := range plannedRooms {
 				if !allowedRooms.Contains(room.RoomName) {
-					v.errorf(ref{Ancode: ptr(constraint.Ancode), Room: ptr(room.RoomName), Starttime: &slot.Starttime},
-						"Exam %d planned in room %s, but allowed rooms are %s", constraint.Ancode, room.RoomName, constraint.RoomConstraints.AllowedRooms)
+					v.errorf(ref{Ancode: ptr(constraint.Ancode), Room: ptr(room.RoomName), Starttime: &slot.Starttime}.hint("Im Raumplan einen der erlaubten Räume zuweisen, oder unter „Prüfungen auswählen & Vorgaben“ die erlaubten Räume erweitern."),
+						"%s sitzt in Raum %s, erlaubt sind aber nur: %s.", examNames.name(constraint.Ancode), room.RoomName, strings.Join(constraint.RoomConstraints.AllowedRooms, ", "))
 				}
 			}
 			if len(plannedRooms) == 0 {
-				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime},
-					"Exam %d planned in no room, but allowed rooms are %s", constraint.Ancode, constraint.RoomConstraints.AllowedRooms)
+				v.errorf(ref{Ancode: ptr(constraint.Ancode), Starttime: &slot.Starttime}.hint("Die Räume generieren oder der Prüfung im Raumplan einen der erlaubten Räume geben."),
+					"%s hat noch keinen Raum. Erlaubt sind nur: %s.", examNames.name(constraint.Ancode), strings.Join(constraint.RoomConstraints.AllowedRooms, ", "))
 			}
 		}
 	}

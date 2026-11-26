@@ -106,7 +106,7 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 				smallSebNotes = append(smallSebNotes, &model.PreplanFinding{
 					Level: model.ValidationLevelWarning,
 					Message: fmt.Sprintf(
-						"SEB %s (%d Plätze): passt in den R-Bau (≤ %d Plätze gesamt) — dort einplanen, kein Anny-Slot nötig",
+						"SEB %s (%d Plätze): passt in den R-Bau (höchstens %d Plätze) — dort einplanen, dafür ist keine Anny-Buchung nötig",
 						pe.Module, pe.ExpectedStudents, rBauSebThreshold),
 				})
 			} else {
@@ -123,7 +123,7 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 	sort.Slice(slotOrder, func(i, j int) bool { return slotOrder[i].Before(slotOrder[j]) })
 
 	if genuineUnassigned > 0 {
-		addFinding(model.ValidationLevelError, "%s ohne Slot — gebuchte Anny-Plätze reichen nicht, bitte mehr Anny-Slots buchen",
+		addFinding(model.ValidationLevelError, "%s ohne Termin — die gebuchten Anny-Plätze reichen nicht; bitte in Anny weitere Zeiten buchen",
 			pluralN(genuineUnassigned, "Prüfung", "Prüfungen"))
 	}
 	findings = append(findings, smallSebNotes...)
@@ -156,11 +156,11 @@ func validatePreplan(preExams []*model.PreplanExam, exahmRooms, sebRooms []prepl
 				switch {
 				case overflow > 0:
 					addFinding(model.ValidationLevelWarning,
-						"Slot %s: SEB %s hat %d Plätze, davon %d im gebuchten Anny-Slot — zusätzlich %d Plätze im R-Bau einplanen",
+						"%s: SEB %s hat %d Plätze, davon %d in der gebuchten Anny-Zeit — zusätzlich %d Plätze im R-Bau einplanen",
 						slotLabelDE(key), pe.Module, pe.ExpectedStudents, seats, overflow)
 				case seats < demand:
 					addFinding(model.ValidationLevelError,
-						"Slot %s: %s %s braucht die Räume %s–%s für %d Plätze (%d min + %d/%d min Puffer), aber gebuchte %s-Räume, die dieses Fenster abdecken, bieten nur %d Plätze",
+						"%s: %s %s braucht die Räume von %s bis %s für %d Plätze (%d Minuten Prüfung, %d Minuten Vorlauf, %d Minuten Nachlauf), aber die gebuchten %s-Räume für diese Zeit bieten nur %d Plätze",
 						slotLabelDE(key), pe.ExamKind, pe.Module,
 						key.Add(-pre).Format("15:04"), key.Add(dur+post).Format("15:04"),
 						pe.ExpectedStudents, int(dur.Minutes()), int(pre.Minutes()), int(post.Minutes()), pe.ExamKind, seats)
@@ -293,7 +293,7 @@ func cancellableSlotsFinding(regularSlots []*model.Slot, booked map[time.Time]*s
 	}
 	return &model.PreplanFinding{
 		Level: model.ValidationLevelInfo,
-		Message: fmt.Sprintf("%d von %d gebuchten Anny-Slots werden nicht genutzt und können storniert werden: %s",
+		Message: fmt.Sprintf("%d von %d gebuchten Anny-Zeiten werden nicht genutzt und können storniert werden: %s",
 			len(free), total, joinStrings(labels)),
 	}
 }
@@ -329,7 +329,7 @@ func kindBookingFindings(key time.Time, kind string, needed, available int, room
 	if needed > available {
 		return []*model.PreplanFinding{{
 			Level: model.ValidationLevelError,
-			Message: fmt.Sprintf("Slot %s: %s %d Plätze nötig, nur %d verfügbar (Kapazität reicht nicht)",
+			Message: fmt.Sprintf("%s: %s braucht %d Plätze, verfügbar sind nur %d",
 				slotLabel, kind, needed, available),
 		}}
 	}

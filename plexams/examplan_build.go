@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 	"time"
 
@@ -80,10 +81,10 @@ type UnplacedExamReason struct {
 
 // reasons an exam can never be placed, decided during problem construction (before solving).
 const (
-	unplaceableNoJointSlot    = "keine passende Zeit für den gemeinsamen Studiengang (Fachtermine ∩ reservierte Zeiten leer)"
-	unplaceableNoExahmBooking = "keine EXaHM/SEB-Buchung deckt das Prüfungsfenster (Prüfungsdauer + Puffer)"
+	unplaceableNoJointSlot    = "keine passende Zeit: keine der für den gemeinsamen Studiengang reservierten Zeiten ist für diese Prüfung erlaubt"
+	unplaceableNoExahmBooking = "keine Anny-Buchung im T-Bau ist lang genug für Prüfungsdauer samt Vor- und Nachlauf"
 	// %s is filled with the concrete window bound (e.g. "nicht vor 10:00" / "nicht nach 14:00").
-	unplaceableOutsideTimeWindow = "kein erlaubter Slot im Zeitfenster (%s); ggf. Enforcement auf SOFT stellen"
+	unplaceableOutsideTimeWindow = "keine erlaubte Startzeit innerhalb des Tageszeit-Fensters (%s); ggf. das Fenster unter „Terminplan generieren“ auf „weich“ stellen"
 )
 
 // examPlanBuildInfo carries diagnostics from problem construction that the caller surfaces in
@@ -104,7 +105,7 @@ type examPlanBuildInfo struct {
 func (p *Plexams) buildExamPlanProblem(ctx context.Context, applyRatings, roomPhase bool) (*examplan.Problem, *examPlanBuildInfo, error) {
 	sc := p.semesterConfig
 	if sc == nil {
-		return nil, nil, fmt.Errorf("no semester config loaded")
+		return nil, nil, apierr.New(apierr.CodeInvalidInput, "Für dieses Semester ist keine Semester-Konfiguration gespeichert. Erst dort Prüfungszeitraum und Startzeiten festlegen.")
 	}
 
 	// --- slots ---
@@ -854,19 +855,19 @@ func (p *Plexams) GenerateExamRoomsPhase(ctx context.Context, dryRun bool, seed 
 
 func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool, seed int64, iterations int, ignoreRatings, keepAssigned bool, reporter Reporter, doneCond string) (*ExamScheduleResult, error) {
 	if ignoreRatings {
-		reporter.Println("Konflikt-Bewertungen werden für diesen Lauf ignoriert")
+		reporter.Println("Die Bewertungen der Konflikte werden in diesem Lauf nicht berücksichtigt.")
 	}
 	if keepAssigned {
-		reporter.Println("Warm-Start: bestehender Plan wird als Ausgangspunkt behalten")
+		reporter.Println("Der gespeicherte Plan ist der Ausgangspunkt; es werden nur Verbesserungen übernommen.")
 	}
 	if roomPhase {
-		reporter.Step("EXaHM/SEB-Raumphase wird aufgebaut …")
+		reporter.Step("bereite die Verteilung der EXaHM/SEB-Prüfungen auf den T-Bau vor …")
 	} else {
-		reporter.Step("Terminplan-Problem wird aufgebaut …")
+		reporter.Step("bereite den Terminplan vor …")
 	}
 	prob, buildInfo, err := p.buildExamPlanProblem(ctx, !ignoreRatings, roomPhase)
 	if err != nil {
-		reporter.StopProgressFail("Aufbau fehlgeschlagen: " + err.Error())
+		reporter.StopProgressFail("Vorbereitung fehlgeschlagen: " + err.Error())
 		return nil, err
 	}
 	movable := 0
@@ -879,17 +880,17 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	if roomPhase {
 		what = "EXaHM/SEB-Prüfungen zu platzieren"
 	}
-	reporter.Println(fmt.Sprintf("%d %s, %d fest, %d Slots, %d Studierende mit Konflikten",
+	reporter.Println(fmt.Sprintf("%d %s, %d mit festem Termin, %d mögliche Termine, %d Studierende mit mehreren Prüfungen",
 		movable, what, len(prob.Units)-movable, len(prob.Slots), len(prob.Students)))
 	if n := prob.NumHardSeparations(); n > 0 {
-		reporter.Println(fmt.Sprintf("%d Zwischenzeit-Sperren berücksichtigt (Zeit-Überlappung, inkl. NTA)", n))
+		reporter.Println(fmt.Sprintf("%d Paare von Prüfungen dürfen sich wegen gemeinsamer Studierender zeitlich nicht überschneiden (inkl. Zeitverlängerung bei NTA)", n))
 	}
 	// EXaHM/SEB exams with an NTA are placed on their base exam duration (the NTA is not
 	// gated against the Anny booking window — see buildExamPlanProblem). Remind the operator
 	// to book a separate NTA room for them during room planning.
 	if len(buildInfo.exahmNtaAncodes) > 0 {
-		reporter.Println(fmt.Sprintf("Hinweis: %d EXaHM/SEB-Prüfung(en) mit NTA — bei der Raumplanung NTA-Raum buchen: %v",
-			len(buildInfo.exahmNtaAncodes), buildInfo.exahmNtaAncodes))
+		reporter.Println(fmt.Sprintf("Hinweis: %d EXaHM/SEB-Prüfung(en) mit Nachteilsausgleich. Bei der Raumplanung einen eigenen Raum dafür buchen: %s",
+			len(buildInfo.exahmNtaAncodes), p.newExamNamer(ctx, nil).list(buildInfo.exahmNtaAncodes)))
 	}
 	// For the ordinary Terminplan run (not the EXaHM/SEB room phase) warn if exams planned
 	// by another faculty still miss their Termin: those exams cannot constrain the plan yet,
@@ -898,8 +899,8 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 		if missing, err := p.unscheduledOtherFacultyExams(ctx); err != nil {
 			log.Error().Err(err).Msg("cannot check whether other-faculty exams are scheduled")
 		} else if len(missing) > 0 {
-			reporter.Warnf("Achtung: %d Prüfung(en) anderer FKs noch ohne Termin – Konflikte mit ihnen werden in diesem Lauf nicht berücksichtigt: %v",
-				len(missing), missing)
+			reporter.Warnf("Achtung: %d Prüfung(en) anderer FKs haben noch keinen Termin. Konflikte mit ihnen kann dieser Lauf nicht berücksichtigen; Termine unter „Prüfungen anderer FKs“ eintragen: %s",
+				len(missing), p.newExamNamer(ctx, nil).list(missing))
 		}
 	}
 
@@ -911,16 +912,17 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	}
 	opts.ProgressEvery = maxInt(1, opts.Iterations/200)
 	opts.OnProgress = func(pr optimize.Progress) {
-		reporter.Step(fmt.Sprintf("%d/%d, Kosten %.0f, %s", pr.Iteration, pr.Total, pr.BestCost, pr.Detail))
+		reporter.Step(fmt.Sprintf("Durchlauf %d von %d, Strafpunkte %.0f, %s", pr.Iteration, pr.Total, pr.BestCost, pr.Detail))
 	}
 	st, res := examplan.Solve(prob, opts, keepAssigned)
 
 	reg := prob.Registry()
 	total, byC, _ := reg.Cost(st)
 	hardVs := reg.HardViolations(st)
+	names := p.newExamNamer(ctx, nil)
 	hard := make([]string, 0, len(hardVs))
 	for _, v := range hardVs {
-		hard = append(hard, fmt.Sprintf("%s: %s %v", v.Constraint, v.Message, v.Refs))
+		hard = append(hard, hardViolationText(v, names))
 	}
 	unplaced := st.UnplacedAncodes()
 
@@ -943,9 +945,9 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 					n = len(prob.Units[i].Allowed)
 				}
 				if n == 0 { // empty Allowed = all slots were allowed
-					reason = "alle Slots zulässig, aber im Lauf keiner frei (Kapazität/Konflikte)"
+					reason = "jede Startzeit wäre erlaubt, aber in diesem Lauf war keine frei (Platz oder Konflikte)"
 				} else {
-					reason = fmt.Sprintf("%d zulässige(r) Slot(s), aber im Lauf keiner frei (Kapazität/Konflikte)", n)
+					reason = fmt.Sprintf("%d mögliche Termin(e), aber in diesem Lauf war keiner frei (Platz oder Konflikte)", n)
 				}
 			}
 			unplacedReasons = append(unplacedReasons, &UnplacedExamReason{Ancode: a, Reason: reason})
@@ -996,31 +998,31 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 	}
 
 	d := result.Diagnostics
-	reporter.Println(fmt.Sprintf("geplant %d, ungeplant %d, harte Verletzungen %d", result.Placed, result.Unplaced, len(hard)))
+	reporter.Println(fmt.Sprintf("eingeplant %d, nicht eingeplant %d, verletzte harte Regeln %d", result.Placed, result.Unplaced, len(hard)))
 	// list the concrete hard violations (they block the write): both to the stream so the
 	// GUI shows them and to the server log so they are visible without the GUI report.
 	for _, h := range hard {
-		reporter.Println("  harte Verletzung: " + h)
+		reporter.Println("  verletzte Regel: " + h)
 		log.Warn().Bool("roomPhase", roomPhase).Str("violation", h).Msg("exam schedule hard violation")
 	}
 	// per-exam reason for every unplaced exam, so it is clear why the solver left it out.
 	for _, ur := range result.UnplacedReasons {
-		reporter.Println(fmt.Sprintf("  %d nicht geplant: %s", ur.Ancode, ur.Reason))
+		reporter.Println(fmt.Sprintf("  nicht eingeplant: %s – %s", names.name(ur.Ancode), ur.Reason))
 		log.Warn().Int("ancode", ur.Ancode).Str("reason", ur.Reason).Msg("exam left unplaced")
 	}
 	if roomPhase {
 		be, ue, bs, us := st.TbauUsage()
 		reporter.Println(fmt.Sprintf("T-Bau EXaHM: %d/%d Sitze genutzt, SEB: %d/%d Sitze genutzt", ue, be, us, bs))
 	} else {
-		reporter.Println(fmt.Sprintf("direkt nacheinander %d, selber Tag %d (%d Studierende), Folgetag %d",
+		reporter.Println(fmt.Sprintf("Prüfungspaare von Studierenden: direkt nacheinander %d, am selben Tag %d (%d Studierende), am Folgetag %d",
 			d.Adjacent, d.SameDay, d.StudentsWithSameDay, d.NextDay))
 		if d.InteriorHoles > 0 {
-			reporter.Println(fmt.Sprintf("freie Slots mitten am Tag: %d (ungünstig für die Aufsichtenplanung)", d.InteriorHoles))
+			reporter.Println(fmt.Sprintf("leere Startzeiten mitten am Tag: %d (ungünstig für die Aufsichtenplanung)", d.InteriorHoles))
 		}
 	}
 
 	if dryRun {
-		reporter.StopProgress("Probelauf – nichts geschrieben")
+		reporter.StopProgress("Probelauf: nichts gespeichert")
 		return result, nil
 	}
 	if err := p.generationAllowed(ctx, model.PlanningGateExams); err != nil {
@@ -1028,8 +1030,8 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 		return result, err
 	}
 	if len(hard) > 0 {
-		reporter.StopProgressFail(fmt.Sprintf("%d harte Verletzungen – nichts geschrieben", len(hard)))
-		return result, fmt.Errorf("refusing to write: %d hard violations", len(hard))
+		reporter.StopProgressFail(fmt.Sprintf("%d harte Regeln verletzt: nichts gespeichert", len(hard)))
+		return result, fmt.Errorf("Der Plan verletzt %d harte Regeln und wurde deshalb nicht gespeichert. Die verletzten Regeln stehen oben; erst die Ursache beheben (z. B. Vorgaben oder Kapazitäten prüfen), dann noch einmal generieren", len(hard))
 	}
 	for i := range prob.Units {
 		u := &prob.Units[i]
@@ -1047,14 +1049,14 @@ func (p *Plexams) runExamGeneration(ctx context.Context, roomPhase, dryRun bool,
 		start := prob.Slots[st.SlotOf[i]].Start
 		for _, a := range u.Ancodes {
 			if _, err := p.SetExamTime(ctx, a, start); err != nil {
-				reporter.StopProgressFail("Schreiben fehlgeschlagen: " + err.Error())
-				return result, fmt.Errorf("cannot write plan entry for %d: %w", a, err)
+				reporter.StopProgressFail("Speichern fehlgeschlagen: " + err.Error())
+				return result, wrapGerman(err, "Der Termin für %s ließ sich nicht speichern", names.name(a))
 			}
 		}
 	}
 	result.Written = true
 	p.markCondition(ctx, doneCond)
-	reporter.StopProgress(fmt.Sprintf("geschrieben: %d Prüfungen", result.Placed))
+	reporter.StopProgress(fmt.Sprintf("gespeichert: %d Prüfungen haben jetzt einen Termin", result.Placed))
 	return result, nil
 }
 
@@ -1212,4 +1214,20 @@ func firstProgram(e *model.AssembledExam) string {
 		}
 	}
 	return ""
+}
+
+// hardViolationText renders a hard violation of the exam schedule for the planner:
+// the rule in words and the exams or the place in the plan it concerns.
+func hardViolationText(v optimize.Violation, names examNamer) string {
+	switch v.Constraint {
+	case "fixed", "allowed-slots", "student-clash":
+		if len(v.Refs) > 0 {
+			return v.Message + ": " + names.list(v.Refs)
+		}
+	case "capacity", "tbau-overflow", "slot-hole", "time-of-day":
+		if len(v.Refs) == 2 {
+			return fmt.Sprintf("%s (%d. Prüfungstag, %d. Startzeit)", v.Message, v.Refs[0], v.Refs[1])
+		}
+	}
+	return v.Message
 }

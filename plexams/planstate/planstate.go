@@ -8,7 +8,6 @@ package planstate
 
 import (
 	"context"
-	"fmt"
 	"github.com/obcode/plexams.go/plexams/apierr"
 
 	"github.com/obcode/plexams.go/graph/model"
@@ -121,10 +120,10 @@ func (m *Machine) State(ctx context.Context) (*model.PlanningState, error) {
 func (m *Machine) SetCondition(ctx context.Context, key string, done bool) (*model.PlanningState, error) {
 	def, ok := m.condDefByKey(key)
 	if !ok {
-		return nil, fmt.Errorf("unknown planning condition %q", key)
+		return nil, apierr.Newf(apierr.CodeNotFound, "Den Ablaufschritt „%s“ gibt es nicht. Bitte die Seite neu laden.", key)
 	}
 	if def.Compute != nil {
-		return nil, fmt.Errorf("planning condition %q is computed automatically and cannot be set by hand", key)
+		return nil, apierr.Newf(apierr.CodeInvalidInput, "Der Schritt „%s“ hakt sich von selbst ab, sobald er erledigt ist, und lässt sich nicht von Hand setzen.", def.Title)
 	}
 	if err := m.db.SetPlanningCondition(ctx, key, done); err != nil {
 		return nil, err

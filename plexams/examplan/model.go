@@ -641,7 +641,7 @@ func holeCost(st *State) (float64, []optimize.Violation) {
 		for i := first + 1; i < last; i++ {
 			if st.slotOwn[slots[i]] == 0 {
 				total += p.W.Hole
-				vs = append(vs, optimize.Violation{Constraint: "slot-hole", Message: "freier Slot (ohne eigene Prüfung) zwischen belegten Slots",
+				vs = append(vs, optimize.Violation{Constraint: "slot-hole", Message: "leere Startzeit zwischen belegten Startzeiten desselben Tages",
 					Refs: p.slotDayRef(slots[i])})
 			}
 		}
@@ -681,7 +681,7 @@ func unplacedCost(st *State) (float64, []optimize.Violation) {
 	n := st.unplacedCount()
 	var vs []optimize.Violation
 	if n > 0 {
-		vs = append(vs, optimize.Violation{Constraint: "placement", Message: fmt.Sprintf("%d Prüfungen ohne Slot", n)})
+		vs = append(vs, optimize.Violation{Constraint: "placement", Message: fmt.Sprintf("%d Prüfungen ohne Termin", n)})
 	}
 	return st.P.W.Unplaced * float64(n), vs
 }

@@ -458,7 +458,7 @@ func bookingProposalFindings(proposal *model.PreplanBookingProposal, preExams []
 		}
 		findings = append(findings, &model.PreplanFinding{
 			Level: level,
-			Message: fmt.Sprintf("%s bleibt ohne Slot, auch wenn alle freien Anny-Räume gebucht werden (%s)%s",
+			Message: fmt.Sprintf("%s bleibt ohne Termin, selbst wenn alle freien Anny-Räume gebucht werden (%s)%s",
 				pluralN(n, "Prüfung", "Prüfungen"), joinStrings(mods), hint),
 		})
 	}

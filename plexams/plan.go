@@ -2,7 +2,7 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 	"time"
 
@@ -18,7 +18,7 @@ import (
 func (p *Plexams) SetExternalExamTime(ctx context.Context, ancode int, date, t string) (bool, error) {
 	slottime, err := time.ParseInLocation("02.01.2006 15:04", date+" "+t, time.Local)
 	if err != nil {
-		return false, fmt.Errorf("cannot parse date/time %q %q (expected dd.mm.yyyy and HH:MM): %w", date, t, err)
+		return false, apierr.Newf(apierr.CodeInvalidInput, "„%s %s“ ist kein gültiger Termin. Datum als TT.MM.JJJJ und Uhrzeit als SS:MM angeben, z. B. 25.01.2027 10:30.", date, t)
 	}
 	return p.AddExamToSlottime(ctx, ancode, slottime)
 }
@@ -30,7 +30,7 @@ func (p *Plexams) SetExamTime(ctx context.Context, ancode int, starttime time.Ti
 	exam, err := p.AssembledExam(ctx, ancode)
 	if err != nil || exam == nil {
 		log.Error().Err(err).Int("ancode", ancode).Msg("exam does not exist or does not need to be planned")
-		return false, fmt.Errorf("exam %d does not exist or does not need to be planned", ancode)
+		return false, apierr.Newf(apierr.CodeNotFound, "Ancode %d ist keine aufbereitete Prüfung und lässt sich deshalb nicht einplanen. Unter „Aufbereitete Prüfungen“ neu generieren; fehlt sie dann noch, unter „Prüfungen auswählen & Vorgaben“ prüfen, ob sie geplant werden soll.", ancode)
 	}
 	return p.dbClient.AddExamToSlot(ctx, &model.PlanEntry{
 		Starttime: &starttime,
@@ -57,12 +57,12 @@ func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, slottime ti
 		// No constraints row means nobody marked the exam as planned elsewhere --
 		// the same answer as an explicit false, not a nil dereference.
 		if constraints == nil || !constraints.NotPlannedByMe {
-			err := fmt.Errorf("add exam to slot time is only allowed for exams not planned by me")
+			err := apierr.Newf(apierr.CodeInvalidInput, "Ancode %d plant unsere Fakultät selbst. Einen von außen vorgegebenen Termin gibt es nur für Prüfungen mit der Vorgabe „nicht von mir geplant“.", ancode)
 			return false, err
 		}
 	}
 	if exam == nil {
-		err = fmt.Errorf("exam with ancode %d not found", ancode)
+		err = apierr.Newf(apierr.CodeNotFound, "Eine Prüfung mit Ancode %d gibt es nicht.", ancode)
 		return false, err
 	}
 	log.Debug().Str("module", exam.Module).Str("main-examer", exam.MainExamer).

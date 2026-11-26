@@ -23,11 +23,9 @@ import (
 // shrinks: a file in it that has become clean fails the test until it is removed,
 // and a file outside it may not regress.
 var validatorsToRewrite = map[string]bool{
-	"validate.go":                          true,
 	"validate_rooms.go":                    true,
 	"validate_invigilation.go":             true,
 	"validate_invigilation_constraints.go": true,
-	"validate_semester_times.go":           true,
 }
 
 // englishWords are words that do not occur in a German finding. Kept short and

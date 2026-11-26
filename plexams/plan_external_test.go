@@ -2,6 +2,7 @@ package plexams
 
 import (
 	"context"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"strings"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ func TestExternalTimeForExamWithoutConstraints(t *testing.T) {
 	}
 
 	_, err := p.AddExamToSlottime(context.Background(), 100, time.Date(2027, 2, 3, 10, 30, 0, 0, time.Local))
-	if err == nil || !strings.Contains(err.Error(), "not planned by me") {
+	if apierr.Code(err) != apierr.CodeInvalidInput || !strings.Contains(err.Error(), "nicht von mir geplant") {
 		t.Errorf("want the not-planned-by-me refusal, got %v", err)
 	}
 }

@@ -268,7 +268,7 @@ func (allowedC) Check(st *State) []optimize.Violation {
 	var vs []optimize.Violation
 	for u := range st.P.Units {
 		if s := st.SlotOf[u]; s >= 0 && !st.P.allows(u, s) {
-			vs = append(vs, optimize.Violation{Constraint: "allowed-slots", Message: "Prüfung in unzulässigem Slot", Refs: st.P.Units[u].Ancodes})
+			vs = append(vs, optimize.Violation{Constraint: "allowed-slots", Message: "Prüfung zu einer nicht erlaubten Zeit", Refs: st.P.Units[u].Ancodes})
 		}
 	}
 	return vs
@@ -306,10 +306,10 @@ func (capacityC) Check(st *State) []optimize.Violation {
 		// may exceed it and occupy the slot alone, so an over-cap slot is a violation only
 		// when it holds two or more seat-consuming exams (see feasible/canSwap).
 		if cap := st.P.Slots[s].Seats; cap > 0 && st.slotSeats[s] > cap && st.seatUnitsInSlot(s) >= 2 {
-			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über Gesamt-Kapazität (Zusammenlegung)", Refs: st.P.slotDayRef(s)})
+			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "mehr Studierende zur selben Startzeit als „Max. Plätze pro Startzeit“ erlaubt", Refs: st.P.slotDayRef(s)})
 		}
 		if st.slotExahm[s] > st.P.Slots[s].ExahmSeats {
-			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "Slot über EXaHM-Kapazität", Refs: st.P.slotDayRef(s)})
+			vs = append(vs, optimize.Violation{Constraint: "capacity", Message: "mehr EXaHM-Plätze belegt als in Anny gebucht", Refs: st.P.slotDayRef(s)})
 		}
 	}
 	return vs

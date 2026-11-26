@@ -10,7 +10,7 @@ import (
 
 // skipSlotTimeWindowOff is the skip reason when the start-time window is disabled in the
 // generation config (slotTimeMode = OFF) — there is nothing to validate then.
-const skipSlotTimeWindowOff = "Tageszeit-Fenster ist deaktiviert (slotTimeMode = OFF)"
+const skipSlotTimeWindowOff = "Das Tageszeit-Fenster ist ausgeschaltet (unter „Terminplan generieren“ steht es auf „Aus“)."
 
 // ValidateSemesterTimes checks the generated Terminplan against the semester-dependent
 // start-time window (winter: not before slotTimeWinterEarliest; summer: not after
@@ -21,7 +21,7 @@ const skipSlotTimeWindowOff = "Tageszeit-Fenster ist deaktiviert (slotTimeMode =
 // not-planned-by-me exams are skipped (not ours to control).
 func (p *Plexams) ValidateSemesterTimes(reporter Reporter) (*model.ValidationReport, error) {
 	ctx := context.Background()
-	v := newValidation(reporter, "semester-times", "prüfe Semester-Zeiten (Tageszeit-Fenster)")
+	v := newValidation(reporter, "semester-times", "prüfe die Startzeiten gegen das Tageszeit-Fenster")
 
 	if ok, err := p.planGenerated(ctx); err != nil {
 		return nil, err
@@ -46,10 +46,10 @@ func (p *Plexams) ValidateSemesterTimes(reporter Reporter) (*model.ValidationRep
 	var windowRule, season string
 	switch mode {
 	case slotTimeWinter:
-		windowRule = fmt.Sprintf("Beginn erst ab %02d:%02d erlaubt (Winter)", earliestMin/60, earliestMin%60)
+		windowRule = fmt.Sprintf("im Winter Beginn frühestens %02d:%02d", earliestMin/60, earliestMin%60)
 		season = "Winter"
 	case slotTimeSummer:
-		windowRule = fmt.Sprintf("Beginn nur bis %02d:%02d erlaubt (Sommer)", latestMin/60, latestMin%60)
+		windowRule = fmt.Sprintf("im Sommer Beginn spätestens %02d:%02d", latestMin/60, latestMin%60)
 		season = "Sommer"
 	}
 
@@ -62,7 +62,8 @@ func (p *Plexams) ValidateSemesterTimes(reporter Reporter) (*model.ValidationRep
 		return nil, err
 	}
 
-	v.step("prüfe Startzeiten gegen das %s-Fenster", season)
+	v.step("prüfe die Startzeiten gegen das %s-Fenster", season)
+	examNames := p.newExamNamer(ctx, nil)
 	for _, pe := range planEntries {
 		if pe.Starttime == nil || pe.External {
 			continue // not placed, or an external-time exam we do not control
@@ -85,17 +86,20 @@ func (p *Plexams) ValidateSemesterTimes(reporter Reporter) (*model.ValidationRep
 		}
 
 		r := ref{Ancode: ptr(pe.Ancode), Starttime: pe.Starttime}
+		name := examNames.name(pe.Ancode)
 		exempt := c != nil && c.RoomConstraints != nil && (c.RoomConstraints.Exahm || c.RoomConstraints.Seb)
 		switch {
 		case exempt:
-			v.infof(r, "EXaHM/SEB-Prüfung %d beginnt %s – außerhalb des Tageszeit-Fensters (%s), aber klimatisierter T-Bau-Raum → zulässig",
-				pe.Ancode, fmtStart(pe.Starttime), windowRule)
+			v.infof(r, "%s beginnt am %s außerhalb des Tageszeit-Fensters (%s). Als Rechnerprüfung im klimatisierten T-Bau ist das erlaubt.",
+				name, slotLabelDE(*pe.Starttime), windowRule)
 		case hard:
-			v.errorf(r, "Prüfung %d beginnt %s – außerhalb des Tageszeit-Fensters (%s)",
-				pe.Ancode, fmtStart(pe.Starttime), windowRule)
+			v.errorf(r.hint("Im Prüfungsplan die Prüfung auf eine Startzeit innerhalb des Fensters legen. Das Fenster stellst du unter „Terminplan generieren“ ein."),
+				"%s beginnt am %s außerhalb des Tageszeit-Fensters (%s). Das Fenster ist als „hart“ eingestellt, dürfte also nicht verletzt sein.",
+				name, slotLabelDE(*pe.Starttime), windowRule)
 		default:
-			v.warnf(r, "Prüfung %d beginnt %s – außerhalb des Tageszeit-Fensters (%s), SOFT-Modus: bewusste Abweichung",
-				pe.Ancode, fmtStart(pe.Starttime), windowRule)
+			v.warnf(r.hint("Prüfen, ob die Abweichung gewollt ist; sonst im Prüfungsplan die Prüfung auf eine Startzeit innerhalb des Fensters legen."),
+				"%s beginnt am %s außerhalb des Tageszeit-Fensters (%s). Das Fenster ist als „weich“ eingestellt, Abweichungen sind also möglich.",
+				name, slotLabelDE(*pe.Starttime), windowRule)
 		}
 	}
 

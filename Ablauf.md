@@ -1,297 +1,155 @@
-# Ablauf der Prüfungsplanung (FK07)
+# How a semester of exam planning runs (FK07)
 
-Dieser Ablauf beschreibt die Prüfungsplanung mit `plexams.go` (Server/CLI) und
-`plexams.gui` (Web-Interface) auf dem **aktuellen Stand** nach der Umstellung
-vieler Schritte von der Kommandozeile auf die GraphQL-API / GUI.
+This document is for planners and developers who want the whole run of a semester
+on a few pages. plexams is driven entirely through the GUI
+([`plexams.gui`](https://github.com/obcode/plexams.gui)); the backend keeps all data
+in PostgreSQL. There is no CLI and no YAML file to edit along the way.
 
-Grundsätzliches zur aktuellen Architektur:
+**The leading source is the GUI itself:**
 
-- **Vieles läuft jetzt über das GUI** (GraphQL). Lang laufende Operationen
-  (Generierungen, ZPA-Transfers, E-Mail-Versand) streamen ihre Ausgabe zeilenweise
-  ins GUI. Die entsprechenden CLI-Befehle existieren weiterhin als Alternative.
-- **E-Mail-Versand**: im GUI als Subscription mit einem `run`-Schalter. `run: false`
-  ist ein Probelauf, der nur an die Testadresse (`smtp.testmail`) geht; `run: true`
-  verschickt echt. Auf der CLI entspricht das dem `-r`-Flag.
-- **Räume, Raum-Requests, NTAs, Raum-Blocks** liegen in der MongoDB und werden über
-  das GUI gepflegt — **nicht mehr über `roomConstraints` in der `<Semester>.yaml`**.
-- Pro Semester eine eigene MongoDB-Datenbank; Räume und NTAs in der globalen DB
-  `plexams`.
+- The **start page** shows every step as a checklist in five phases. Clicking a step
+  opens the page where it is done.
+- The **help page `/hilfe`** („Werkzeuge" → „Hilfe") explains every step (what, why,
+  pitfalls), the validation levels, the error messages and the glossary. It is more
+  detailed than this file and is generated from the same step list; when the two
+  disagree, `/hilfe` wins.
 
-> Hinweis: Befehle in `code` sind CLI-Befehle. Steht „(GUI)" dabei, ist das der
-> empfohlene Weg über `plexams.gui`; der CLI-Befehl ist die Alternative.
+The step list is defined in `plexams/planning_state.go`; the explanations shown in the
+GUI live in `plexams.gui/src/lib/help/workflow.js`.
 
----
+**Dry run first.** Every step that writes data or sends mail has a dry run:
+„Probelauf" on the generator pages computes and shows the result without saving;
+on „E-Mails" → „E-Mails versenden" every send is a „Probelauf" by default (the mails
+go only to the planner's test address), real sending is „Wirklich senden …" with a
+confirmation. ZPA uploads of exams also offer a dry run. Always look at the dry run
+before the real run.
 
-## Zustandsmodell: Phasen, Meilensteine, Gates
+**Ticks.** Most checklist ticks are set automatically when the operation succeeds
+(marked „auto" below). A few are set by hand on the start page. „Alle Prüfungen
+anderer FKs terminiert" is computed and cannot be set by hand.
 
-Der Ablauf wird als **Bedingungs-/Ereignis-Petrinetz** abgebildet (1-sicher):
-jede Phase hat eine Reihe von **Bedingungen** (Meilensteinen). Eine Bedingung kann
-
-- **automatisch** gesetzt werden, wenn eine Operation erfolgreich durchläuft
-  (z.B. „Räume für Prüfungen generiert", „Terminplan veröffentlicht"), oder
-- **von Hand** an-/abgehakt werden.
-
-Das Modell ist im Code definiert (`plexams/planning_state.go`) und dort
-erweiterbar; der Zustand liegt pro Semester in der DB (`planning_state`). Im GUI
-wird es auf der **Startseite** als Checkliste pro Phase angezeigt
-(GraphQL: Query `planningState`, Mutation `setPlanningCondition`).
-
-**Gates (Sperren).** Manche Bedingungen sperren, solange sie gesetzt sind, die
-zugehörigen **Generierungen** (Inhibitor-Kante):
-
-| Bedingung (gesetzt = veröffentlicht) | sperrt |
-|---|---|
-| `roomPlanPublished` | `generateRoomsForSlots`/`-Exams`, `applyRoomRequestsPreview` |
-| `invigilationPlanPublished` | `generateInvigilations` |
-
-„Veröffentlicht" heißt: die **Veröffentlichungs-E-Mail** wurde verschickt — *nicht*
-der ZPA-Upload. Immer erlaubt bleiben: **ZPA-Upload**, **Anny-Import** und alle
-**expliziten Änderungen** (Raum blocken/freigeben, vor-/entplanen, `change-room`,
-Requests genehmigen/deaktivieren, `move-to`). Kleine Korrekturen nach der
-Veröffentlichung: explizit ändern und erneut ins ZPA laden (ohne neue Sammel-Mail),
-oder das Häkchen kurz zurücksetzen, neu generieren, wieder setzen.
-
-**Einmalige E-Mails.** Die meisten Workflow-E-Mails dürfen nur **einmal** verschickt
-werden. Ist die zugehörige Bedingung gesetzt, ist ein echter Versand (`run: true`)
-gesperrt — nur der **Probelauf** (`run: false`) geht noch. Zum erneuten Versenden
-das Häkchen zurücksetzen. Betroffen sind: EXaHM-Abfrage (`exahmRequested`),
-Constraints (`constraintsRequested`), „zu planende Prüfungen" (`examsPrepared`),
-Draft (`draftSent`), Terminplan/Räume/Aufsichten veröffentlicht
-(`examPlanPublished`/`roomPlanPublished`/`invigilationPlanPublished`),
-Raum-Anfragen (`roomRequestsSent`), Aufsichts-Anforderungsabfrage
-(`invigilationsRequested`), **Primuss-Daten an alle** (`primussDataAllSent`),
-**Info an NTAs mit eigenem Raum** (`ntaRoomAloneSent`, nach der Ankündigung „zu
-planende Prüfungen"), **Info an NTAs zu ihren Räumen** (`ntaPlannedSent`, direkt
-vor den Deckblättern) und — als **letzter Schritt der Aufsichtenplanung** —
-**Deckblätter an alle** (`coverPagesSent`).
-
-**Nicht** einmalig (wiederholbar, jederzeit erneut sendbar): Primuss-Daten für
-**eine** Prüfung und für nicht von uns geplante Prüfungen, „neuer NTA", die Info an
-einen **einzelnen** NTA mit eigenem Raum, das einzelne Deckblatt und die Erinnerung
-an fehlende Anforderungen. Alle E-Mails sind im GUI verfügbar.
+Before the first step, a semester has to exist: „Semester" → „Neues Semester
+anlegen", then „Semester-Konfiguration" (exam period, start times, mail settings).
+Rooms, study programmes and NTA master data are kept across semesters under
+„Semester" → „Stammdaten (für alle Semester)".
 
 ---
 
-## Phase -1: noch im vorherigen Semester
+## Phase −1: still in the previous semester
 
-- **Abfrage per E-Mail, wer SEB oder EXaHM plant** — `email exahm` (Probelauf),
-  `-r` für echten Versand (GUI: `sendEmailExaHM`).
-- **Räume im T-Bau über [anny.eu](https://anny.eu) buchen**, gut über den
-  Prüfungszeitraum verteilen.
-  - Prüfungsslots beginnen immer um 08:30, 10:30, 12:30, 14:30, 16:30 (, 18:30).
-  - Buchungen in Anny immer +30 Minuten vor- und nachher, d.h. bei 08:30 Start und
-    90 Minuten Prüfung: Buchung 08:00–10:30.
-  - Auf Ausnahmen achten: z.B. eine EXaHM-Prüfung mit 120 Minuten braucht 60 Minuten
-    Vor-/Nachlauf, also bei 08:30 Start: Buchung 07:30–11:30.
-  - **Neu:** Die Anny-Buchungen werden **direkt aus Anny in die DB importiert** —
-    kein ICS-/`bookings.yaml`-/`roomConstraints`-Umweg mehr:
-    - „Anny-Buchungen importieren" (GUI: `importAnnyBookings`) bzw. `rooms anny`.
-    - Daraus ergeben sich die zulässigen Slots der EXaHM-/T-Bau-Räume.
-- **Vorplanung EXaHM-/SEB-Prüfungen** (im Numbers-Dokument).
-- **Festlegung Prüfungszeitraum** in den letzten PK-Sitzungen (Vorgabe durch
-  Prüfungsausschuss / Satzung):
-  - WiSe: Prüfungen ab 26.01.; SoSe: Prüfungen ab 11.07.
-  - Prüfungen an FK07: immer nur Mo–Fr, 10 Tage.
+Computer exams (EXaHM and SEB) need the special rooms in the T-Bau, which have to be
+booked long in advance: ask for demand, book rooms, spread the computer exams over the
+booked times.
 
----
+| Checklist step | Page | What to do / what it writes | Tick |
+|---|---|---|---|
+| Personen aus ZPA importiert | „Vorbereitung" → „ZPA-Import & Veröffentlichung" | „Aus dem ZPA laden" for the teachers (Dozierende). Overwrites the local mirror of the ZPA teachers. | auto |
+| EXaHM/SEB-Abfrage verschickt | „E-Mails" → „E-Mails versenden" | Send the query who plans an EXaHM or SEB exam. Send-once mail. | auto |
+| EXaHM/SEB-Prüfungsbedarf erfasst | „Vorbereitung" → „Abfragen an Prüfende" | Review and apply the examiners' answers; enter answers that came in another way by hand in the Vorplanung. „Schließen" on the inquiry sets the tick, reopening it clears it. | auto |
+| Anny-Räume gebucht | „Vorbereitung" → „Anny-Buchungen" | Book the T-Bau rooms in Anny itself (not in plexams), usually with 30 minutes before and after, 60 minutes for 120-minute EXaHM exams. Then fetch the bookings on this page; they define the times at which EXaHM/SEB exams can take place. | by hand |
+| SEB/EXaHM-Vorplanung erzeugt | „Vorbereitung" → „SEB/EXaHM-Vorplanung" | Distribute the reported computer exams over the booked times, by hand or with „Automatisch verteilen" (re-places every pre-planned exam not fixed with 🔒). Shows early whether the bookings suffice. | by hand |
 
 ## Phase 0: Vorbereitung
 
-Zu Beginn des Semesters, sobald die Frist der PKVs für die Prüfungsmodalitäten
-abgelaufen ist und <https://zpa.cs.hm.edu/public/exam_means_list/> funktioniert:
+The data comes together: exams from the ZPA, registrations from Primuss, the examiners'
+wishes. Only after linking them does plexams know which exams share students.
 
-- **JIRA-Tickets für Absprachen öffnen**
-  - mit Prüfungsplaner FK10 (Prüfungszeitraum),
-  - mit Prüfungsplanern MUC.DAI (FK03, FK08, (FK12)) (Tag 0),
-  - mit MUC.DAI-Verantwortlichen und Prüfungsplanern (Abfrage nach MUC.DAI-CSVs).
-- **Prüfungen und Personen aus dem ZPA einlesen** — `zpa exams`, `zpa teacher`
-  (GUI-Import bzw. `make fetch-zpa`).
-- **Abfrage per E-Mail bzgl. Besonderheiten** — `email constraints -r`
-  (GUI: `sendEmailConstraints`, `run: true`).
-- **Nach Rückmeldung:**
-  - Auswahl der zu planenden Prüfungen (GUI → ZPA → Prüfungsliste).
-  - Einpflegen der Constraints (GUI).
-- **MUC.DAI-Prüfungs-CSVs** der anderen FKs einpflegen → Makefile.
-- **Durch FK10 geplante Prüfungen** einpflegen → Excel von PKV → GUI.
-- **Vorplanung EXaHM/SEB einpflegen** — `plan pre-plan-exam ...`.
-- **Ancodes MUC.DAI** überprüfen/korrigieren (GUI → Vorbereitung → zu planende
-  ZPA-Prüfungen).
-- **Non-ZPA-Prüfungen** der anderen FKs erzeugen — `prepare add-mucdai-exams`
-  (Fakultätspräfixe wie `30` für FK03 werden automatisch hinzugefügt).
-- **Veröffentlichung „zu planende Prüfungen" und „Constraints"** in Confluence
-  inkl. E-Mail-Benachrichtigung.
-
----
+| Checklist step | Page | What to do / what it writes | Tick |
+|---|---|---|---|
+| Prüfungen aus ZPA importiert | „Vorbereitung" → „ZPA-Import & Veröffentlichung" | „Aus dem ZPA laden" for the exams. ZPA data is read-only in plexams; errors are fixed in the ZPA and reloaded. | auto |
+| EXaHM/SEB-Vorplanung mit ZPA-Prüfungen verknüpft | „Vorbereitung" → „SEB/EXaHM-Vorplanung" | Assign each pre-planned computer exam to its ZPA exam (ancode). Only then does the real exam take over the pre-planned time. | by hand |
+| Prüfungen gemeinsamer Studiengänge importiert & verknüpft | „Vorbereitung" → „Prüfungen gemeinsamer Studiengänge" | „CSV importieren" for the other faculties' exams (e.g. MUC.DAI) and link them to the ZPA exams. Deleting the imported exams clears the tick. | auto |
+| ZPA-Prüfungen für die Planung ausgewählt | „Vorbereitung" → „Prüfungen auswählen & Vorgaben" | Decide per ZPA exam whether we plan it (oral exams, Scheine etc. are not). | by hand |
+| Prüfungsplanungs-Info an Prüfende verschickt | „E-Mails" → „E-Mails versenden" | Tells examiners which of their exams are planned, so they can report constraints. | auto |
+| Primuss-Anmeldedaten importiert | „Vorbereitung" → „Prüfungslisten aus Primuss" | „Sammellisten-ZIP hochladen" with the lists of all programmes (delivered by the Prüfungsamt after the registration deadline). „Sammellisten zurücksetzen" clears the tick. | auto |
+| ZPA- & Primuss-Prüfungen verknüpft | „Vorbereitung" → „Zuordnung ZPA ↔ Primuss" | Check that every exam to plan found its Primuss registrations; fix missing or wrong links (ancodes differ especially in joint programmes). | by hand |
+| Vorgaben der Prüfungen eingetragen | „Vorbereitung" → „Prüfungen auswählen & Vorgaben" | Enter the constraints per exam: fixed time, excluded days, „gleichzeitig mit", room requirements. The generator and the validation only know what is entered here. | by hand |
+| Aufbereitete Prüfungen erstellt | „Vorbereitung" → „Aufbereitete Prüfungen" | „Generieren" merges ZPA data, Primuss registrations, NTAs and constraints per exam. Only possible once the four steps ZPA import, Primuss import, ZPA ↔ Primuss link and constraints are ticked. Replaces the previous assembled exams; „Zurücksetzen" deletes them (times, rooms and constraints stay) and clears the tick. Regenerate after every change of registrations, NTAs or constraints; a banner on the page says when they are stale. | auto |
+| Anmeldungen je Studierender:m erstellt | same page | Created in the same „Generieren" run: one list of registrations per student, the basis of the conflict check. | auto |
+| Anmeldungen ins ZPA hochgeladen | „Vorbereitung" → „ZPA-Import & Veröffentlichung" | „Ins ZPA übertragen" → „Anmeldungen". Students then see their exams in the ZPA. No dry run. Upload again when registrations change. | auto |
+| Primuss-Daten an alle verschickt | „E-Mails" → „E-Mails versenden" | Every examiner gets the registrations for their exam. Send-once as a bulk mail; the mail for a single exam can be resent any time. | auto |
+| Info an NTAs mit eigenem Raum verschickt | „E-Mails" → „E-Mails versenden" | Informs students with an NTA entitling them to a room of their own (and their examiners). Send-once. | auto |
 
 ## Phase 1: Terminplanung
 
-Nachdem die Sammellisten aller Studiengänge vom Prüfungsamt da sind.
+Every exam gets a day and a start time. The generator does most of the work; the planner
+checks the result, judges the remaining conflicts and corrects by hand.
 
-- **Primuss-Daten einlesen**
-  - Sammellisten in Ordnerstruktur speichern, idealerweise `make all` (sonst
-    `make csvs` + `make mongoimports`; unter macOS `brew install gnu-sed`).
-  - Übersichten im GUI unter Primuss → Prüfungslisten.
-- **Wahlpflichtfächer MUC.DAI identifizieren und Ancodes ergänzen** (GUI →
-  Vorbereitung → „Anmeldungszuordnung (ZPA/Primuss)").
-  - Anmeldecodes nur mappen, wenn die Meldungen zusammenpassen.
-  - Fehlende Ancodes ergänzen mit `primuss add-ancode` (+ Doku im Makefile).
-- **MUC.DAI-Prüfungen der anderen FKs einpflegen** — `prepare add-mucdai-exams`.
-- **ConnectedExams erstellen** — `prepare connected-exams`
-  (zu planende ZPA-Prüfungen mit den Primuss-Prüfungen verknüpfen). Im GUI unter
-  Vorbereitung → Anmeldezuordnung kontrollieren (besonders MUC.DAI).
-- **GeneratedExams erstellen** — `prepare generated-exams`
-  (Prüfungsobjekte aus ZPA-Prüfung + Primussdaten + NTAs + Constraints).
-- **StudentRegs erstellen** — `prepare studentregs`
-  (pro Studierendem ein Objekt mit allen Anmeldungen, Basis der Konfliktprüfung).
-- **StudentRegs ins ZPA hochladen** — `zpa studentregs` (Studierende sehen die
-  Prüfungen dann im Kalender). Vorher E-Mails holen: `zpa students`.
-- **Überprüfen, ob NTA-Bescheide noch gültig sind.**
-- **E-Mails mit den Primuss-Daten verschicken** — `email primuss-data all`
-  (Probelauf ohne `-r`); einzeln per Ancode `email primuss-data <ancode>`; für
-  nicht von uns geplante Prüfungen `email primuss-data-unplanned <prog> <ancode> <mail>`.
-- **E-Mails an NTAs mit Anspruch auf eigenen Raum** — `email nta-with-room-alone`.
-
-**Bei Änderungen** (Primuss-Daten, neue/​geänderte NTAs, Constraints):
-
-- GeneratedExams und StudentRegs neu erstellen.
-- Nur bei geänderten Anmeldungen: StudentRegs erneut ins ZPA hochladen + betroffene
-  Prüfende informieren.
-- NTAs pflegen: bestehende im GUI (NTA-Verwaltung) bearbeiten, neue im GUI anlegen
-  (Matrikelnummer/E-Mail ggf. via `info student -z <Nachname>`). Danach studentregs
-  und generated-exams neu generieren, dann `email new-nta <mtknr> -r`.
-
-**Jetzt planen:**
-
-- Planen über CLI (`plan move-to <ancode> <day> <slot>`), nicht Drag&Drop.
-- **Validierung mitlaufen lassen** — `validate conflicts` / `validate constraints`
-  (CLI: `make validate-exams-planning`; GUI: die `validate*`-Subscriptions).
-  - Reservierte Zeiten der gemeinsamen Studiengänge (MUC.DAI/MUC.HEALTH) visuell prüfen.
-  - Akzeptable Konflikte in `<Semester>.yaml` unter `knownConflicts`.
-  - **Semester-Zeiten** (`validateSemesterTimes`): prüft die Startzeiten gegen das
-    Tageszeit-Fenster (Winter: nicht zu früh; Sommer: nicht zu spät). Eigene Prüfungen
-    außerhalb → Fehler (HARD) bzw. Warnung (SOFT); abweichende EXaHM/SEB-Einplanungen
-    (klimatisierter T-Bau) nur als Info.
-- EXaHM/SEB-Vorplanung gegen Anmeldungen/Konflikte prüfen. „Prüfung planen" im GUI
-  zeigt geeignete Slots farblich an.
-- Prüfungen einzeln verplanen (Best Practice: nach Studiengängen verteilen, mit den
-  größten Prüfungen beginnen).
-
-**Nach abgeschlossener Terminplanung:**
-
-- Vorläufigen Plan ins ZPA pushen, Draft-PDFs/-CSVs erstellen.
-- E-Mail an Prüfende (`email prepared`/`email draft`), E-Mail an Fachschaftsleitung.
-- SpecialInterest-PDFs erstellen und verteilen; Drafts verteilen (MUC.DAI, KDP).
-
-**Nach Abstimmung:**
-
-- Plan ins ZPA pushen — `zpa upload-plan` (GUI: `uploadExamsWithRoomsToZpa`).
-- E-Mail an Prüfende und FS — `email published-exams` (GUI: `sendEmailPublishedExams`).
-- Aufsichtenabfrage im ZPA freischalten, E-Mail an Aufsichten (siehe Phase 3).
-
----
+| Checklist step | Page | What to do / what it writes | Tick |
+|---|---|---|---|
+| Alle Prüfungen anderer FKs terminiert | „Termine" → „Prüfungen anderer FKs" | Enter the times the other faculties fixed for their exams. They are fixed for us; the generator plans around them. | computed: set as soon as all such exams have a time, cleared when one is missing |
+| EXaHM/SEB in T-Bau-Räume geplant | „Termine" → „EXaHM/SEB in T-Bau planen" | „Probelauf", then „Planen & speichern". Overwrites the times of all EXaHM/SEB exams except those with a fixed time from the Vorplanung; other exams stay untouched. | auto |
+| EXaHM/SEB fixiert (für Phase 2) | same page | „Fixieren": fixed computer exams keep their time when the full schedule is generated. „Fixierung aufheben" clears the tick. | auto |
+| Terminplan generiert | „Termine" → „Terminplan generieren" | „Probelauf", read the report (unplaced exams, conflicts), then „Generieren & speichern" with the same seed. Overwrites the times of all exams except those with a fixed time from the Vorplanung, the fixed EXaHM/SEB exams and those of other faculties; an exam that finds no slot loses its old time. Nothing is saved if hard rules are violated. „Generierten Terminplan zurücksetzen" removes the generated times and clears the tick. Then correct by hand on „Prüfungsplan" and check on „Terminplanung validieren". | auto |
+| Entwurf verschickt 🔒 | „E-Mails" → „E-Mails versenden" | Send the draft to the examiners. Send-once. From now on regenerating the schedule is locked; changes by hand remain possible. | auto |
+| Terminplan veröffentlicht (E-Mail) 🔒 | „Vorbereitung" → „ZPA-Import & Veröffentlichung", then „E-Mails" | After agreement, „Ins ZPA übertragen" → „Prüfungen" (dry run first), then send the publication mail. „Veröffentlicht" means the mail is sent; the ZPA upload is a separate step and always allowed. Send-once. | auto |
 
 ## Phase 2: Raumplanung
 
-- **Info-E-Mails an alle Studierenden mit NTA und Anspruch auf eigenen Raum**
-  (Prüfende im CC), spätestens jetzt.
-- **Raum-Anfragen ans Gebäudemanagement** (Roter Würfel R1.006/R1.046, Blaue Tonne
-  R1.049 usw.) — **neu komplett im GUI / über die DB**, nicht mehr per YAML:
-  1. Probelauf ansehen (GUI: `roomRequestsPreview`, read-only) bzw.
-     `info request-rooms`.
-  2. Übernehmen (GUI: `applyRoomRequestsPreview`) — schreibt die Requests in die DB
-     (ersetzt vorhandene; Schutz gegen versehentliches Überschreiben genehmigter
-     Requests).
-  3. Einzelne Requests genehmigen / deaktivieren, bei Bedarf manuell hinzufügen oder
-     zeitlich verlängern (z.B. wegen NTA).
-  4. Anfrage-E-Mail ans Gebäudemanagement (`ueberlassung-gm@hm.edu`,
-     konfiguriert über `semesterConfig.emails.roomManagement`) — GUI:
-     `sendEmailRoomRequests`, CLI: `email room-requests`. Die Zeiten enthalten
-     ±15 Min Vor-/Nachlauf.
-  - Unterscheidung: T-Bau-Räume werden über **Anny** angefragt, die übrigen über das
-    **Gebäudemanagement** (`Room.requestWith` = ANNY/MANAGEMENT/NONE,
-    `requestPriority` steuert die Reihenfolge bei der Generierung).
-- **Räume blockieren** (statt des früheren `roomConstraints.*.notAvailable`):
-  Ein Raum, der in einem Slot anderweitig belegt ist, kann pro Slot (auch mehrere
-  Slots / ganzer Tag auf einmal) blockiert werden (GUI: `blockRoomForSlot(s)` /
-  `unblockRoomForSlot(s)`, CLI: `plan block-room` / `plan unblock-room`). Blockierte
-  Räume werden bei der Generierung nicht verwendet.
-- **Räume für Prüfungen generieren** — GUI: `generateRoomsForExams`
-  (CLI: `prepare rooms-for-exams`).
-  - **Neu:** Der frühere separate Schritt `rooms-for-slots` ist nicht mehr nötig —
-    die zulässigen Räume pro Slot werden bei `rooms-for-exams` automatisch zuerst neu
-    berechnet. `generateRoomsForSlots` (CLI: `prepare rooms-for-slots`) gibt es weiter
-    als optionalen Vorschau-Schritt.
-  - Achtung: Räume hängen an der Prüfung, nicht am Slot. Wird eine Prüfung danach
-    verschoben, hat sie noch die alten Räume → neu generieren.
-  - Vorgeplante Räume werden bei der Generierung übernommen (ein in seinem Slot
-    blockierter vorgeplanter Raum wird mit Warnung übersprungen).
-  - Im GUI unter Plan → Raumplanung: Räume aus der Vorplanung sind markiert; generierte
-    Räume können per „OK" in die Vorplanung übernommen (= fixiert) werden — wirksam
-    nach erneutem `generateRoomsForExams`.
-  - Soll ein anderer als der generierte Raum genutzt werden → `plan pre-plan-room ...`
-    (Entfernen: `plan rm-pre-plan-room ...`) und neu generieren.
-- **NTAs ohne Anspruch auf eigenen Raum**: möglichst mit in einen normalen Raum
-  (dann ist dieser Raum im Folgeslot ggf. nicht nutzbar → abwägen).
-- **NTAs mit Anspruch auf eigenen Raum**: werden in R3.01x eingeplant; SEB in ein
-  eigenes Labor; EXaHM/SEB-Einzelraum im T-Bau über Anny buchen.
-- **Bei Absage einzelner Prüfungen**: Anmeldung mit `primuss rm-studentreg ...`
-  entfernen, danach generated-exams und studentregs neu generieren (Ancode =
-  Primuss-Ancode, ≠ ZPA-Ancode bei MUC.DAI).
-- **Bei EXaHM-/SEB-Prüfungen**: prüfen, ob NTA-Studierende in die gebuchten Räume
-  passen (Anspruch/Dauer), Dauern prüfen, nicht benötigte Räume in Anny freigeben.
-- **Nach Umplanung über Anny**: Buchungen neu holen (GUI: `importAnnyBookings`,
-  CLI: `rooms anny`); danach Räume neu generieren.
-- **Raumplanung überprüfen**:
-  - Validierung — GUI: `validateRooms*`-Subscriptions, CLI: `validate rooms`. Dazu
-    gehören u.a.: Räume pro Slot/Exam, Request nötig, Zeitabstände, **blockierte
-    Räume** (ein blockierter, aber verplanter Raum ist ein Fehler) und **veralteter
-    rooms-for-slots-Cache** (Hinweis, neu zu generieren).
-  - Sichtprüfung im GUI → Plan → Raumplanung. Räume per „OK" fixieren.
+Every scheduled exam gets rooms, every student a seat. Rooms that do not belong to the
+faculty are requested from the Gebäudemanagement first.
 
----
+| Checklist step | Page | What to do / what it writes | Tick |
+|---|---|---|---|
+| Raum-Anfragen ans Gebäudemanagement verschickt | „Räume" → „Raum-Anfragen (Gebäudemanagement)" | Load the preview (dry run, changes nothing), „Übernehmen" (creates the requests and **replaces all existing ones**, entered approvals are lost — the page asks first), then „E-Mail senden". Enter approvals per request under „Bestehende Anfragen" as they arrive. Send-once; „Übernehmen" is locked once the room plan is published. | auto |
+| Räume zugeordnet | „Räume" → „Räume generieren" | „Probelauf", then „Generieren & speichern" (optionally starting from the existing assignment). Rooms belong to the exam: if an exam is moved afterwards, generate rooms again. „Raumzuteilung zurücksetzen" clears the tick. Block rooms per slot and fix rooms on „Räume" → „Raumplanung". | auto |
+| Raumbelegung ans Sekretariat verschickt | „E-Mails" → „E-Mails versenden" | Tells the secretariat which rooms are used when. Send-once. | auto |
+| Raumplan veröffentlicht (E-Mail) 🔒 | „Vorbereitung" → „ZPA-Import & Veröffentlichung", then „E-Mails" | „Ins ZPA übertragen" → „Prüfungen mit Räumen", then send the publication mail. From now on regenerating rooms is locked; single rooms can still be changed by hand. Send-once. | auto |
+| EXaHM/SEB-Raumübersicht ans KDP verschickt | „E-Mails" → „E-Mails versenden" | Room overview of the computer exams for the KDP. Send-once. | auto |
 
 ## Phase 3: Aufsichtenplanung
 
-Wenn der Terminplan veröffentlicht ist.
+Every room and exam time gets an invigilator, plus reserve invigilators. Before that the
+invigilators state when they are unavailable.
 
-- **Anforderungen an die Aufsichten einholen**
-  - Im ZPA freischalten: <https://zpa.cs.hm.edu/regulations/publish_exam_plan/>.
-  - E-Mail-Aufforderung — `email invigilations` (GUI: `sendEmailInvigilations`),
-    eine Woche Frist.
-  - Anforderungen holen — `zpa invigs` (GUI: `importInvigilatorRequirementsFromZpa`);
-    fehlende werden im GUI angezeigt (auf Freisemester/Pensionierung prüfen).
-  - Nach Fristablauf Erinnerung — `email invigilations-missing`.
-  - Wenn alles da ist, die ZPA-Möglichkeit wieder ausschalten und letzten Stand noch
-    einmal fetchen.
-- **Zusätzliche Anforderungen** (z.B. längere Abwesenheit) kommen über Jira und werden
-  in `<Semester>.yaml` übernommen (wirksam beim Start / per Config-Reload; gelöschte
-  Einträge erfordern Neustart).
-- **Aufsichten vorplanen** — `invigilation -p ...` (fix bei der Generierung).
-- **Todos generieren** — `prepare invigilator-todos`.
-- **Eigenaufsichten generieren** — `prepare self-invigilations` (eigene Prüfungen in
-  nur einem Raum, an nicht ausgeschlossenen Tagen).
-- **Constraints**: Hard (ausgeschlossene Tage, Mindestabstand, max. 1 Aufsicht/Slot),
-  Soft (max. 3 Anwesenheitstage, ±60 Min zur Soll-Zeit).
-- **Aufsichten automatisch generieren** — GUI: `generateInvigilations` (mit `dryRun`),
-  CLI: `invigilation generate --dry-run --iterations 2000000`.
-  - Greedy-Startplan; vorgeplante Aufsichten und Eigenaufsichten sind fix.
-  - Optimierung mit Simulated Annealing (Fixed + Hard Constraints immer eingehalten,
-    Soft Constraints über Kostenfunktion).
-  - Probelauf (`dryRun`/`--dry-run`) speichert nichts. Sieht der Plan gut aus, ohne
-    Dry-Run generieren (ersetzt den alten Plan); sonst mehr Iterationen / anderer Seed.
-- **Validieren** — `validate invigilator-reqs invigilator-slots` (GUI:
-  entsprechende `validate*`-Subscriptions).
-- **Veröffentlichen** — individuelle E-Mails an die Aufsichten mit persönlichem Plan
-  (PNG + ICS) — GUI: `sendEmailPublishedInvigilations`.
+| Checklist step | Page | What to do / what it writes | Tick |
+|---|---|---|---|
+| Aufsichts-Anforderungsabfrage verschickt | ZPA, then „E-Mails" → „E-Mails versenden" | Open the requirements form in the ZPA, then send the request mail. Send-once. | auto |
+| Aufsichts-Anforderungen importiert | „Vorbereitung" → „ZPA-Import & Veröffentlichung" | After the deadline „Aus dem ZPA laden" → „Aufsichts-Anforderungen". Whoever entered nothing gets a reminder from „E-Mails" (repeatable); load again afterwards. | auto |
+| Aufsichten eingeteilt | „Aufsichten" → „Aufsichten einteilen" | Run as „Probelauf (speichert nichts)", then choose „speichern (ersetzt die Einteilung)" and „Einteilung starten". Replaces the whole previous assignment; pre-planned invigilations stay where they are. Respects excluded days, own exams and „Aufsichten" → „Aufsichts-Vorgaben". Then „Aufsichten validieren". | auto |
+| Aufsichtenplan veröffentlicht (E-Mail) 🔒 | „Vorbereitung" → „ZPA-Import & Veröffentlichung", then „E-Mails" | „Ins ZPA übertragen" → „Prüfungen mit Räumen & Aufsichten", then send the publication mail (every invigilator gets the personal plan). From now on re-assigning is locked; single invigilations can still be changed by hand. Send-once. | auto |
+| Info 'Aufsichten veröffentlicht' ans Sekretariat verschickt | „E-Mails" → „E-Mails versenden" | Send-once. | auto |
+| Info an NTAs zu ihren Räumen verschickt | „E-Mails" → „E-Mails versenden" | Students with an NTA learn in which room they write which exam. Send-once. | auto |
+| Wiederholungsprüfungen der Lehrbeauftragten an die LBA-Beauftragten verschickt | „E-Mails" → „E-Mails versenden" | Overview of the repeat exams of Lehrbeauftragte with their times and invigilations. Send-once. | auto |
+| Deckblätter an alle verschickt (letzter Schritt) | „E-Mails" → „E-Mails versenden" | Every examiner gets the cover pages of their exams. The last step of the planning. Send-once; a single cover page can be resent. | auto |
 
 ---
 
-## Benötigte Software
+## Validation
 
-- MongoDB (z.B. im Docker-Container).
-- Server und CLI: <https://github.com/obcode/plexams.go>.
-- Web-Interface: <https://github.com/obcode/plexams.gui>.
-- Optional für direkten GraphQL-Zugriff: z.B. <https://www.usebruno.com>.
-- Für den Primuss-Excel-Import: `ssconvert` (Paket `gnumeric`) und `mongoimport`.
+Validation checks the current state against the planning rules and changes nothing.
+Run it after every larger step:
 
-Daten über alle NTAs und die Räume müssen bereits in der MongoDB vorhanden sein.
+- „Termine" → „Terminplanung validieren", „Räume" → „Räume validieren",
+  „Aufsichten" → „Aufsichten validieren",
+- „Werkzeuge" → „Validierung (alle Bereiche)",
+- or by clicking the validation light in the top bar.
+
+While a validation runs, changes are briefly locked. Levels:
+
+| Level | Meaning | What to do |
+|---|---|---|
+| ⛔ Fehler (error) | A rule is violated; the plan cannot stay like this. | Fix before publishing. |
+| ⚠️ Warnung (warning) | Unfavourable or still open, may be intended. | Look at each and decide. |
+| • Info | A note, not a problem, e.g. a conflict that was accepted. | Nothing. |
+| – übersprungen (skipped) | The check cannot run yet because its data is missing (e.g. no schedule, no rooms, no invigilations yet). | Nothing; it runs once the step before is done. |
+
+A check passes (✓) when it has no errors, even with warnings left. The light in the top
+bar is red on errors, yellow on warnings, green otherwise.
+
+## Locks
+
+- **Published plans.** „Entwurf verschickt" and „Terminplan veröffentlicht" lock
+  generating the schedule (including resetting it); „Raumplan veröffentlicht" locks
+  generating rooms and applying room requests; „Aufsichtenplan veröffentlicht" locks
+  generating invigilations. These steps carry 🔒 on the checklist. Explicit changes by
+  hand and ZPA uploads stay allowed. For a new generator run, untick the step on the
+  start page, regenerate, and tick it again.
+- **Send-once mails.** While a mail's step is ticked, a real send is refused; the dry run
+  still works. To send again, untick the step on the start page.
+- **Protected semester.** A semester can be set to read-only via the semester selector
+  in the top bar („Dieses Semester schützen"); every change is then refused until
+  „Schutz aufheben". A red banner shows the state.
+- **Running operations.** While a validation, an import, a ZPA transfer, a generator run
+  or a mail send is running, other changes are refused; wait and retry.
+- **Roles.** Accounts with the role VIEWER can only read; planning needs PLANER.

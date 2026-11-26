@@ -41,7 +41,7 @@ flowchart TB
     end
 
     subgraph Core["🧠 Plexams-Backend"]
-      BE["<b>GraphQL-API</b><br/>Solver · Validierung · Statusnetz<br/>MongoDB (1 DB je Semester)"]
+      BE["<b>GraphQL-API</b><br/>Solver · Validierung · Statusnetz<br/>PostgreSQL (alle Semester in einem Schema)"]
     end
 
     GUI <-->|"GraphQL + Live-Subscriptions"| BE
@@ -114,8 +114,9 @@ Bewertung: *gleicher Slot / direkt nacheinander* (rot), *selber Tag* (gelb),
 ## 4. Der Fahrplan — fünf Phasen, ein roter Faden
 
 Plexams modelliert die gesamte Planung als **Meilenstein-Netz**: fünf Phasen mit
-31 Bedingungen. Manche werden automatisch erreicht, wenn eine Operation fertig
-läuft; alle lassen sich von Hand setzen. Einige tragen ein **🔒-Gate**: ist der
+37 Bedingungen. Die meisten werden automatisch erreicht, wenn eine Operation fertig
+läuft; die übrigen setzt man von Hand, und eine („Alle Prüfungen anderer FKs
+terminiert") berechnet Plexams selbst. Einige tragen ein **🔒-Gate**: ist der
 Meilenstein erreicht (= veröffentlicht), sperrt sich ein ganzer Bereich gegen
 versehentliches Neu-Generieren.
 
@@ -133,15 +134,15 @@ Die Meilensteine im Detail (🔒 = Publish-Gate, das den Bereich danach sperrt):
 
 | Phase | Meilensteine |
 |---|---|
-| **−1 · Vorsemester** | EXaHM/SEB-Abfrage verschickt · Anny-Räume gebucht |
-| **0 · Vorbereitung** | Prüfungen & Personen aus ZPA importiert · Prüfungsplanungs-Info an Prüfende · MUC.DAI importiert & verknüpft · Primuss-Anmeldedaten importiert · ZPA ↔ Primuss verknüpft · Constraints eingepflegt · Aufbereitete Prüfungen erstellt · Anmeldungen erstellt · Anmeldungen ins ZPA hochgeladen · Primuss-Daten an alle verschickt · Info an NTAs mit eigenem Raum |
-| **1 · Terminplanung** | EXaHM/SEB in T-Bau geplant · EXaHM/SEB fixiert · Terminplan generiert · 🔒 Entwurf verschickt · 🔒 Terminplan veröffentlicht |
+| **−1 · Vorsemester** | Personen aus ZPA importiert · EXaHM/SEB-Abfrage verschickt · EXaHM/SEB-Prüfungsbedarf erfasst · Anny-Räume gebucht · SEB/EXaHM-Vorplanung erzeugt |
+| **0 · Vorbereitung** | Prüfungen aus ZPA importiert · EXaHM/SEB-Vorplanung mit ZPA-Prüfungen verknüpft · Prüfungen gemeinsamer Studiengänge importiert & verknüpft · ZPA-Prüfungen für die Planung ausgewählt · Prüfungsplanungs-Info an Prüfende · Primuss-Anmeldedaten importiert · ZPA ↔ Primuss verknüpft · Constraints eingepflegt · Aufbereitete Prüfungen erstellt · Anmeldungen erstellt · Anmeldungen ins ZPA hochgeladen · Primuss-Daten an alle verschickt · Info an NTAs mit eigenem Raum |
+| **1 · Terminplanung** | Alle Prüfungen anderer FKs terminiert · EXaHM/SEB in T-Bau geplant · EXaHM/SEB fixiert · Terminplan generiert · 🔒 Entwurf verschickt · 🔒 Terminplan veröffentlicht |
 | **2 · Raumplanung** | Raum-Anfragen ans Gebäudemanagement · Räume zugeordnet · Raumbelegung ans Sekretariat · 🔒 Raumplan veröffentlicht · EXaHM/SEB-Raumübersicht ans KDP |
 | **3 · Aufsichtenplanung** | Aufsichts-Anforderungsabfrage verschickt · Anforderungen importiert · Aufsichten eingeteilt · 🔒 Aufsichtenplan veröffentlicht · Info ans Sekretariat · Info an NTAs zu ihren Räumen · Wiederholungsprüfungen ans LBA-Büro · Deckblätter an alle (letzter Schritt) |
 
 Auf der Startseite des GUI wird dieses Netz zum **Cockpit**: Phasen-Karten mit
 Fortschritts-Ringen (füllen sich, werden grün mit ✓) und einem Gesamtzähler wie
-„15 / 31". Man sieht jederzeit, *was fehlt, was gesperrt ist und was als Nächstes
+„15 / 37". Man sieht jederzeit, *was fehlt, was gesperrt ist und was als Nächstes
 dran ist.*
 
 ![Startseite von Plexams: fünf Phasen-Karten mit Fortschritts-Ringen und Meilenstein-Checklisten, Gesamtzähler 15/31](screenshots/startseite-fortschritts-ringe.png)
@@ -154,8 +155,9 @@ Ringe werden grün, 🔒-Gates sperren nach dem Veröffentlichen ganze Bereiche.
 ## 5. Was Planer:innen im GUI machen — die prägenden Bildschirme
 
 Die Kopfleiste ist bewusst **nach Planungsphase** gegliedert (nicht nach
-Datenmodell): Vorbereitung → Terminplanung → Raumplanung → Aufsichtenplanung →
-E-Mails → Semesterdaten. Man arbeitet sie im Grunde von links nach rechts ab.
+Datenmodell): Semester → Vorbereitung → Termine → Räume → Aufsichten → E-Mails →
+Werkzeuge. Man arbeitet sie im Grunde von links nach rechts ab; der Ablauf im
+Detail steht im GUI unter „Hilfe" und in [Ablauf.md](../Ablauf.md).
 Rechts oben leuchten dauerhaft zwei Status-Ampeln (Validierung, ZPA) und der
 Semester-Umschalter.
 
@@ -215,7 +217,7 @@ Danach ein **Ergebnis-Report**: Kacheln „platziert / fest / ungeplant / Kosten
 Iterationen", ein Ampel-Alert „Keine harten Verletzungen", die Qualität *für
 Studierende* (Prüfungen am selben/Folgetag) und ein Konflikt-Diff
 „− weg / = geblieben / ＋ neu" gegen den letzten Lauf. Buttons: „▷ Probelauf"
-(schreibt nichts), „▶ Generieren & schreiben", „🎲 Neuer Vorschlag".
+(schreibt nichts), „▶ Generieren & speichern", „🎲 Neuer Vorschlag".
 
 > **Zweistufig:** Phase A platziert zuerst nur die EXaHM/SEB-Klausuren in die
 > gebuchten T-Bau-Räume und **fixiert** sie (🏗️), sodass sie den großen Phase-B-Lauf
@@ -232,7 +234,8 @@ Parallelsektionen) — die Strafe verschwindet, *ohne den Plan neu zu würfeln.*
 
 ### ④ Raumzuordnung — ein Lauf, dann fixieren & sperren
 
-Statt Räume einzeln zuzuweisen, klickt man **„Räume für Prüfungen zuordnen"** —
+Statt Räume einzeln zuzuweisen, startet man auf **„Räume generieren"** einen
+Probelauf und dann **„Generieren & speichern"** —
 der Server verteilt **alle Studierenden algorithmisch**. Feinsteuerung über drei
 Hebel: 📌 vorplanen/fixieren (überlebt die Neuzuordnung), Raum-Slots sperren
 (Zelle anklicken → durchgestrichen), und eine rote Box „⚠ N Studierende noch ohne
@@ -259,9 +262,9 @@ Hebel für die Korrektur.**
 | Aufgabe | Automatik (Knopf) | Handarbeit / Korrektur |
 |---|---|---|
 | Datenaufbereitung | „Generieren" (aufbereitete Prüfungen) | Anmeldungen bereinigen, Constraints setzen |
-| EXaHM/SEB-Termine | Phase A („Planen & schreiben") | fixieren (🏗️) |
+| EXaHM/SEB-Termine | Phase A („Planen & speichern") | fixieren (🏗️) |
 | Gesamt-Terminplan | Phase B (Solver, Seed/Iterationen) | Konflikte akzeptieren / „darf zeitgleich" / 🔒 sperren |
-| Räume | „Räume für Prüfungen zuordnen" | 📌 vorplanen, Slots sperren |
+| Räume | „Räume generieren" (Probelauf → „Generieren & speichern") | 📌 vorplanen, Slots sperren |
 | Aufsichten | „Einteilung starten" (Solver) | 📌 vorplanen, Tagesansicht feinjustieren |
 | Raum-Anfragen | „Vorschau laden" → „Übernehmen" | genehmigen / aktiv schalten |
 
@@ -342,7 +345,7 @@ protokolliert.
 **Die Sperren danach:** „Veröffentlicht" heißt im GUI = *Veröffentlichungs-Mail
 verschickt.* Das setzt die Gate-Bedingung (Termine / Räume / Aufsichten) und
 **sperrt den Bereich** — der Solver-Knopf wird inaktiv, ein gelbes Banner meldet
-„🔒 … gesperrt". Zusätzlich gibt es einen DB-weiten Schreibschutz (read-only) und
+„🔒 … gesperrt". Zusätzlich lässt sich ein Semester schützen (read-only) und es gibt
 eine Sperre, während eine Validierung oder ein Transfer läuft.
 
 ```mermaid
@@ -457,8 +460,8 @@ flowchart LR
 - **Validierung, NTA-Handling, Workflow-/Statusnetz mit Gates, Live-Terminals,
   Probelauf-Prinzip** — alles fakultätsneutrale Bausteine.
 - **Primuss-, Anny- und Gebäudemanagement-Anbindung** — laufen HM-weit schon so.
-- **Der Mandanten-Schnitt ist schon da:** jede Semester-Instanz ist eine eigene
-  Datenbank, die Konfiguration liegt in der DB. Der Sprung zu „**eine Instanz je
+- **Der Mandanten-Schnitt ist schon da:** alle Semester liegen in einem
+  PostgreSQL-Schema, getrennt über die `semester_id`; die Konfiguration liegt in der DB. Der Sprung zu „**eine Instanz je
   Fakultät**" ist damit ein kleiner, kein struktureller.
 
 ### Ausblick: Anbindung ans künftige Campus-Management-System

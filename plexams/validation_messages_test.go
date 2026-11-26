@@ -22,11 +22,7 @@ import (
 // validatorsToRewrite lists the files that do not meet the rules yet. The list only
 // shrinks: a file in it that has become clean fails the test until it is removed,
 // and a file outside it may not regress.
-var validatorsToRewrite = map[string]bool{
-	"validate_rooms.go":                    true,
-	"validate_invigilation.go":             true,
-	"validate_invigilation_constraints.go": true,
-}
+var validatorsToRewrite = map[string]bool{}
 
 // englishWords are words that do not occur in a German finding. Kept short and
 // unambiguous on purpose; "in" or "am" would hit German too.

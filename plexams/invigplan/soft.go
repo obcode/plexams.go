@@ -47,8 +47,7 @@ func (c minuteBalanceSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 				Constraint:    c.Name(),
 				InvigilatorID: in.ID,
 				Penalty:       p.Weights.BeyondTolerance * float64(a-p.ToleranceMin),
-				Message: fmt.Sprintf("invigilator %d is %d min off target (%d/%d, tolerance %d)",
-					in.ID, dev, doing, in.TargetMinutes, p.ToleranceMin),
+				Message:       minuteBalanceMessage(p.Name(in.ID), dev, doing, in.TargetMinutes, p.ToleranceMin),
 			})
 		}
 	}
@@ -66,15 +65,11 @@ func (c coverageSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 	vs := make([]Violation, 0, len(open))
 	for _, posIdx := range open {
 		pos := p.Positions[posIdx]
-		room := pos.Room
-		if pos.IsReserve {
-			room = "reserve"
-		}
 		vs = append(vs, Violation{
 			Constraint: c.Name(),
 			Start:      pos.Start,
 			Penalty:    p.Weights.Coverage,
-			Message:    fmt.Sprintf("no invigilator for %s at %s", room, pos.Start.Format("02.01. 15:04")),
+			Message:    fmt.Sprintf("Für %s am %s ist niemand eingeteilt.", placeDE(pos), timeDE(pos.Start)),
 		})
 	}
 	return p.Weights.Coverage * float64(len(open)), vs
@@ -120,7 +115,8 @@ func (c maxDaysSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 				Constraint:    c.Name(),
 				InvigilatorID: in.ID,
 				Penalty:       pen,
-				Message:       fmt.Sprintf("invigilator %d is present on %d days (max %d)", in.ID, len(attendance), limit),
+				Message: fmt.Sprintf("%s muss an %d Tagen an die Hochschule kommen (Aufsichten und eigene Prüfungen zusammen); angestrebt sind höchstens %d.",
+					p.Name(in.ID), len(attendance), limit),
 			})
 		}
 	}
@@ -182,7 +178,8 @@ func (c distributionSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 			vs = append(vs, Violation{
 				Constraint:    c.Name(),
 				InvigilatorID: id,
-				Message:       fmt.Sprintf("invigilator %d has %d %s (mean %.1f)", id, n, c.kind, mean),
+				Message: fmt.Sprintf("%s hat %d %s, im Durchschnitt sind es %s pro Person.",
+					p.Name(id), n, kindPluralDE(c.kind), decimalDE(mean, 1)),
 			})
 		}
 	}
@@ -241,12 +238,36 @@ func (c daySpanSoft) Cost(p *Problem, plan *Plan) (float64, []Violation) {
 					InvigilatorID: in.ID,
 					Start:         sp.first,
 					Penalty:       pen,
-					Message:       fmt.Sprintf("invigilator %d spans %.1fh on %s (max %.0fh)", in.ID, hours, sp.first.Format("02.01."), p.MaxSpanHours),
+					Message: fmt.Sprintf("%s ist am %s von %s bis %s Uhr eingebunden (Aufsichten und eigene Prüfungen), das sind %s Stunden; angestrebt sind höchstens %s Stunden.",
+						p.Name(in.ID), dayDE(sp.first), sp.first.Format("15:04"), sp.last.Format("15:04"),
+						decimalDE(hours, 1), decimalDE(p.MaxSpanHours, 0)),
 				})
 			}
 		}
 	}
 	return penalty, vs
+}
+
+// minuteBalanceMessage says how far a person is off their target minutes.
+func minuteBalanceMessage(name string, dev, doing, target, tolerance int) string {
+	direction := "zu viel"
+	if dev < 0 {
+		direction = "zu wenig"
+	}
+	return fmt.Sprintf("%s hat %d Minuten Aufsicht bei einem Soll von %d Minuten, also %d Minuten %s (erlaubt sind ±%d Minuten).",
+		name, doing, target, abs(dev), direction, tolerance)
+}
+
+// kindPluralDE names several positions of a kind, e.g. "Reserveaufsichten".
+func kindPluralDE(k Kind) string {
+	switch k {
+	case KindReserve:
+		return "Reserveaufsichten"
+	case KindNTA:
+		return "Aufsichten in NTA-Räumen"
+	default:
+		return "Raumaufsichten"
+	}
 }
 
 func abs(n int) int {

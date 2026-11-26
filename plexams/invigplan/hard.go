@@ -2,8 +2,90 @@ package invigplan
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
+
+// The messages of the violations are read by the planner (validation of the
+// invigilation plan), so they are German and name people, rooms and times the
+// way the planner knows them.
+
+// weekdaysDE maps time.Weekday (Sunday=0) to the German two-letter abbreviation.
+var weekdaysDE = [...]string{"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"}
+
+// timeDE renders a start time as e.g. "Mo 25.01. 10:30".
+func timeDE(t time.Time) string {
+	return weekdaysDE[int(t.Weekday())] + " " + t.Format("02.01. 15:04")
+}
+
+// dayDE renders a date as e.g. "Mo 25.01.".
+func dayDE(t time.Time) string {
+	return weekdaysDE[int(t.Weekday())] + " " + t.Format("02.01.")
+}
+
+// decimalDE formats a number with a German decimal comma.
+func decimalDE(f float64, prec int) string {
+	return strings.Replace(fmt.Sprintf("%.*f", prec, f), ".", ",", 1)
+}
+
+// Name is the invigilator's name for a message; the id only as a fallback for a
+// person the problem does not know by name.
+func (p *Problem) Name(id int) string {
+	if in := p.Invigilator(id); in != nil && in.Name != "" {
+		return in.Name
+	}
+	return fmt.Sprintf("Unbekannte Aufsichtsperson (ZPA-Nr. %d)", id)
+}
+
+// placeDE names what a position is about: "Raum R1.006" or "die Reserveaufsicht".
+func placeDE(pos Position) string {
+	if pos.IsReserve || pos.Room == "" {
+		return "die Reserveaufsicht"
+	}
+	return "Raum " + pos.Room
+}
+
+// dutyDE names the invigilation itself: "die Aufsicht in Raum R1.006" or "die Reserveaufsicht".
+func dutyDE(pos Position) string {
+	if pos.IsReserve || pos.Room == "" {
+		return "die Reserveaufsicht"
+	}
+	return "die Aufsicht in Raum " + pos.Room
+}
+
+// ConstraintLabelDE is the planner's name of a rule, for reports. Unknown names
+// are returned unchanged.
+func ConstraintLabelDE(name string) string {
+	switch name {
+	case "availability":
+		return "Sperrtage"
+	case "time-window":
+		return "Zeitfenster"
+	case "own-exam":
+		return "Eigene Prüfung"
+	case "one-per-slot":
+		return "Mehrere Aufsichten gleichzeitig"
+	case "time-gap":
+		return "Pause zwischen Aufsichten"
+	case "minute-balance":
+		return "Ausgleich der Minuten"
+	case "coverage":
+		return "Unbesetzte Aufsichten"
+	case "max-days":
+		return "Anwesenheitstage"
+	case "prefer-own-exam-days":
+		return "Aufsicht an eigenen Prüfungstagen"
+	case "distribution-reserve":
+		return "Verteilung der Reserveaufsichten"
+	case "distribution-nta":
+		return "Verteilung der NTA-Räume"
+	case "distribution-room":
+		return "Verteilung der Raumaufsichten"
+	case "day-span":
+		return "Länge des Tages"
+	}
+	return name
+}
 
 // availabilityHard: no invigilation on an excluded day/slot, and – if the
 // person restricted themselves – only in their allowed slots.
@@ -33,7 +115,8 @@ func (c availabilityHard) Check(p *Problem, plan *Plan) []Violation {
 				Constraint:    c.Name(),
 				InvigilatorID: invigID,
 				Start:         pos.Start,
-				Message:       fmt.Sprintf("invigilator %d assigned to unavailable slot %s", invigID, pos.Start.Format("02.01. 15:04")),
+				Message: fmt.Sprintf("%s ist am %s für %s eingeteilt, hat diesen Tag bzw. diesen Termin aber gesperrt.",
+					p.Name(invigID), timeDE(pos.Start), placeDE(pos)),
 			})
 		}
 	}
@@ -68,16 +151,12 @@ func (c timeWindowHard) Check(p *Problem, plan *Plan) []Violation {
 		if in == nil || in.AllowsTime(pos) {
 			continue
 		}
-		room := pos.Room
-		if room == "" {
-			room = "reserve"
-		}
 		vs = append(vs, Violation{
 			Constraint:    c.Name(),
 			InvigilatorID: invigID,
 			Start:         pos.Start,
-			Message: fmt.Sprintf("invigilator %d assigned to %s at %s running %s-%s, outside their allowed time window",
-				invigID, room, pos.Start.Format("02.01. 15:04"),
+			Message: fmt.Sprintf("%s ist am %s für %s eingeteilt (%s–%s Uhr). Das liegt außerhalb der Zeiten, die für diese Person an diesem Tag eingetragen sind.",
+				p.Name(invigID), dayDE(pos.Start), placeDE(pos),
 				pos.Start.Format("15:04"), pos.End().Format("15:04")),
 		})
 	}
@@ -115,7 +194,8 @@ func (c ownExamHard) Check(p *Problem, plan *Plan) []Violation {
 				Constraint:    c.Name(),
 				InvigilatorID: invigID,
 				Start:         pos.Start,
-				Message:       fmt.Sprintf("invigilator %d has own exam at %s", invigID, pos.Start.Format("02.01. 15:04")),
+				Message: fmt.Sprintf("%s ist am %s für %s eingeteilt, hat zu dieser Zeit aber eine eigene Prüfung.",
+					p.Name(invigID), timeDE(pos.Start), placeDE(pos)),
 			})
 		}
 	}
@@ -150,7 +230,8 @@ func (c oneInvigilationPerSlotHard) Check(p *Problem, plan *Plan) []Violation {
 				Constraint:    c.Name(),
 				InvigilatorID: invigID,
 				Start:         pos.Start,
-				Message:       fmt.Sprintf("invigilator %d has more than one invigilation at %s", invigID, pos.Start.Format("02.01. 15:04")),
+				Message: fmt.Sprintf("%s ist am %s mehrfach gleichzeitig eingeteilt (unter anderem für %s).",
+					p.Name(invigID), timeDE(pos.Start), placeDE(pos)),
 			})
 		}
 		seen[k] = true
@@ -187,12 +268,16 @@ func (c timeGapHard) Check(p *Problem, plan *Plan) []Violation {
 			for j := i + 1; j < len(positions); j++ {
 				a, b := p.Positions[positions[i]], p.Positions[positions[j]]
 				if !gapOK(a, b, lag) {
+					if b.Start.Before(a.Start) {
+						a, b = b, a
+					}
 					vs = append(vs, Violation{
 						Constraint:    c.Name(),
 						InvigilatorID: invigID,
 						Start:         a.Start,
-						Message: fmt.Sprintf("invigilator %d: less than %d min between %s and %s",
-							invigID, p.TimelagMin, a.Start.Format("02.01. 15:04"), b.Start.Format("02.01. 15:04")),
+						Message: fmt.Sprintf("%s hat am %s zwei Aufsichten zu dicht hintereinander: %s endet um %s, %s beginnt um %s. Nötig sind mindestens %d Minuten Pause.",
+							p.Name(invigID), dayDE(a.Start), dutyDE(a), a.End().Format("15:04"),
+							dutyDE(b), b.Start.Format("15:04"), p.TimelagMin),
 					})
 				}
 			}

@@ -9,6 +9,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/db"
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/obcode/plexams.go/plexams/invigplan"
 	"github.com/rs/zerolog/log"
 )
@@ -37,12 +38,12 @@ func (p *Plexams) AssignInvigilations(ctx context.Context, dryRun bool, opts inv
 	if err := p.generationAllowed(ctx, model.PlanningGateInvigilations); err != nil {
 		return nil, err
 	}
-	reporter.Println("refreshing self-invigilations and todos ...")
+	reporter.Println("Eigenaufsichten und Aufsichtssoll werden neu berechnet ...")
 	if err := p.PrepareSelfInvigilation(); err != nil {
-		return nil, fmt.Errorf("cannot prepare self invigilations: %w", err)
+		return nil, wrapGerman(err, "Die Eigenaufsichten (Prüfende beaufsichtigen ihre eigene Prüfung) konnten nicht berechnet werden")
 	}
 	if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
-		return nil, fmt.Errorf("cannot prepare invigilation todos: %w", err)
+		return nil, wrapGerman(err, "Das Aufsichtssoll der Lehrenden konnte nicht berechnet werden")
 	}
 
 	problem, err := p.buildInvigilationProblem(ctx, false)
@@ -50,26 +51,26 @@ func (p *Plexams) AssignInvigilations(ctx context.Context, dryRun bool, opts inv
 		return nil, err
 	}
 
-	reporter.Printf("optimizing (up to %d iterations, seed %d) ...\n", opts.Iterations, opts.Seed)
+	reporter.Printf("Einteilung wird optimiert (bis zu %d Durchläufe, Startwert %d) ...\n", opts.Iterations, opts.Seed)
 	opts.ProgressEvery = max(1, opts.Iterations/200)
 	opts.OnProgress = reporter.Progress
 
 	best, result := invigplan.Optimize(problem, invigplan.DefaultRegistry(), opts)
-	reporter.StopProgress(aurora.Sprintf(aurora.Green("optimization done")))
+	reporter.StopProgress(aurora.Sprintf(aurora.Green("Optimierung fertig")))
 
 	report := printInvigilationReport(reporter, problem, best, result, opts)
 
 	if dryRun {
-		reporter.Println("dry run: nothing written")
+		reporter.Println("Probelauf: nichts gespeichert")
 		return report, nil
 	}
 
 	if !p.WritesAllowed() {
-		return report, fmt.Errorf("writes are blocked while a validation is running")
+		return report, apierr.New(apierr.CodeBusy, "Gerade läuft eine Validierung, ein Import, eine Übertragung oder ein E-Mail-Versand; die Einteilung wurde deshalb nicht gespeichert. Starte sie danach noch einmal.")
 	}
 
 	if result.Unfilled > 0 {
-		reporter.Warnf("writing plan with open positions: %d open", result.Unfilled)
+		reporter.Warnf("Die Einteilung wird gespeichert, obwohl noch %d Aufsichten unbesetzt sind.", result.Unfilled)
 		log.Warn().Int("open", result.Unfilled).Msg("writing plan with open positions")
 	}
 
@@ -107,16 +108,16 @@ func (p *Plexams) AssignInvigilations(ctx context.Context, dryRun bool, opts inv
 	}
 
 	if err := p.dbClient.ReplaceAll(ctx, db.TargetOtherInvigilations, toSave); err != nil {
-		return report, fmt.Errorf("cannot save generated invigilations: %w", err)
+		return report, wrapGerman(err, "Die eingeteilten Aufsichten konnten nicht gespeichert werden")
 	}
-	reporter.Printf("wrote %d invigilations to invigilations_other\n", len(toSave))
+	reporter.Printf("%d Aufsichten gespeichert\n", len(toSave))
 
-	reporter.Println("recalculating todos ...")
+	reporter.Println("Aufsichtssoll wird neu berechnet ...")
 	if _, err := p.PrepareInvigilationTodos(ctx); err != nil {
-		return report, fmt.Errorf("cannot recalculate todos: %w", err)
+		return report, wrapGerman(err, "Die Aufsichten sind gespeichert, aber das Aufsichtssoll konnte nicht neu berechnet werden")
 	}
 	p.markCondition(ctx, condInvigilationsAssigned)
-	reporter.Println("... done")
+	reporter.Println("... fertig")
 	return report, nil
 }
 
@@ -134,59 +135,59 @@ func printInvigilationReport(reporter Reporter, problem *invigplan.Problem, plan
 	m := problem.MinuteSummary(plan)
 
 	reporter.Println()
-	reporter.Println(aurora.Bold(aurora.Cyan(fmt.Sprintf("══ Invigilation plan  (seed %d, up to %d iterations) ══", opts.Seed, opts.Iterations))))
+	reporter.Println(aurora.Bold(aurora.Cyan(fmt.Sprintf("══ Aufsichtenplan  (Startwert %d, bis zu %d Durchläufe) ══", opts.Seed, opts.Iterations))))
 
 	// run status
-	status := fmt.Sprintf("ran the full %d iterations", result.Iterations)
+	status := fmt.Sprintf("alle %d Durchläufe gemacht", result.Iterations)
 	if result.StoppedEarly {
-		status = fmt.Sprintf("converged, stopped early after %d iterations", result.Iterations)
+		status = fmt.Sprintf("Ziel erreicht, nach %d Durchläufen vorzeitig beendet", result.Iterations)
 	}
-	reporter.Printf("  %s %s\n", reportLabel("status"), status)
+	reporter.Printf("  %s %s\n", reportLabel("Status"), status)
 
 	// balance: the primary objective (everyone within ±tolerance of their target).
 	if result.BalanceSatisfied {
-		reporter.Printf("  %s %s\n", reportLabel("balance"),
-			aurora.Green(fmt.Sprintf("✓ all %d invigilators within ±%d min of their target", nInvig, problem.ToleranceMin)))
+		reporter.Printf("  %s %s\n", reportLabel("Ausgleich"),
+			aurora.Green(fmt.Sprintf("✓ alle %d Aufsichtspersonen liegen höchstens ±%d Minuten neben ihrem Soll", nInvig, problem.ToleranceMin)))
 	} else {
-		reporter.Printf("  %s %s\n", reportLabel("balance"),
-			aurora.Red(fmt.Sprintf("✗ %d over / %d under tolerance (worst +%d / -%d min)", m.Over, m.Under, m.MaxOver, m.MaxUnder)))
+		reporter.Printf("  %s %s\n", reportLabel("Ausgleich"),
+			aurora.Red(fmt.Sprintf("✗ %d Personen über, %d unter der Toleranz (am weitesten: +%d / -%d Minuten)", m.Over, m.Under, m.MaxOver, m.MaxUnder)))
 	}
 
 	// coverage: every room and reserve has an invigilator.
 	if result.Unfilled == 0 {
-		reporter.Printf("  %s %s\n", reportLabel("coverage"),
-			aurora.Green(fmt.Sprintf("✓ all %d positions filled", stats.Positions)))
+		reporter.Printf("  %s %s\n", reportLabel("Abdeckung"),
+			aurora.Green(fmt.Sprintf("✓ alle %d Aufsichten besetzt", stats.Positions)))
 	} else {
-		reporter.Printf("  %s %s\n", reportLabel("coverage"),
-			aurora.Red(fmt.Sprintf("✗ %d of %d positions still open", result.Unfilled, stats.Positions)))
+		reporter.Printf("  %s %s\n", reportLabel("Abdeckung"),
+			aurora.Red(fmt.Sprintf("✗ %d von %d Aufsichten noch unbesetzt", result.Unfilled, stats.Positions)))
 	}
 
 	// minute detail: how the assigned minutes sit around each person's target.
-	reporter.Printf("  %s %s within ±%d min, %s over, %s under  %s\n", reportLabel("minutes"),
+	reporter.Printf("  %s %s innerhalb ±%d Minuten, %s darüber, %s darunter  %s\n", reportLabel("Minuten"),
 		aurora.Green(fmt.Sprintf("%d", m.WithinTolerance)), problem.ToleranceMin,
 		colorCount(m.Over), colorCount(m.Under),
-		aurora.Gray(12, "(deviation of assigned vs. target minutes per person)"))
+		aurora.Gray(12, "(eingeteilte Minuten je Person im Vergleich zum Soll)"))
 
 	outliers := printDeviationOutliers(reporter, problem, plan)
 
 	// fairness of the reserve / NTA distribution.
-	reporter.Printf("  %s %s\n", reportLabel("fairness"),
-		aurora.Gray(12, "(reading \"1:48\" = 48 invigilators do 1; lower max = fairer)"))
+	reporter.Printf("  %s %s\n", reportLabel("Verteilung"),
+		aurora.Gray(12, "(\"1:48\" heißt: 48 Personen haben je 1; je kleiner das Maximum, desto gerechter)"))
 	fairness := make([]*model.FairnessDistribution, 0, 2)
 	for _, kind := range []invigplan.Kind{invigplan.KindReserve, invigplan.KindNTA} {
 		d := problem.DistributionOf(plan, kind)
-		reporter.Printf("    %-9s %s  %s\n", kind.String()+":", d.String(),
-			aurora.Gray(12, fmt.Sprintf("(%d total, max %d/person)", d.Total, d.Max)))
+		reporter.Printf("    %-9s %s  %s\n", kindLabelDE(kind)+":", d.String(),
+			aurora.Gray(12, fmt.Sprintf("(%d insgesamt, höchstens %d pro Person)", d.Total, d.Max)))
 		fairness = append(fairness, fairnessModel(d))
 	}
 
 	// soft-constraint cost breakdown (internal score, lower is better).
-	reporter.Printf("  %s %s\n", reportLabel("soft cost"),
-		aurora.Sprintf(aurora.Gray(12, "total %.0f  (weighted penalty score, not minutes; lower is better)"), result.Cost))
+	reporter.Printf("  %s %s\n", reportLabel("Bewertung"),
+		aurora.Sprintf(aurora.Gray(12, "gesamt %.0f  (Strafpunkte für nicht erfüllte Wünsche, keine Minuten; kleiner ist besser)"), result.Cost))
 	breakdown := result.SortedCosts()
 	costItems := make([]*model.SoftCostItem, 0, len(breakdown))
 	for _, b := range breakdown {
-		reporter.Printf("    %-22s %8.0f\n", b.Name, b.Cost)
+		reporter.Printf("    %-34s %8.0f\n", invigplan.ConstraintLabelDE(b.Name), b.Cost)
 		costItems = append(costItems, &model.SoftCostItem{Name: b.Name, Cost: b.Cost})
 	}
 
@@ -249,11 +250,11 @@ func printDeviationOutliers(reporter Reporter, problem *invigplan.Problem, plan 
 		return nil
 	}
 
-	reporter.Printf("  %s %s\n", reportLabel("outliers"),
-		aurora.Gray(12, "(noch offen = target − done, relative to workload; negative = did too much)"))
+	reporter.Printf("  %s %s\n", reportLabel("Ausreißer"),
+		aurora.Gray(12, "(noch offen = Soll − eingeteilt, gemessen am Soll; negativ = mehr als das Soll)"))
 	outliers := make([]*model.InvigilatorOutlier, 0, len(devs))
 	for _, d := range devs {
-		line := fmt.Sprintf("invig %d: %d/%d min, noch offen %+d (%+.0f%%)", d.InvigilatorID, d.Doing, d.Target, d.Open, d.Percent)
+		line := fmt.Sprintf("%s: %d von %d Minuten, noch offen %+d (%+.0f%%)", problem.Name(d.InvigilatorID), d.Doing, d.Target, d.Open, d.Percent)
 		if d.Open < 0 { // did too much – the side we now penalize harder
 			reporter.Printf("    %s\n", aurora.Yellow(line))
 		} else {
@@ -272,7 +273,19 @@ func printDeviationOutliers(reporter Reporter, problem *invigplan.Problem, plan 
 
 // reportLabel returns a fixed-width, bold label so the colored values line up.
 func reportLabel(s string) string {
-	return aurora.Bold(fmt.Sprintf("%-10s", s+":")).String()
+	return aurora.Bold(fmt.Sprintf("%-11s", s+":")).String()
+}
+
+// kindLabelDE names a kind of invigilation for the report.
+func kindLabelDE(k invigplan.Kind) string {
+	switch k {
+	case invigplan.KindReserve:
+		return "Reserve"
+	case invigplan.KindNTA:
+		return "NTA-Räume"
+	default:
+		return "Räume"
+	}
 }
 
 // colorCount shows a count in green when it is zero, in yellow otherwise.
@@ -533,18 +546,16 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 			}
 		}
 		if !ok {
-			room := "reserve"
-			if pp.RoomName != nil {
-				room = *pp.RoomName
-			}
-			when := "unknown time"
+			when := "ohne Startzeit"
 			if pp.Starttime != nil {
-				when = pp.Starttime.Format("02.01. 15:04")
+				when = "am " + slotLabelDE(*pp.Starttime)
 			}
-			log.Error().Int("invigilator", pp.InvigilatorID).Str("starttime", when).Str("room", room).
+			log.Error().Int("invigilator", pp.InvigilatorID).Str("starttime", when).Interface("room", pp.RoomName).
 				Msg("pre-planned invigilation has no matching position (room/slot not planned)")
-			return nil, fmt.Errorf("pre-planned invigilation for invigilator %d has no matching position: %s at %s is not planned",
-				pp.InvigilatorID, room, when)
+			return nil, apierr.Newf(apierr.CodeInvalidInput,
+				"%s ist %s für %s vorgeplant, dort ist zu dieser Zeit aber keine Prüfung geplant. "+
+					"Entferne die vorgeplante Aufsicht im „Aufsichtsplan“ und plane sie bei Bedarf neu.",
+				p.teacherNames(ctx)(pp.InvigilatorID), when, invigilationPlaceDE(pp.RoomName))
 		}
 		fixed[posIdx] = pp.InvigilatorID
 	}
@@ -573,6 +584,7 @@ func (p *Plexams) buildInvigilationProblem(ctx context.Context, includeExcluded 
 		id := inv.Teacher.ID
 		gi := invigplan.Invigilator{
 			ID:            id,
+			Name:          inv.Teacher.Fullname,
 			ExcludedDays:  make(map[int]bool),
 			ExcludedSlots: make(map[int64]bool),
 			OwnExamSlots:  ownExamSlots[id],

@@ -2,10 +2,10 @@ package plexams
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/rs/zerolog/log"
 )
 
@@ -26,7 +26,7 @@ func (p *Plexams) AddInvigilation(ctx context.Context, room string, starttime ti
 		return err
 	}
 	if len(examsInSlot) == 0 {
-		return fmt.Errorf("need no invigilation in slot without exams")
+		return errNoExamsAt(starttime)
 	}
 
 	// check constraints
@@ -34,13 +34,17 @@ func (p *Plexams) AddInvigilation(ctx context.Context, room string, starttime ti
 	day := p.dayNumberForDate(starttime)
 	for _, excludedDay := range invigilator.Requirements.ExcludedDays {
 		if day == excludedDay {
-			return fmt.Errorf("cannot add invigilation on excluded day for %s", invigilator.Teacher.Shortname)
+			return apierr.Newf(apierr.CodeInvalidInput,
+				"%s hat am %s einen Sperrtag und kann dort keine Aufsicht übernehmen. Wähle eine andere Person.",
+				invigilator.Teacher.Fullname, dayLabelDE(starttime))
 		}
 	}
 	// no exam in same slot
 	for _, examInSlot := range examsInSlot {
 		if examInSlot.ZpaExam.MainExamerID == invigilator.Teacher.ID {
-			return fmt.Errorf("cannot add invigilation, %s has own exam in slot", invigilator.Teacher.Shortname)
+			return apierr.Newf(apierr.CodeInvalidInput,
+				"%s hat am %s eine eigene Prüfung und kann zu dieser Zeit keine Aufsicht übernehmen. Wähle eine andere Person.",
+				invigilator.Teacher.Fullname, slotLabelDE(starttime))
 		}
 	}
 
@@ -63,7 +67,7 @@ func (p *Plexams) PreAddInvigilation(ctx context.Context, invigilatorID int, sta
 		return false, err
 	}
 	if len(examsInSlot) == 0 {
-		return false, fmt.Errorf("need no invigilation in slot without exams")
+		return false, errNoExamsAt(starttime)
 	}
 
 	// check constraints
@@ -71,13 +75,17 @@ func (p *Plexams) PreAddInvigilation(ctx context.Context, invigilatorID int, sta
 	day := p.dayNumberForDate(starttime)
 	for _, excludedDay := range invigilator.Requirements.ExcludedDays {
 		if day == excludedDay {
-			return false, fmt.Errorf("cannot pre-plan invigilation on excluded day for %s", invigilator.Teacher.Shortname)
+			return false, apierr.Newf(apierr.CodeInvalidInput,
+				"%s hat am %s einen Sperrtag und kann dort nicht vorgeplant werden. Wähle eine andere Person.",
+				invigilator.Teacher.Fullname, dayLabelDE(starttime))
 		}
 	}
 	// no own exam in same slot
 	for _, examInSlot := range examsInSlot {
 		if examInSlot.ZpaExam.MainExamerID == invigilator.Teacher.ID {
-			return false, fmt.Errorf("cannot pre-plan invigilation, %s has own exam in slot", invigilator.Teacher.Shortname)
+			return false, apierr.Newf(apierr.CodeInvalidInput,
+				"%s hat am %s eine eigene Prüfung und kann zu dieser Zeit nicht als Aufsicht vorgeplant werden. Wähle eine andere Person.",
+				invigilator.Teacher.Fullname, slotLabelDE(starttime))
 		}
 	}
 
@@ -97,7 +105,9 @@ func (p *Plexams) PreAddInvigilation(ctx context.Context, invigilatorID int, sta
 			}
 		}
 		if !found {
-			return false, fmt.Errorf("room %s not found at %s", *roomName, starttime.Format("02.01. 15:04"))
+			return false, apierr.Newf(apierr.CodeInvalidInput,
+				"Raum %s ist am %s für keine Prüfung eingeplant; dort kann niemand vorgeplant werden. Lade die Seite neu, falls sich die Raumplanung geändert hat.",
+				*roomName, slotLabelDE(starttime))
 		}
 	}
 
@@ -123,11 +133,9 @@ func (p *Plexams) RemovePrePlannedInvigilation(ctx context.Context, starttime ti
 		return false, err
 	}
 	if !removed {
-		room := "reserve"
-		if roomName != nil {
-			room = *roomName
-		}
-		return false, fmt.Errorf("no pre-planned invigilation for %s at %s", room, starttime.Format("02.01. 15:04"))
+		return false, apierr.Newf(apierr.CodeNotFound,
+			"Für %s am %s gibt es keine vorgeplante Aufsicht; vermutlich wurde sie inzwischen entfernt. Lade die Seite neu.",
+			invigilationPlaceDE(roomName), slotLabelDE(starttime))
 	}
 	// best-effort: clear the pre-planned flag on the live invigilation, if any.
 	if err := p.dbClient.SetInvigilationPrePlannedAt(ctx, starttime, roomName, false); err != nil {
@@ -152,7 +160,9 @@ func (p *Plexams) PrePlanInvigilationInSlot(ctx context.Context, starttime time.
 		return false, err
 	}
 	if teacher == nil {
-		return false, fmt.Errorf("no invigilation for %s at %s to pre-plan", room, starttime.Format("02.01. 15:04"))
+		return false, apierr.Newf(apierr.CodeNotFound,
+			"Für %s am %s ist niemand eingeteilt, also gibt es nichts zu fixieren. Plane stattdessen eine Person vor.",
+			invigilationPlaceDE(roomName), slotLabelDE(starttime))
 	}
 
 	ok, err := p.PreAddInvigilation(ctx, teacher.ID, starttime, roomName)
@@ -186,8 +196,16 @@ func (p *Plexams) GetInvigilator(ctx context.Context, invigilatorID int) (*model
 	}
 
 	if invigilator == nil {
-		return nil, fmt.Errorf("invigilator with id %d not found", invigilatorID)
+		return nil, apierr.Newf(apierr.CodeNotFound,
+			"%s steht nicht in der Liste der Aufsichtspersonen dieses Semesters. Prüfe unter „Aufsichts-Constraints“ und „Dauerhaft keine Aufsicht“, ob die Person von Aufsichten ausgenommen ist.",
+			p.teacherNames(ctx)(invigilatorID))
 	}
 
 	return invigilator, nil
+}
+
+// errNoExamsAt rejects an invigilation at a time without exams.
+func errNoExamsAt(starttime time.Time) error {
+	return apierr.Newf(apierr.CodeInvalidInput,
+		"Am %s findet keine Prüfung statt, dort wird keine Aufsicht gebraucht.", slotLabelDE(starttime))
 }

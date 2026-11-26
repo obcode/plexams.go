@@ -2,13 +2,13 @@ package plexams
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/obcode/plexams.go/graph/model"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/rs/zerolog/log"
 )
 
@@ -133,19 +133,19 @@ func (p *Plexams) SetPermanentNonInvigilator(ctx context.Context, teacherID int,
 	if validFrom != nil {
 		ord, ok := semesterOrdinal(*validFrom)
 		if !ok {
-			return nil, fmt.Errorf("invalid validFrom semester %q (expected e.g. 2026-SS)", *validFrom)
+			return nil, apierr.Newf(apierr.CodeInvalidInput, "„%s“ ist kein Semester. Gib den Beginn z. B. als 2026-SS oder 2026-WS an.", *validFrom)
 		}
 		fromOrd = ord
 	}
 	if validUntil != nil {
 		ord, ok := semesterOrdinal(*validUntil)
 		if !ok {
-			return nil, fmt.Errorf("invalid validUntil semester %q (expected e.g. 2026-SS)", *validUntil)
+			return nil, apierr.Newf(apierr.CodeInvalidInput, "„%s“ ist kein Semester. Gib das Ende z. B. als 2026-SS oder 2026-WS an.", *validUntil)
 		}
 		untilOrd = ord
 	}
 	if validFrom != nil && validUntil != nil && fromOrd > untilOrd {
-		return nil, fmt.Errorf("validFrom %q is after validUntil %q", *validFrom, *validUntil)
+		return nil, apierr.Newf(apierr.CodeInvalidInput, "Der Beginn (%s) liegt nach dem Ende (%s). Tausche die beiden Semester.", *validFrom, *validUntil)
 	}
 
 	if name == "" {
@@ -217,10 +217,10 @@ func (p *Plexams) SetInvigilatorConstraints(ctx context.Context, input model.Inv
 			continue
 		}
 		if w.From == nil && w.Until == nil {
-			return nil, fmt.Errorf("time window on %s: at least one of from/until must be set", w.Date.Format("02.01.2006"))
+			return nil, apierr.Newf(apierr.CodeInvalidInput, "Das Zeitfenster am %s hat weder einen Beginn noch ein Ende. Trage mindestens eines davon ein oder lösche das Zeitfenster.", dayLabelDE(w.Date))
 		}
 		if w.From != nil && w.Until != nil && !w.Until.After(*w.From) {
-			return nil, fmt.Errorf("time window on %s: until must be after from", w.Date.Format("02.01.2006"))
+			return nil, apierr.Newf(apierr.CodeInvalidInput, "Im Zeitfenster am %s liegt das Ende (%s Uhr) nicht nach dem Beginn (%s Uhr). Korrigiere die Uhrzeiten.", dayLabelDE(w.Date), w.Until.Format("15:04"), w.From.Format("15:04"))
 		}
 		timeWindows = append(timeWindows, &model.InvigilationTimeWindow{Date: w.Date, From: w.From, Until: w.Until})
 	}

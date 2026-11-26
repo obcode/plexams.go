@@ -90,7 +90,9 @@ func (p Position) Kind() Kind {
 // assignments. Slot keys are position start times (Unix seconds); day keys are
 // calendar-date ordinals (see dateKey).
 type Invigilator struct {
-	ID            int
+	ID int
+	// Name is the person's full name, used only in messages for the planner.
+	Name          string
 	TargetMinutes int // = InvigilatorTodos.TotalMinutes
 
 	ExcludedDays  map[int]bool   // calendar-date ordinals (see dateKey)

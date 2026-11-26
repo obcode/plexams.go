@@ -15,7 +15,7 @@ import (
 // constraints – the exact same hard and soft rules the automatic generator
 // uses. It runs in addition to the hand-written invigilator validations.
 func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "invigilation-constraints", "validating invigilation constraints (shared rules)")
+	v := newValidation(reporter, "invigilation-constraints", "Aufsichtsplan gegen die Regeln der automatischen Einteilung prüfen")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -28,9 +28,10 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 	// invigilator never miss.
 	problem, err := p.buildInvigilationProblem(ctx, true)
 	if err != nil {
-		reporter.StopProgressFail(fmt.Sprintf("cannot build problem: %v", err))
+		reporter.StopProgressFail(fmt.Sprintf("Die Daten für die Prüfung des Aufsichtsplans konnten nicht zusammengestellt werden: %v", err))
 		return nil, err
 	}
+	name := p.teacherNames(ctx)
 
 	// Build the plan from what is actually persisted, not from the fixed seeds.
 	problem.Fixed = map[int]int{}
@@ -43,7 +44,7 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 
 	invigilations, err := p.dbClient.GetAllInvigilations(ctx)
 	if err != nil {
-		reporter.StopProgressFail(fmt.Sprintf("cannot get invigilations: %v", err))
+		reporter.StopProgressFail(fmt.Sprintf("Die Aufsichten konnten nicht gelesen werden: %v", err))
 		return nil, err
 	}
 
@@ -59,13 +60,10 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 		key := positionKey(*inv.Starttime, isReserve, room)
 		idx, ok := index[key]
 		if !ok {
-			where := room
-			if isReserve {
-				where = "reserve"
-			}
-			v.warnf(ref{Room: inv.RoomName, InvigilatorID: ptr(inv.InvigilatorID), Starttime: inv.Starttime},
-				"invigilation for %s at %s has no matching position (room/slot not planned)",
-				where, inv.Starttime.Format("02.01. 15:04"))
+			v.warnf(ref{Room: inv.RoomName, InvigilatorID: ptr(inv.InvigilatorID), Starttime: inv.Starttime}.hint(
+				"Vermutlich wurden Prüfungen oder Räume nach dem Einteilen geändert. Unter „Aufsichten einteilen“ neu einteilen."),
+				"%s ist am %s für %s eingeteilt, dort ist zu dieser Zeit aber keine Prüfung mehr geplant.",
+				name(inv.InvigilatorID), slotLabelDE(*inv.Starttime), invigilationPlaceDE(inv.RoomName))
 			continue
 		}
 		plan.Set(idx, inv.InvigilatorID)
@@ -75,7 +73,7 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 	// persisted plan (a later manual change could have overridden it).
 	prePlanned, err := p.PrePlannedInvigilations(ctx)
 	if err != nil {
-		reporter.StopProgressFail(fmt.Sprintf("cannot get pre-planned invigilations: %v", err))
+		reporter.StopProgressFail(fmt.Sprintf("Die vorgeplanten Aufsichten konnten nicht gelesen werden: %v", err))
 		return nil, err
 	}
 	for _, pp := range prePlanned {
@@ -86,23 +84,27 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 		if pp.Starttime == nil {
 			continue
 		}
-		when := pp.Starttime.Format("02.01. 15:04")
+		when := slotLabelDE(*pp.Starttime)
+		place := invigilationPlaceDE(pp.RoomName)
+		ppRef := ref{Room: pp.RoomName, InvigilatorID: ptr(pp.InvigilatorID), Starttime: pp.Starttime}
 		idx, ok := index[positionKey(*pp.Starttime, pp.RoomName == nil, room)]
 		if !ok {
-			v.errorf(ref{Room: pp.RoomName, InvigilatorID: ptr(pp.InvigilatorID), Starttime: pp.Starttime},
-				"pre-planned %s at %s has no matching position (room/slot not planned)",
-				room, when)
+			v.errorf(ppRef.hint("Die Vorplanung passt nicht mehr zur Raumplanung; solange sie besteht, bricht „Aufsichten einteilen“ mit einem Fehler ab. "+
+				"Entferne die vorgeplante Aufsicht im „Aufsichtsplan“ und plane sie bei Bedarf neu."),
+				"%s ist am %s für %s vorgeplant, dort ist zu dieser Zeit aber keine Prüfung geplant.",
+				name(pp.InvigilatorID), when, place)
 			continue
 		}
 		switch assigned := plan.Assign[idx]; {
 		case assigned == invigplan.Unassigned:
-			v.errorf(ref{Room: pp.RoomName, InvigilatorID: ptr(pp.InvigilatorID), Starttime: pp.Starttime},
-				"pre-planned invigilator %d for %s at %s is missing in the plan",
-				pp.InvigilatorID, room, when)
+			v.errorf(ppRef.hint("Unter „Aufsichten einteilen“ neu einteilen; vorgeplante Aufsichten werden dabei übernommen."),
+				"%s ist am %s für %s vorgeplant, im Aufsichtsplan ist dort aber niemand eingeteilt.",
+				name(pp.InvigilatorID), when, place)
 		case assigned != pp.InvigilatorID:
-			v.errorf(ref{Room: pp.RoomName, InvigilatorID: ptr(pp.InvigilatorID), Starttime: pp.Starttime},
-				"pre-planned invigilator %d for %s at %s was overridden by %d",
-				pp.InvigilatorID, room, when, assigned)
+			v.errorf(ppRef.hint("Unter „Aufsichten einteilen“ neu einteilen, dann gilt wieder die Vorplanung. "+
+				"Ist die andere Person gewollt, im „Aufsichtsplan“ die Vorplanung entsprechend ändern."),
+				"%s ist am %s für %s vorgeplant, eingeteilt ist dort aber %s.",
+				name(pp.InvigilatorID), when, place, name(assigned))
 		}
 	}
 
@@ -111,29 +113,63 @@ func (p *Plexams) ValidateInvigilationConstraints(reporter Reporter) (*model.Val
 	_, costByConstraint, soft := reg.Cost(problem, plan)
 
 	for _, viol := range hard {
-		v.errorf(ref{}, "[%s] %s", viol.Constraint, viol.Message)
+		v.errorf(violationRef(viol).hint(invigRuleHint(viol.Constraint)), "%s", viol.Message)
 	}
 	for _, viol := range soft {
-		v.warnf(ref{}, "[%s] %s", viol.Constraint, viol.Message)
+		v.warnf(violationRef(viol).hint(invigRuleHint(viol.Constraint)), "%s", viol.Message)
 	}
 
 	report := v.finish()
 
 	// Stream the soft-constraint cost breakdown as informational text (internal
 	// score, lower is better); it is not part of the structured findings.
-	names := make([]string, 0, len(costByConstraint))
-	for name := range costByConstraint {
-		names = append(names, name)
+	rules := make([]string, 0, len(costByConstraint))
+	for rule := range costByConstraint {
+		rules = append(rules, rule)
 	}
-	sort.Strings(names)
-	reporter.Println("soft-constraint cost (weighted penalty, not minutes):")
-	for _, name := range names {
-		if cost := costByConstraint[name]; cost > 0 {
-			reporter.Printf("    %-22s %8.0f\n", name, cost)
+	sort.Strings(rules)
+	reporter.Println("Bewertung der Wünsche an die Einteilung (Strafpunkte, keine Minuten; kleiner ist besser):")
+	for _, rule := range rules {
+		if cost := costByConstraint[rule]; cost > 0 {
+			reporter.Printf("    %-34s %8.0f\n", invigplan.ConstraintLabelDE(rule), cost)
 		}
 	}
 
 	return report, nil
+}
+
+// violationRef links a rule violation to the person and the time it concerns.
+func violationRef(viol invigplan.Violation) ref {
+	var r ref
+	if viol.InvigilatorID != 0 {
+		r.InvigilatorID = ptr(viol.InvigilatorID)
+	}
+	if !viol.Start.IsZero() {
+		r.Starttime = ptr(viol.Start)
+	}
+	return r
+}
+
+// invigRuleHint tells the planner what to do about a broken rule of the
+// automatic invigilation planning (keyed by the rule's internal name).
+func invigRuleHint(rule string) string {
+	const reassign = "Gib die Aufsicht im „Aufsichtsplan“ an eine andere Person"
+	switch rule {
+	case "availability":
+		return reassign + ", oder prüfe die Sperrtage: die aus dem ZPA stehen unter „Aufsichten mit Anforderungen“, zusätzliche unter „Aufsichts-Constraints“."
+	case "time-window":
+		return reassign + ", oder passe die Zeitfenster der Person unter „Aufsichts-Constraints“ an."
+	case "own-exam", "one-per-slot":
+		return reassign + "."
+	case "time-gap":
+		return "Gib eine der beiden Aufsichten im „Aufsichtsplan“ an eine andere Person."
+	case "coverage":
+		return "Trage im „Aufsichtsplan“ jemanden ein, oder teile unter „Aufsichten einteilen“ neu ein."
+	case "minute-balance":
+		return "Teile unter „Aufsichten einteilen“ neu ein, oder verschiebe im „Aufsichtsplan“ Aufsichten zu Personen mit offenen Minuten."
+	default: // max-days, day-span, distribution-*: preferences, not errors
+		return "Nur eine ungünstige Verteilung, kein Fehler. Wenn es stört, tausche im „Aufsichtsplan“ Aufsichten oder teile unter „Aufsichten einteilen“ neu ein."
+	}
 }
 
 // positionKey is the lookup key matching a persisted invigilation to a problem

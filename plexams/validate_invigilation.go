@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	set "github.com/deckarep/golang-set/v2"
@@ -12,7 +13,7 @@ import (
 )
 
 func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "invigilator-requirements", "validating invigilator requirements")
+	v := newValidation(reporter, "invigilator-requirements", "Sperrtage und eigene Prüfungen der Aufsichten prüfen")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -21,22 +22,24 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 		return v.skip(skipNoInvigilations), nil
 	}
 
-	v.step("recalculating todos")
+	v.step("Aufsichtssoll wird neu berechnet")
 	invigilationTodos, err := p.GetInvigilationTodos(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	exams := p.newExamNamer(ctx, nil)
 	for _, invigilator := range invigilationTodos.Invigilators {
-		v.step("checking %s", invigilator.Teacher.Fullname)
+		v.step("prüfe %s", invigilator.Teacher.Fullname)
 		log.Debug().Str("name", invigilator.Teacher.Shortname).Msg("checking constraints")
 
 		// days ok
 		for _, invigilationDay := range invigilator.Todos.InvigilationDays {
 			for _, excludedDay := range invigilator.Requirements.ExcludedDays {
 				if invigilationDay == excludedDay {
-					v.errorf(ref{InvigilatorID: ptr(invigilator.Teacher.ID)},
-						"%s has invigilation on excluded day %d", invigilator.Teacher.Fullname, invigilationDay)
+					v.errorf(ref{InvigilatorID: ptr(invigilator.Teacher.ID)}.hint(hintExcludedDay),
+						"%s ist am %s für eine Aufsicht eingeteilt, hat diesen Tag aber als Sperrtag.",
+						invigilator.Teacher.Fullname, p.examDayLabelDE(invigilationDay))
 				}
 			}
 		}
@@ -49,30 +52,30 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 			}
 			startKey := invigilation.Starttime.Unix()
 			if invigilationSlots.Contains(startKey) {
-				v.errorf(ref{InvigilatorID: ptr(invigilator.Teacher.ID), Starttime: invigilation.Starttime},
-					"%s has more than one invigilation at %s",
-					invigilator.Teacher.Fullname, invigilation.Starttime.Format("02.01. 15:04"))
+				v.errorf(ref{InvigilatorID: ptr(invigilator.Teacher.ID), Starttime: invigilation.Starttime}.hint(hintReassign),
+					"%s ist am %s für mehr als eine Aufsicht gleichzeitig eingeteilt.",
+					invigilator.Teacher.Fullname, slotLabelDE(*invigilation.Starttime))
 			}
 			invigilationSlots.Add(startKey)
 
 		}
 
 		// wenn gleichzeitig Prüfung, dann nur self-invigilation
-		exams, err := p.PlannedExamsByExamer(ctx, invigilator.Teacher.ID)
+		ownExams, err := p.PlannedExamsByExamer(ctx, invigilator.Teacher.ID)
 		if err != nil {
 			log.Error().Err(err).Str("name", invigilator.Teacher.Shortname).Msg("cannot get exams")
 		}
 
-		for _, exam := range exams {
+		for _, exam := range ownExams {
 			for _, invigilation := range invigilator.Todos.Invigilations {
 				if exam.PlanEntry != nil && exam.PlanEntry.Starttime != nil &&
 					invigilation.Starttime != nil &&
 					exam.PlanEntry.Starttime.Equal(*invigilation.Starttime) {
-					when := invigilation.Starttime.Format("02.01. 15:04")
+					when := slotLabelDE(*invigilation.Starttime)
 					if invigilation.IsReserve {
-						v.errorf(ref{Ancode: ptr(exam.Constraints.Ancode), InvigilatorID: ptr(invigilator.Teacher.ID), Starttime: invigilation.Starttime},
-							"%s has reserve invigilation during own exam %d. %s at %s",
-							invigilator.Teacher.Fullname, exam.Constraints.Ancode, exam.ZpaExam.Module, when)
+						v.errorf(ref{Ancode: ptr(exam.Constraints.Ancode), InvigilatorID: ptr(invigilator.Teacher.ID), Starttime: invigilation.Starttime}.hint(hintReassign),
+							"%s ist am %s als Reserveaufsicht eingeteilt, hat zur selben Zeit aber die eigene Prüfung %s.",
+							invigilator.Teacher.Fullname, when, exams.name(exam.Constraints.Ancode))
 					}
 
 					roomsForExam, err := p.dbClient.PlannedRoomsForAncode(ctx, exam.Ancode)
@@ -85,9 +88,12 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 						log.Error().Err(err).Int("ancode", exam.Ancode).Msg("cannot get rooms for exam")
 					} else {
 						if rooms.Cardinality() > 1 {
-							v.errorf(ref{Ancode: ptr(exam.Constraints.Ancode), InvigilatorID: ptr(invigilator.Teacher.ID), Starttime: invigilation.Starttime},
-								"%s has invigilation during own exam with more than one room: %d. %s at %s: found rooms %v",
-								invigilator.Teacher.Fullname, exam.Constraints.Ancode, exam.ZpaExam.Module, when, rooms)
+							roomNames := rooms.ToSlice()
+							sort.Strings(roomNames)
+							v.errorf(ref{Ancode: ptr(exam.Constraints.Ancode), InvigilatorID: ptr(invigilator.Teacher.ID), Starttime: invigilation.Starttime}.hint(hintReassign),
+								"%s ist am %s als Aufsicht eingeteilt, während die eigene Prüfung %s in mehreren Räumen läuft (%s). "+
+									"Während einer eigenen Prüfung in mehreren Räumen übernimmt die prüfende Person keine Aufsicht.",
+								invigilator.Teacher.Fullname, when, exams.name(exam.Constraints.Ancode), strings.Join(roomNames, ", "))
 						}
 					}
 
@@ -100,7 +106,7 @@ func (p *Plexams) ValidateInvigilatorRequirements(reporter Reporter) (*model.Val
 	return v.finish(), nil
 }
 func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "invigilation-duplicates", "validating invigilator duplicates")
+	v := newValidation(reporter, "invigilation-duplicates", "Doppelt gespeicherte Aufsichten suchen")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -109,7 +115,7 @@ func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.Validation
 		return v.skip(skipNoInvigilations), nil
 	}
 
-	v.step("getting all invigilations")
+	v.step("Aufsichten werden gelesen")
 	invigilations, err := p.dbClient.GetAllInvigilations(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get all invigilations")
@@ -123,7 +129,8 @@ func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.Validation
 
 	invigilationsMap := make(map[key]*model.Invigilation)
 
-	v.step("checking %d invigilations", len(invigilations))
+	v.step("prüfe %d Aufsichten", len(invigilations))
+	name := p.teacherNames(ctx)
 	for _, invigilation := range invigilations {
 		if invigilation.Starttime == nil {
 			continue
@@ -139,11 +146,12 @@ func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.Validation
 			start: invigilation.Starttime.Unix(),
 		}
 
-		_, ok := invigilationsMap[key]
+		first, ok := invigilationsMap[key]
 		if ok {
-			v.errorf(ref{Room: invigilation.RoomName, InvigilatorID: ptr(invigilation.InvigilatorID), Starttime: invigilation.Starttime},
-				"double entry for {roomname: %s, start: %s}",
-				room, invigilation.Starttime.Format("02.01. 15:04"))
+			v.errorf(ref{Room: invigilation.RoomName, InvigilatorID: ptr(invigilation.InvigilatorID), Starttime: invigilation.Starttime}.hint(hintDuplicate),
+				"Für %s am %s sind zwei Aufsichten gespeichert: %s und %s.",
+				invigilationPlaceDE(invigilation.RoomName), slotLabelDE(*invigilation.Starttime),
+				name(first.InvigilatorID), name(invigilation.InvigilatorID))
 		} else {
 			invigilationsMap[key] = invigilation
 		}
@@ -154,7 +162,7 @@ func (p *Plexams) ValidateInvigilationDups(reporter Reporter) (*model.Validation
 
 // TODO: NTA- und Reserve-Aufsicht (wenn NTA) nicht im folgenden Slot einteilen!
 func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.ValidationReport, error) {
-	v := newValidation(reporter, "invigilator-slots", "validating invigilator for all slots")
+	v := newValidation(reporter, "invigilator-slots", "Prüfen, ob jeder Raum und jede Reserve eine Aufsicht hat")
 
 	ctx := context.Background()
 	if ok, err := p.hasInvigilations(ctx); err != nil {
@@ -170,10 +178,11 @@ func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.Validation
 	maxInvigsMissingInOneSlot := make(map[string]int)
 	dateByKey := make(map[string]time.Time)
 
+	name := p.teacherNames(ctx)
 	// all rooms and reserve max one invigilator
 	for _, slot := range p.semesterConfig.Slots {
 		invigsMissing := 0
-		v.step("checking slot %s", slot.Starttime.Format("02.01. 15:04"))
+		v.step("prüfe %s", slotLabelDE(slot.Starttime))
 
 		rooms, err := p.plannedRoomNamesAt(ctx, slot.Starttime)
 		if err != nil {
@@ -194,8 +203,9 @@ func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.Validation
 			slotWithoutReserveDay[dayKey]++
 			invigsMissing++
 		} else if len(invigilations) > 1 {
-			v.errorf(ref{Starttime: &slot.Starttime},
-				"more than one reserve invigilator at %s", slot.Starttime.Format("02.01. 15:04"))
+			v.errorf(ref{Starttime: &slot.Starttime}.hint(hintDuplicate),
+				"Am %s sind mehrere Reserveaufsichten eingeteilt: %s.",
+				slotLabelDE(slot.Starttime), invigilatorNamesDE(invigilations, name))
 		}
 
 		for _, room := range rooms {
@@ -208,8 +218,9 @@ func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.Validation
 				roomWithoutInvigilatorDay[dayKey]++
 				invigsMissing++
 			} else if len(invigilations) > 1 {
-				v.warnf(ref{Room: ptr(room), Starttime: &slot.Starttime},
-					"more than one invigilator for room %s at %s", room, slot.Starttime.Format("02.01. 15:04"))
+				v.warnf(ref{Room: ptr(room), Starttime: &slot.Starttime}.hint(hintDuplicate),
+					"Für Raum %s am %s sind mehrere Aufsichten eingeteilt: %s.",
+					room, slotLabelDE(slot.Starttime), invigilatorNamesDE(invigilations, name))
 			}
 		}
 		if invigsMissing > maxInvigsMissingInOneSlot[dayKey] {
@@ -235,9 +246,9 @@ func (p *Plexams) ValidateInvigilatorSlots(reporter Reporter) (*model.Validation
 
 			if roomsWithoutInvig+slotsWithoutReserve > 0 {
 				dayStart := dateByKey[dayKey]
-				v.warnf(ref{Starttime: &dayStart},
-					"Tag %s: %d open invigilations (%d max. in one slot), %d rooms without invigilator, %d slots without reserve",
-					dateByKey[dayKey].Format("02.01."), roomsWithoutInvig+slotsWithoutReserve, maxInvigsMissingInOneSlot[dayKey], roomsWithoutInvig, slotsWithoutReserve)
+				v.warnf(ref{Starttime: &dayStart}.hint("Teile unter „Aufsichten einteilen“ ein, oder trage im „Aufsichtsplan“ die fehlenden Personen ein."),
+					"Am %s sind %d Aufsichten noch offen: %d Räume ohne Aufsicht und %d Startzeiten ohne Reserveaufsicht (zur selben Zeit fehlen höchstens %d).",
+					dayLabelDE(dayStart), roomsWithoutInvig+slotsWithoutReserve, roomsWithoutInvig, slotsWithoutReserve, maxInvigsMissingInOneSlot[dayKey])
 			}
 		}
 	}
@@ -250,7 +261,7 @@ func (p *Plexams) ValidateInvigilationsTimeDistance(reporter Reporter) (*model.V
 	timelag := p.generationTimelagMin(ctx)
 
 	v := newValidation(reporter, "invigilations-time-distance",
-		fmt.Sprintf("validating time lag of invigilations (%d minutes)", timelag))
+		fmt.Sprintf("Pausen zwischen den Aufsichten prüfen (mindestens %d Minuten)", timelag))
 
 	if ok, err := p.hasInvigilations(ctx); err != nil {
 		return nil, err
@@ -258,7 +269,8 @@ func (p *Plexams) ValidateInvigilationsTimeDistance(reporter Reporter) (*model.V
 		return v.skip(skipNoInvigilations), nil
 	}
 
-	v.step("prepare invigilations")
+	v.step("Aufsichten werden gelesen")
+	name := p.teacherNames(ctx)
 
 	allInvigilations, err := p.dbClient.GetAllInvigilations(ctx)
 	if err != nil {
@@ -296,7 +308,7 @@ func (p *Plexams) ValidateInvigilationsTimeDistance(reporter Reporter) (*model.V
 			if !sameCalendarDay(*inv1.Starttime, *inv2.Starttime) {
 				continue
 			}
-			v.step("checking invigilator %d on %s", id, inv1.Starttime.Format("02.01."))
+			v.step("prüfe %s am %s", name(id), dayLabelDE(*inv1.Starttime))
 
 			realtime := inv1.Duration // TODO: calculate me
 
@@ -320,19 +332,92 @@ func (p *Plexams) ValidateInvigilationsTimeDistance(reporter Reporter) (*model.V
 			end1 := inv1.Starttime.Add(time.Duration(realtime) * time.Minute)
 
 			if inv2.Starttime.Before(end1.Add(time.Duration(timelag) * time.Minute)) {
+				gap := fmt.Sprintf("dazwischen liegen nur %.0f Minuten", inv2.Starttime.Sub(end1).Minutes())
+				if inv2.Starttime.Before(end1) {
+					gap = "die beiden überschneiden sich"
+				}
 				comment := ""
 				if inv1.IsReserve {
-					comment = " (reserve first)"
+					comment = " Die erste ist eine Reserveaufsicht; sie zählt bis zum Ende der längsten Prüfung zu dieser Zeit."
 				}
 
-				v.errorf(ref{InvigilatorID: ptr(id), Starttime: inv1.Starttime},
-					"Not enough time for invigilator %d on %s: invigilation ends %s and next begins %s: %g minutes between%s",
-					id, inv1.Starttime.Format("02.01."), end1.Format("15:04"),
-					inv2.Starttime.Format("15:04"),
-					inv2.Starttime.Sub(end1).Minutes(), comment)
+				v.errorf(ref{InvigilatorID: ptr(id), Starttime: inv1.Starttime}.hint("Gib eine der beiden Aufsichten im „Aufsichtsplan“ an eine andere Person."),
+					"%s hat am %s zu wenig Pause zwischen zwei Aufsichten: %s endet um %s, %s beginnt um %s; %s (nötig sind %d).%s",
+					name(id), dayLabelDE(*inv1.Starttime), invigilationDutyDE(inv1.RoomName), end1.Format("15:04"),
+					invigilationDutyDE(inv2.RoomName), inv2.Starttime.Format("15:04"), gap, timelag, comment)
 			}
 		}
 	}
 
 	return v.finish(), nil
+}
+
+// Hints shared by the invigilation findings.
+const (
+	hintReassign    = "Gib die Aufsicht im „Aufsichtsplan“ an eine andere Person."
+	hintExcludedDay = "Gib die Aufsicht im „Aufsichtsplan“ an eine andere Person, oder prüfe die Sperrtage: " +
+		"die aus dem ZPA stehen unter „Aufsichten mit Anforderungen“, zusätzliche unter „Aufsichts-Constraints“."
+	hintDuplicate = "Prüfe im „Aufsichtsplan“, wer dort eingeteilt sein soll, und teile unter „Aufsichten einteilen“ neu ein. " +
+		"Bleibt der Fehler, melde ihn der Plexams-Betreuung."
+)
+
+// teacherNames returns a lookup of the teachers' full names for messages; an
+// unknown id is named as such instead of failing.
+func (p *Plexams) teacherNames(ctx context.Context) func(id int) string {
+	names := make(map[int]string)
+	teachers, err := p.dbClient.GetTeachers(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("cannot get teachers for invigilator names")
+	}
+	for _, t := range teachers {
+		if t != nil && t.Fullname != "" {
+			names[t.ID] = t.Fullname
+		}
+	}
+	return func(id int) string {
+		if n, ok := names[id]; ok {
+			return n
+		}
+		return fmt.Sprintf("Unbekannte Aufsichtsperson (ZPA-Nr. %d)", id)
+	}
+}
+
+// invigilatorNamesDE lists the names of the people assigned to invigilations.
+func invigilatorNamesDE(invigilations []*model.Invigilation, name func(int) string) string {
+	out := make([]string, 0, len(invigilations))
+	for _, inv := range invigilations {
+		out = append(out, name(inv.InvigilatorID))
+	}
+	return strings.Join(out, ", ")
+}
+
+// invigilationPlaceDE names the place of an invigilation: "Raum R1.006", or
+// "die Reserveaufsicht" when there is no room.
+func invigilationPlaceDE(room *string) string {
+	if room == nil {
+		return "die Reserveaufsicht"
+	}
+	return "Raum " + *room
+}
+
+// invigilationDutyDE names an invigilation: "die Aufsicht in Raum R1.006" or
+// "die Reserveaufsicht".
+func invigilationDutyDE(room *string) string {
+	if room == nil {
+		return "die Reserveaufsicht"
+	}
+	return "die Aufsicht in Raum " + *room
+}
+
+// dayLabelDE renders a date as e.g. "Mo 25.01.".
+func dayLabelDE(t time.Time) string {
+	return weekdaysDE[int(t.Weekday())] + " " + t.Format("02.01.")
+}
+
+// examDayLabelDE renders a 1-based exam-day number as its date, e.g. "Mo 25.01.".
+func (p *Plexams) examDayLabelDE(day int) string {
+	if day >= 1 && day <= len(p.semesterConfig.Days) {
+		return dayLabelDE(p.semesterConfig.Days[day-1].Date)
+	}
+	return fmt.Sprintf("Prüfungstag %d", day)
 }

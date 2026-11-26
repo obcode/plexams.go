@@ -39,7 +39,7 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 	if err := p.emailSendAllowed(ctx, condKdpRoomsSent, run); err != nil {
 		return err
 	}
-	reporter.Step("collecting EXaHM/SEB room planning for the KDP")
+	reporter.Step("sammle die Raumplanung der EXaHM/SEB-Prüfungen für das KDP")
 
 	plannedExams, err := p.PlannedExams(ctx)
 	if err != nil {
@@ -48,7 +48,7 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 
 	slots, csvRows := email.BuildKdp(plannedExams)
 	if len(slots) == 0 {
-		reporter.StopProgress("no EXaHM/SEB rooms planned, nothing to send")
+		reporter.StopProgress("keine EXaHM/SEB-Räume geplant, nichts zu verschicken")
 		return nil
 	}
 	data := &email.KdpEmail{
@@ -82,6 +82,6 @@ func (p *Plexams) SendEmailKdpExahm(ctx context.Context, run bool, reporter Repo
 	if run {
 		p.markCondition(ctx, condKdpRoomsSent)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.Kdp)))
+	reporter.StopProgress(fmt.Sprintf("E-Mail verschickt an %s", p.recipientInfo(run, p.semesterConfig.Emails.Kdp)))
 	return nil
 }

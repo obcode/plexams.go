@@ -51,7 +51,7 @@ func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool, reporter Reporte
 	if err := p.emailSendAllowed(ctx, condExahmRequested, run); err != nil {
 		return err
 	}
-	reporter.Step("sending email asking for exahm and seb exams")
+	reporter.Step("verschicke die Abfrage zu EXaHM- und SEB-Prüfungen")
 
 	tmpl, data, subject, err := p.exahmTemplate(ctx)
 	if err != nil {
@@ -72,6 +72,6 @@ func (p *Plexams) SendEmailExaHM(ctx context.Context, run bool, reporter Reporte
 	if run {
 		p.markCondition(ctx, condExahmRequested)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.Profs)))
+	reporter.StopProgress(fmt.Sprintf("E-Mail verschickt an %s", p.recipientInfo(run, p.semesterConfig.Emails.Profs)))
 	return nil
 }

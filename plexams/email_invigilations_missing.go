@@ -21,7 +21,7 @@ type InvigilationMissingMailData struct {
 // these requirements, they have to be planned with the full amount of
 // invigilation duty (100%).
 func (p *Plexams) SendEmailInvigilationReqMissing(ctx context.Context, run bool, reporter Reporter) error {
-	reporter.Step("checking invigilators with missing requirements")
+	reporter.Step("suche Aufsichtspersonen ohne Angaben im ZPA")
 	invigilationTodos, err := p.GetInvigilationTodos(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get invigilation todos")
@@ -36,11 +36,11 @@ func (p *Plexams) SendEmailInvigilationReqMissing(ctx context.Context, run bool,
 	}
 
 	if len(missing) == 0 {
-		reporter.StopProgress("no invigilators with missing requirements")
+		reporter.StopProgress("alle Aufsichtspersonen haben ihre Angaben gemacht")
 		return nil
 	}
 
-	reporter.Printf("%d invigilators with missing requirements", len(missing))
+	reporter.Printf("%d Aufsichtspersonen ohne Angaben", len(missing))
 
 	sent := 0
 	for _, invigilator := range missing {
@@ -53,14 +53,14 @@ func (p *Plexams) SendEmailInvigilationReqMissing(ctx context.Context, run bool,
 		}
 	}
 
-	reporter.StopProgress(fmt.Sprintf("sent %d of %d emails", sent, len(missing)))
+	reporter.StopProgress(fmt.Sprintf("%d von %d E-Mails verschickt", sent, len(missing)))
 	return nil
 }
 
 func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilator *model.Invigilator, run bool, reporter Reporter) error {
 	teacher := invigilator.Teacher
 
-	reporter.Step(fmt.Sprintf("sending email about missing invigilator requirements to %s", teacher.Fullname))
+	reporter.Step(fmt.Sprintf("verschicke die Erinnerung an %s", teacher.Fullname))
 
 	minutes := 0
 	if invigilator.Todos != nil {
@@ -83,10 +83,10 @@ func (p *Plexams) sendEmailInvigilationReqMissing(ctx context.Context, invigilat
 		p.semester)
 
 	if err := p.sendMail(run, []string{teacher.Email}, nil, subject, text, html, nil, true); err != nil {
-		reporter.Warnf("error while sending email to %s: %v", teacher.Fullname, err)
+		reporter.Warnf("E-Mail an %s nicht verschickt: %v", teacher.Fullname, err)
 		return err
 	}
 
-	reporter.Printf("  ✓ sent to %s (%d minutes) %s", teacher.Fullname, minutes, p.recipientInfo(run, teacher.Email))
+	reporter.Printf("  ✓ an %s (%d Minuten): %s", teacher.Fullname, minutes, p.recipientInfo(run, teacher.Email))
 	return nil
 }

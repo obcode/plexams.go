@@ -18,7 +18,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 	if err := p.emailSendAllowed(ctx, condRoomPlanPublished, run); err != nil {
 		return err
 	}
-	reporter.Step("preparing rooms-published emails")
+	reporter.Step("bereite die E-Mails zur Veröffentlichung der Räume vor")
 
 	examers, err := p.ExamersWithExamsPlannedByMe(ctx)
 	if err != nil {
@@ -61,7 +61,7 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 	for _, examer := range examers {
 		plannedExams, err := p.PlannedExamsByExamer(ctx, examer.ID)
 		if err != nil {
-			reporter.Warnf("%s: cannot get exams: %v", examer.Fullname, err)
+			reporter.Warnf("%s: Prüfungen ließen sich nicht lesen: %v", examer.Fullname, err)
 			continue
 		}
 
@@ -91,12 +91,12 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 
 		text, html, err := p.mailRenderer().Render("publishedRoomsPersonalEmail.md.tmpl", true, data)
 		if err != nil {
-			reporter.Warnf("%s: cannot render: %v", examer.Fullname, err)
+			reporter.Warnf("%s: E-Mail ließ sich nicht erstellen: %v", examer.Fullname, err)
 			continue
 		}
 
 		if err := p.sendMail(run, []string{examer.Email}, nil, subject, text, html, nil, true); err != nil {
-			reporter.Warnf("error while sending email to %s: %v", examer.Fullname, err)
+			reporter.Warnf("E-Mail an %s nicht verschickt: %v", examer.Fullname, err)
 			continue
 		}
 		reporter.Printf("  ✓ %s", p.recipientInfo(run, examer.Email))
@@ -106,6 +106,6 @@ func (p *Plexams) SendEmailPublishedRooms(ctx context.Context, run bool, reporte
 	if run {
 		p.markCondition(ctx, condRoomPlanPublished)
 	}
-	reporter.StopProgress(fmt.Sprintf("sent %d rooms-published emails", sent))
+	reporter.StopProgress(fmt.Sprintf("%d E-Mails zur Veröffentlichung der Räume verschickt", sent))
 	return nil
 }

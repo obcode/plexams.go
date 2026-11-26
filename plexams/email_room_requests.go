@@ -15,7 +15,7 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 	if err := p.emailSendAllowed(ctx, condRoomRequestsSent, run); err != nil {
 		return err
 	}
-	reporter.Step("collecting active room requests")
+	reporter.Step("sammle die aktiven Raum-Anfragen")
 
 	requests, err := p.RoomRequests(ctx)
 	if err != nil {
@@ -24,7 +24,7 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 
 	rooms := email.BuildRoomRequestRooms(requests)
 	if len(rooms) == 0 {
-		reporter.StopProgress("no active room requests, nothing to send")
+		reporter.StopProgress("keine aktiven Raum-Anfragen, nichts zu verschicken")
 		return nil
 	}
 
@@ -47,6 +47,6 @@ func (p *Plexams) SendEmailRoomRequests(ctx context.Context, run bool, reporter 
 	if run {
 		p.markCondition(ctx, condRoomRequestsSent)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.RoomManagement)))
+	reporter.StopProgress(fmt.Sprintf("E-Mail verschickt an %s", p.recipientInfo(run, p.semesterConfig.Emails.RoomManagement)))
 	return nil
 }

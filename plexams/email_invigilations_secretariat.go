@@ -20,7 +20,7 @@ func (p *Plexams) SendEmailInvigilationsSecretariat(ctx context.Context, run boo
 	if err := p.emailSendAllowed(ctx, condInvigSecretariatSent, run); err != nil {
 		return err
 	}
-	reporter.Step("sending invigilations-published note to the secretariat")
+	reporter.Step("verschicke die Info „Aufsichten veröffentlicht“ ans Sekretariat")
 
 	data := &secretariatInvigEmail{
 		SemesterName: p.semester,
@@ -40,6 +40,6 @@ func (p *Plexams) SendEmailInvigilationsSecretariat(ctx context.Context, run boo
 	if run {
 		p.markCondition(ctx, condInvigSecretariatSent)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.Sekr)))
+	reporter.StopProgress(fmt.Sprintf("E-Mail verschickt an %s", p.recipientInfo(run, p.semesterConfig.Emails.Sekr)))
 	return nil
 }

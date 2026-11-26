@@ -42,14 +42,14 @@ func (p *Plexams) SendEmailLbaRepeaters(ctx context.Context, run bool, reporter 
 	if err := p.emailSendAllowed(ctx, condLbaRepeatersSent, run); err != nil {
 		return err
 	}
-	reporter.Step("collecting LBA repeat exams")
+	reporter.Step("sammle die Wiederholungsprüfungen von Lehrbeauftragten")
 
 	exams, err := p.buildLbaRepeaterExams(ctx)
 	if err != nil {
 		return err
 	}
 	if len(exams) == 0 {
-		reporter.StopProgress("no LBA repeat exams planned by me, nothing to send")
+		reporter.StopProgress("keine Wiederholungsprüfungen von Lehrbeauftragten in unserem Plan, nichts zu verschicken")
 		return nil
 	}
 
@@ -87,6 +87,6 @@ func (p *Plexams) SendEmailLbaRepeaters(ctx context.Context, run bool, reporter 
 	if run {
 		p.markCondition(ctx, condLbaRepeatersSent)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %s (%d exams)", p.recipientInfo(run, p.semesterConfig.Emails.Lbaba), len(exams)))
+	reporter.StopProgress(fmt.Sprintf("E-Mail verschickt an %s (%d Prüfungen)", p.recipientInfo(run, p.semesterConfig.Emails.Lbaba), len(exams)))
 	return nil
 }

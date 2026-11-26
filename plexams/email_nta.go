@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"sort"
 
 	// TODO: Ersetzen durch github.com/wneessen/go-mail
@@ -27,7 +28,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 			return err
 		}
 	}
-	reporter.Step("sending room-alone emails to NTAs")
+	reporter.Step("verschicke die E-Mails an Studierende mit Anspruch auf einen eigenen Raum")
 	ntas, err := p.NtasWithRegs(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get ntas")
@@ -94,7 +95,7 @@ func (p *Plexams) SendHandicapsMailsNTARoomAlone(ctx context.Context, mtknr stri
 	if run && mtknr == "all" {
 		p.markCondition(ctx, condNTARoomAloneSent)
 	}
-	reporter.StopProgress(fmt.Sprintf("sent %d room-alone emails", sent))
+	reporter.StopProgress(fmt.Sprintf("%d E-Mails zum eigenen Raum verschickt", sent))
 	return nil
 }
 
@@ -138,7 +139,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 	if err := p.emailSendAllowed(ctx, condNTAPlannedSent, run); err != nil {
 		return err
 	}
-	reporter.Step("sending room-info emails to NTAs")
+	reporter.Step("verschicke die Rauminfos an die Studierenden mit Nachteilsausgleich")
 	ntas, err := p.NtasWithRegs(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get ntas")
@@ -159,7 +160,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 		}
 	}
 	if atLeastOneEmailMissing {
-		return fmt.Errorf("at least one email missing")
+		return apierr.New(apierr.CodeInvalidInput, "Mindestens einer Person mit Nachteilsausgleich fehlt die E-Mail-Adresse, deshalb wurde nichts verschickt. Unter „NTA-Stammdaten“ die Adressen ergänzen.")
 	}
 
 	for _, nta := range ntas {
@@ -247,7 +248,7 @@ func (p *Plexams) SendHandicapsMailsNTAPlanned(ctx context.Context, run bool, re
 	if run {
 		p.markCondition(ctx, condNTAPlannedSent)
 	}
-	reporter.StopProgress("room-info emails to NTAs sent")
+	reporter.StopProgress("Rauminfos an die Studierenden mit Nachteilsausgleich verschickt")
 	return nil
 }
 
@@ -277,7 +278,7 @@ type NewNTA struct {
 }
 
 func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, reporter Reporter) error {
-	reporter.Step(fmt.Sprintf("informing examers about new NTA %s", mtknr))
+	reporter.Step(fmt.Sprintf("informiere die Prüfenden über einen neuen Nachteilsausgleich (%s)", mtknr))
 	student, err := p.StudentByMtknr(ctx, mtknr)
 	if err != nil {
 		log.Error().Err(err).Str("mtknr", mtknr).Msg("cannot get nta")
@@ -285,7 +286,7 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 	}
 	if student.Nta == nil {
 		log.Error().Str("mtknr", mtknr).Msg("student is not an nta")
-		return fmt.Errorf("student is not an nta")
+		return apierr.New(apierr.CodeInvalidInput, "Diese Person hat keinen Nachteilsausgleich eingetragen.")
 	}
 	examerIDsSet := set.NewSet[int]()
 	exams := make([]*model.PlannedExam, 0, len(student.ZpaAncodes))
@@ -334,6 +335,6 @@ func (p *Plexams) SendMailNewNTA(ctx context.Context, mtknr string, run bool, re
 	); err != nil {
 		return err
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, to...)))
+	reporter.StopProgress(fmt.Sprintf("E-Mail verschickt an %s", p.recipientInfo(run, to...)))
 	return nil
 }

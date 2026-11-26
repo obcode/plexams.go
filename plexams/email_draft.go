@@ -31,7 +31,7 @@ func (p *Plexams) SendEmailDraft(run bool, reporter Reporter) error {
 }
 
 func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
-	reporter.Step("sending email announcing the draft plan in ZPA")
+	reporter.Step("verschicke die Ankündigung des Entwurfs im ZPA")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
 
@@ -56,12 +56,12 @@ func (p *Plexams) sendEmailDraftZPA(run bool, reporter Reporter) error {
 	if err := p.sendMail(run, realTo, nil, subject, text, html, nil, true); err != nil {
 		return err
 	}
-	reporter.StopProgress(fmt.Sprintf("draft (ZPA) email sent to %s", p.recipientInfo(run, realTo...)))
+	reporter.StopProgress(fmt.Sprintf("Entwurf (ZPA) verschickt an %s", p.recipientInfo(run, realTo...)))
 	return nil
 }
 
 func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
-	reporter.Step("sending email announcing the draft plan to FS")
+	reporter.Step("verschicke den Entwurf an die Fachschaft")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
 
@@ -100,6 +100,6 @@ func (p *Plexams) sendEmailDraftFS(run bool, reporter Reporter) error {
 	if err := p.sendMail(run, []string{p.semesterConfig.Emails.Fs}, nil, subject, text, html, attachments, false); err != nil {
 		return err
 	}
-	reporter.StopProgress(fmt.Sprintf("draft (FS) email sent to %s", p.recipientInfo(run, p.semesterConfig.Emails.Fs)))
+	reporter.StopProgress(fmt.Sprintf("Entwurf (Fachschaft) verschickt an %s", p.recipientInfo(run, p.semesterConfig.Emails.Fs)))
 	return nil
 }

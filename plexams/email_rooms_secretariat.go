@@ -21,7 +21,7 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 	if err := p.emailSendAllowed(ctx, condSecretariatRoomsSent, run); err != nil {
 		return err
 	}
-	reporter.Step("collecting planned rooms for the secretariat")
+	reporter.Step("sammle die geplanten Räume für das Sekretariat")
 
 	plannedRooms, err := p.PlannedRooms(ctx)
 	if err != nil {
@@ -39,7 +39,7 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 
 	rooms := email.BuildSecretariatRooms(plannedRooms, roomInfo)
 	if len(rooms) == 0 {
-		reporter.StopProgress("no (non-request) rooms planned, nothing to send")
+		reporter.StopProgress("keine eigenen Räume geplant (nur angefragte), nichts zu verschicken")
 		return nil
 	}
 
@@ -62,6 +62,6 @@ func (p *Plexams) SendEmailRoomsSecretariat(ctx context.Context, run bool, repor
 	if run {
 		p.markCondition(ctx, condSecretariatRoomsSent)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %s (%d rooms)", p.recipientInfo(run, p.semesterConfig.Emails.Sekr), len(rooms)))
+	reporter.StopProgress(fmt.Sprintf("E-Mail verschickt an %s (%d Räume)", p.recipientInfo(run, p.semesterConfig.Emails.Sekr), len(rooms)))
 	return nil
 }

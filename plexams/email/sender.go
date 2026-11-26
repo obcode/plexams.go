@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/wneessen/go-mail"
 )
 
@@ -200,14 +201,14 @@ func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, at
 		}
 	} else {
 		if strings.TrimSpace(s.cfg.PlanerEmail) == "" {
-			return nil, fmt.Errorf("no planner set: From address is empty — set the planner (name + email) " +
-				"via the GUI (setPlaner) or planer.name/planer.email in config")
+			return nil, apierr.New(apierr.CodeInvalidInput, "Es ist kein Planer eingetragen, deshalb fehlt der Absender. "+
+				"Unter „Semester-Konfiguration“ Name und E-Mail des Planers eintragen.")
 		}
 		// From is the send-as account with the planner's name; sending as a shared account (e.g.
 		// noreply@hm.edu) is required by servers that forbid From ≠ authenticated user. The
 		// planner stays reachable via Reply-To (set below).
 		if err := msg.FromFormat(s.cfg.PlanerName, s.fromAddress()); err != nil {
-			return nil, fmt.Errorf("invalid From address %q <%s>: %w", s.cfg.PlanerName, s.fromAddress(), err)
+			return nil, apierr.Newf(apierr.CodeInvalidInput, "Der Absender „%s <%s>“ ist keine gültige E-Mail-Adresse. Unter „Semester-Konfiguration“ die Angaben des Planers prüfen.", s.cfg.PlanerName, s.fromAddress())
 		}
 	}
 	// Explicit envelope sender (MAIL FROM / Return-Path). go-mail's GetSender prefers
@@ -222,11 +223,11 @@ func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, at
 	// with 554 5.7.1 ("does not meet our delivery requirements").
 	msg.SetMessageIDWithValue(newMessageID(s.mailHostname()))
 	if err := msg.To(to...); err != nil {
-		return nil, fmt.Errorf("invalid To address(es) %v: %w", to, err)
+		return nil, apierr.Newf(apierr.CodeInvalidInput, "Unter den Empfängern ist keine gültige E-Mail-Adresse: %s. Die Adresse in den Stammdaten bzw. in der Semester-Konfiguration korrigieren.", strings.Join(to, ", "))
 	}
 	if len(cc) > 0 {
 		if err := msg.Cc(cc...); err != nil {
-			return nil, fmt.Errorf("invalid Cc address(es) %v: %w", cc, err)
+			return nil, apierr.Newf(apierr.CodeInvalidInput, "Unter den Cc-Adressen ist keine gültige E-Mail-Adresse: %s. Unter „Semester-Konfiguration“ die Cc-Adresse prüfen.", strings.Join(cc, ", "))
 		}
 	}
 	// System mails carry no Reply-To (unattended mailbox). Otherwise JIRA-answered mails get
@@ -237,11 +238,11 @@ func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, at
 		// no Reply-To
 	case jira:
 		if err := msg.ReplyToFormat(s.EffectiveNoreplyName(), s.EffectiveNoreplyMail()); err != nil {
-			return nil, fmt.Errorf("invalid noreply Reply-To %q <%s>: %w", s.EffectiveNoreplyName(), s.EffectiveNoreplyMail(), err)
+			return nil, apierr.Newf(apierr.CodeInvalidInput, "Die Antwortadresse für Jira-Mails „%s <%s>“ ist ungültig. Unter „Semester-Konfiguration“ prüfen.", s.EffectiveNoreplyName(), s.EffectiveNoreplyMail())
 		}
 	default:
 		if err := msg.ReplyTo(s.nonJiraReplyTo()); err != nil {
-			return nil, fmt.Errorf("invalid Reply-To address: %w", err)
+			return nil, apierr.New(apierr.CodeInvalidInput, "Die Antwortadresse ist keine gültige E-Mail-Adresse. Unter „Semester-Konfiguration“ die E-Mail des Planers prüfen.")
 		}
 	}
 	msg.Subject(subject)
@@ -261,7 +262,7 @@ func (s *Sender) buildMsg(to, cc []string, subject string, text, html []byte, at
 			opts = append(opts, mail.WithFileEncoding(mail.NoEncoding))
 		}
 		if err := msg.AttachReader(a.Filename, bytes.NewReader(a.Content), opts...); err != nil {
-			return nil, fmt.Errorf("cannot attach %s: %w", a.Filename, err)
+			return nil, fmt.Errorf("Der Anhang „%s“ ließ sich nicht anfügen: %w", a.Filename, err)
 		}
 	}
 	return msg, nil
@@ -292,9 +293,9 @@ func (s *Sender) DryRunRecipient() string {
 // that the mail went to the dry-run address only and lists who it would have reached.
 func (s *Sender) RecipientInfo(run bool, recipients ...string) string {
 	if run {
-		return fmt.Sprintf("%v", recipients)
+		return strings.Join(recipients, ", ")
 	}
-	return fmt.Sprintf("PROBEVERSAND an %s (echte Empfänger wären: %v)", s.DryRunRecipient(), recipients)
+	return fmt.Sprintf("PROBEVERSAND an %s (echte Empfänger wären: %s)", s.DryRunRecipient(), strings.Join(recipients, ", "))
 }
 
 // nonJiraReplyTo is the Reply-To for mails answerable by email: the reply address, falling

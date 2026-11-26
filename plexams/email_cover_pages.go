@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"os"
 	"strconv"
 	"strings"
@@ -36,7 +37,7 @@ func (p *Plexams) coverPagePDF(ctx context.Context, examerID int) (data []byte, 
 	filename := fmt.Sprintf("%s/%s%d.pdf", dir, prefix, examerID)
 	data, err = os.ReadFile(filename)
 	if err != nil {
-		return nil, "", fmt.Errorf("no uploaded cover page and file not found: %s", filename)
+		return nil, "", apierr.New(apierr.CodeNotFound, "Für diese Person ist kein Deckblatt hochgeladen. Die Deckblätter unter „E-Mail-Anhänge“ hochladen.")
 	}
 	return data, "coverPages.dir", nil
 }
@@ -62,7 +63,7 @@ func (p *Plexams) SendCoverPagesMails(ctx context.Context, run bool, reporter Re
 	if run {
 		p.markCondition(ctx, condCoverPagesSent)
 	}
-	reporter.Println(fmt.Sprintf("sent %d of %d cover-page emails", sent, len(teachers)))
+	reporter.Println(fmt.Sprintf("%d von %d E-Mails mit Deckblättern verschickt", sent, len(teachers)))
 	return nil
 }
 
@@ -73,7 +74,7 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		return err
 	}
 
-	reporter.Step(fmt.Sprintf("cover pages for %s (%d)", teacher.Fullname, examerID))
+	reporter.Step(fmt.Sprintf("Deckblätter für %s", teacher.Fullname))
 
 	pdfData, source, err := p.coverPagePDF(ctx, examerID)
 	if err != nil {
@@ -109,10 +110,10 @@ func (p *Plexams) SendCoverPageMail(ctx context.Context, examerID int, run bool,
 		false,
 	)
 	if err != nil {
-		reporter.StopProgressFail(fmt.Sprintf("error while sending email to %s: %v", teacher.Fullname, err))
+		reporter.StopProgressFail(fmt.Sprintf("E-Mail an %s nicht verschickt: %v", teacher.Fullname, err))
 		return err
 	}
 
-	reporter.StopProgress(fmt.Sprintf("✓ sent to %s %s [%s]", teacher.Fullname, p.recipientInfo(run, teacher.Email), source))
+	reporter.StopProgress(fmt.Sprintf("✓ an %s: %s [%s]", teacher.Fullname, p.recipientInfo(run, teacher.Email), source))
 	return nil
 }

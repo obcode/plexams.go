@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"net"
 	"reflect"
 	"strings"
@@ -42,8 +43,9 @@ func TestSystemMailRetriesUnreachableServerWithLongWaits(t *testing.T) {
 
 	err := s.SendSystem(true, []string{"to@example.org"}, "subj", []byte("body"), nil, nil)
 
-	if err == nil || !strings.HasPrefix(err.Error(), "dial failed: ") {
-		t.Fatalf("err = %v, want a dial failure", err)
+	var opErr *net.OpError
+	if apierr.Code(err) != apierr.CodeExternalSMTP || !errors.As(err, &opErr) {
+		t.Fatalf("err = %v, want a coded dial failure", err)
 	}
 	if *dials != 3 {
 		t.Errorf("dials = %d, want 3", *dials)
@@ -81,8 +83,9 @@ func TestNoRetryWhenTheServerAnswers(t *testing.T) {
 
 	err := s.SendSystem(true, []string{"to@example.org"}, "subj", []byte("body"), nil, nil)
 
-	if err == nil || !strings.Contains(err.Error(), "554") {
-		t.Fatalf("err = %v, want the server's 554", err)
+	var failure *smtpFailure
+	if !errors.As(err, &failure) || !strings.Contains(failure.cause.Error(), "554") {
+		t.Fatalf("err = %v, want the server's 554 in the chain", err)
 	}
 	if *dials != 1 || len(*waits) != 0 {
 		t.Errorf("dials = %d, waits = %v; want one dial and no wait", *dials, *waits)

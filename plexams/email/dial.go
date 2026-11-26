@@ -3,10 +3,10 @@ package email
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"time"
 
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"github.com/rs/zerolog/log"
 	"github.com/wneessen/go-mail"
 )
@@ -56,15 +56,33 @@ func dialAndSend(ctx context.Context, client *mail.Client, delays []time.Duratio
 		smtpClient, err = client.DialToSMTPClientWithContext(ctx)
 	}
 	if err != nil {
-		return fmt.Errorf("dial failed: %w", err)
+		return &smtpFailure{
+			coded: apierr.New(apierr.CodeExternalSMTP, "keine Verbindung zum Mailserver, diese E-Mail wurde nicht verschickt"),
+			cause: err,
+		}
 	}
 	defer func() {
 		if closeErr := client.CloseWithSMTPClient(smtpClient); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("failed to close connection: %w", closeErr))
+			// The mail went out or the send already failed; a failing QUIT changes
+			// neither, and reporting it as a failure would invite a duplicate send.
+			log.Warn().Err(closeErr).Msg("smtp: cannot close connection")
 		}
 	}()
 	if err = client.SendWithSMTPClient(smtpClient, msg); err != nil {
-		return fmt.Errorf("send failed: %w", err)
+		return &smtpFailure{
+			coded: apierr.New(apierr.CodeExternalSMTP, "der Mailserver hat diese E-Mail abgelehnt (die genaue Antwort steht im Server-Log)"),
+			cause: err,
+		}
 	}
 	return nil
 }
+
+// smtpFailure is a failed connection or send: the planner reads the German, coded
+// message; the mail server's own answer stays in the chain for the log.
+type smtpFailure struct {
+	coded *apierr.Error
+	cause error
+}
+
+func (e *smtpFailure) Error() string   { return e.coded.Message }
+func (e *smtpFailure) Unwrap() []error { return []error{e.coded, e.cause} }

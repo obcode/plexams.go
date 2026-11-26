@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/obcode/plexams.go/graph/model"
@@ -18,7 +19,7 @@ func (p *Plexams) SendAssembledExamMail(ctx context.Context, ancode int, updated
 	}
 
 	if assembledExam.Constraints != nil && assembledExam.Constraints.NotPlannedByMe {
-		return fmt.Errorf("not planned by me")
+		return apierr.Newf(apierr.CodeInvalidInput, "Ancode %d plant eine andere Fakultät; dazu verschickt Plexams keine Anmeldedaten.", ancode)
 	}
 
 	teacher, err := p.GetTeacher(ctx, assembledExam.ZpaExam.MainExamerID)
@@ -68,26 +69,26 @@ func (p *Plexams) SendAssembledExamMails(ctx context.Context, emailAddresses, ru
 	if run {
 		p.markCondition(ctx, condPrimussDataAllSent)
 	}
-	reporter.StopProgress(fmt.Sprintf("sent %d primuss-data emails", len(assembledExams)))
+	reporter.StopProgress(fmt.Sprintf("%d E-Mails mit Anmeldedaten verschickt", len(assembledExams)))
 	return nil
 }
 
 func (p *Plexams) sendAssembledExamMail(exam *model.AssembledExam, teachersMap map[int]*model.Teacher, updated, run bool, reporter Reporter) error {
-	reporter.Step(aurora.Sprintf(aurora.Cyan("sending email about exam %d. %s (%s)"),
+	reporter.Step(aurora.Sprintf(aurora.Cyan("verschicke E-Mail zu %d. %s (%s)"),
 		aurora.Yellow(exam.ZpaExam.AnCode),
 		aurora.Magenta(exam.ZpaExam.Module),
 		aurora.Magenta(exam.ZpaExam.MainExamer),
 	))
 
 	if exam.Constraints != nil && exam.Constraints.NotPlannedByMe {
-		reporter.Warnf("exam %d not planned by me, skipped", exam.ZpaExam.AnCode)
+		reporter.Warnf("Ancode %d plant eine andere Fakultät, übersprungen", exam.ZpaExam.AnCode)
 		return nil
 	}
 	teacher, ok := teachersMap[exam.ZpaExam.MainExamerID]
 	if !ok {
 		log.Debug().Int("ancode", exam.Ancode).Str("module", exam.ZpaExam.Module).Str("teacher", exam.ZpaExam.MainExamer).
 			Msg("no info about teacher in zpa")
-		return fmt.Errorf("no info about teacher in zpa")
+		return apierr.Newf(apierr.CodeNotFound, "Die Prüferin bzw. der Prüfer von %s (Ancode %d) fehlt in der Liste der Lehrenden aus dem ZPA. Unter „ZPA-Import & Veröffentlichung“ die Lehrenden neu laden.", exam.ZpaExam.Module, exam.Ancode)
 	}
 
 	to := teacher.Email
@@ -185,7 +186,7 @@ type UnpplannedExamMailData struct {
 }
 
 func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, ancode int, emailAddress string, run bool, reporter Reporter) error {
-	reporter.Step(fmt.Sprintf("sending primuss data for unplanned exam %s/%d", program, ancode))
+	reporter.Step(fmt.Sprintf("verschicke die Anmeldedaten der nicht von uns geplanten Prüfung %s/%d", program, ancode))
 	exam, err := p.dbClient.GetPrimussExam(ctx, program, ancode)
 	if err != nil {
 		log.Error().Err(err).Int("ancode", ancode).Str("program", program).Msg("cannot get primuss exam")
@@ -226,9 +227,9 @@ func (p *Plexams) SendUnplannedExamMail(ctx context.Context, program string, anc
 		); err != nil {
 			return err
 		}
-		reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, emailAddress)))
+		reporter.StopProgress(fmt.Sprintf("E-Mail verschickt an %s", p.recipientInfo(run, emailAddress)))
 		return nil
 	}
-	reporter.StopProgressFail(fmt.Sprintf("no student registrations found for %s/%d", program, ancode))
+	reporter.StopProgressFail(fmt.Sprintf("Für %s/%d gibt es keine Anmeldungen, nichts verschickt", program, ancode))
 	return nil
 }

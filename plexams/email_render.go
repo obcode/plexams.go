@@ -2,7 +2,7 @@ package plexams
 
 import (
 	"context"
-	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/plexams/email"
@@ -58,7 +58,7 @@ func (p *Plexams) EmailTemplateFunctions(_ context.Context) ([]*model.EmailTempl
 func (p *Plexams) RenderEmailTemplatePreview(_ context.Context, name, markdown string) (*model.EmailTemplatePreview, error) {
 	info, ok := emailTemplateCatalog[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown email template %q", name)
+		return nil, apierr.Newf(apierr.CodeNotFound, "Die E-Mail-Vorlage „%s“ gibt es nicht.", name)
 	}
 	text, html, err := p.mailRenderer().RenderSource(name, markdown, info.Jira, info.Sample)
 	if err != nil {

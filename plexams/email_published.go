@@ -3,6 +3,7 @@ package plexams
 import (
 	"context"
 	"fmt"
+	"github.com/obcode/plexams.go/plexams/apierr"
 	"os"
 	"sort"
 	"strconv"
@@ -19,7 +20,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 	if err := p.emailSendAllowed(ctx, condExamPlanPublished, run); err != nil {
 		return err
 	}
-	reporter.Step("sending email announcing published exams")
+	reporter.Step("verschicke die Veröffentlichung des Prüfungsplans")
 
 	feedbackDate := time.Now().Add(7 * 24 * time.Hour).Format("02.01.06")
 
@@ -47,7 +48,7 @@ func (p *Plexams) SendEmailPublishedExams(ctx context.Context, run bool, reporte
 	if run {
 		p.markCondition(ctx, condExamPlanPublished)
 	}
-	reporter.StopProgress(fmt.Sprintf("email sent to %s", p.recipientInfo(run, realRecipients...)))
+	reporter.StopProgress(fmt.Sprintf("E-Mail verschickt an %s", p.recipientInfo(run, realRecipients...)))
 	return nil
 }
 
@@ -81,7 +82,7 @@ func (p *Plexams) invigilationImagePNG(ctx context.Context, invigilatorID int) (
 	filename := fmt.Sprintf("%s/%s%d.png", dir, prefix, invigilatorID)
 	data, err = os.ReadFile(filename)
 	if err != nil {
-		return nil, "", fmt.Errorf("no uploaded invigilation image and file not found: %s", filename)
+		return nil, "", apierr.New(apierr.CodeNotFound, "Für diese Person ist kein Kalenderbild der Aufsichten hochgeladen. Die Bilder unter „Aufsichten mit Anforderungen“ erzeugen und hochladen.")
 	}
 	return data, "invigilationStats.dir", nil
 }
@@ -132,7 +133,7 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 	if err := p.emailSendAllowed(ctx, condInvigilationPlanPublished, run); err != nil {
 		return err
 	}
-	reporter.Step("preparing published-invigilation emails")
+	reporter.Step("bereite die E-Mails mit den persönlichen Aufsichtsplänen vor")
 
 	invigilationTodos, err := p.GetInvigilationTodos(ctx)
 	if err != nil {
@@ -188,9 +189,9 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 	sort.Ints(missing)
 	for _, id := range missing {
 		if teacher, err := p.GetTeacher(ctx, id); err == nil {
-			reporter.Warnf("no calendar for %s (%d) — has invigilations but no PNG, not mailed", teacher.Fullname, id)
+			reporter.Warnf("%s hat Aufsichten, aber kein Kalenderbild; nicht verschickt. Die Bilder unter „Aufsichten mit Anforderungen“ erzeugen und hochladen.", teacher.Fullname)
 		} else {
-			reporter.Warnf("no calendar for invigilator %d — has invigilations but no PNG, not mailed", id)
+			reporter.Warnf("Aufsichtsperson mit ZPA-Nr. %d hat Aufsichten, aber kein Kalenderbild; nicht verschickt", id)
 		}
 	}
 
@@ -201,11 +202,11 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		teacher, err := p.GetTeacher(ctx, id)
 		if err != nil {
 			log.Error().Err(err).Int("invigilatorID", id).Msg("cannot get teacher")
-			reporter.Warnf("cannot get teacher %d: %v", id, err)
+			reporter.Warnf("Aufsichtsperson mit ZPA-Nr. %d nicht gefunden: %v", id, err)
 			continue
 		}
 
-		reporter.Step(fmt.Sprintf("invigilation plan for %s (%d)", teacher.Fullname, id))
+		reporter.Step(fmt.Sprintf("Aufsichtsplan für %s", teacher.Fullname))
 
 		pngData, source, err := p.invigilationImagePNG(ctx, id)
 		if err != nil {
@@ -218,7 +219,7 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 
 		text, html, err := p.mailRenderer().Render("publishedInvigilationPersonalEmail.md.tmpl", true, data)
 		if err != nil {
-			reporter.Warnf("%s: cannot render: %v", teacher.Fullname, err)
+			reporter.Warnf("%s: E-Mail ließ sich nicht erstellen: %v", teacher.Fullname, err)
 			continue
 		}
 
@@ -232,7 +233,7 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 		// Attach an ICS with the same appointments (own exams, invigilations,
 		// reserves). A failure here must not stop the mail.
 		if icsData, err := p.InvigilatorICS(ctx, id); err != nil {
-			reporter.Warnf("%s: cannot build ICS: %v", teacher.Fullname, err)
+			reporter.Warnf("%s: Kalenderdatei ließ sich nicht erstellen: %v", teacher.Fullname, err)
 		} else {
 			attachments = append(attachments, &mailAttachment{
 				Filename:    baseName + ".ics",
@@ -251,17 +252,17 @@ func (p *Plexams) SendEmailPublishedInvigilations(ctx context.Context, run bool,
 			true,
 		)
 		if err != nil {
-			reporter.Warnf("error while sending email to %s: %v", teacher.Fullname, err)
+			reporter.Warnf("E-Mail an %s nicht verschickt: %v", teacher.Fullname, err)
 			continue
 		}
 
-		reporter.Printf("  ✓ sent to %s %s [%s]", teacher.Fullname, p.recipientInfo(run, teacher.Email), source)
+		reporter.Printf("  ✓ an %s: %s [%s]", teacher.Fullname, p.recipientInfo(run, teacher.Email), source)
 		sent++
 	}
 
 	if run {
 		p.markCondition(ctx, condInvigilationPlanPublished)
 	}
-	reporter.StopProgress(fmt.Sprintf("sent %d of %d invigilation-plan emails", sent, len(ids)))
+	reporter.StopProgress(fmt.Sprintf("%d von %d Aufsichtsplänen verschickt", sent, len(ids)))
 	return nil
 }

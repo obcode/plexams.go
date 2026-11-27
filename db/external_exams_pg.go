@@ -2,7 +2,9 @@ package db
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/obcode/plexams.go/db/sqlc"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
@@ -108,6 +110,11 @@ func (db *PG) ExternalExam(ctx context.Context, ancode int) (*model.ZPAExam, err
 		SemesterID: db.semesterID,
 		Ancode:     ancode,
 	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Not an error: callers ask here first and fall back to the ZPA exams.
+		log.Debug().Int("ancode", ancode).Msg("no external exam with this ancode")
+		return nil, err
+	}
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get non zpa exam")
 		return nil, err

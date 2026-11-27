@@ -29,3 +29,39 @@ func TestExternalTimeForExamWithoutConstraints(t *testing.T) {
 		t.Errorf("want the not-planned-by-me refusal, got %v", err)
 	}
 }
+
+// A joint exam owned by another faculty lives in the same table as the ZPA
+// exams. Setting its external time must not be mistaken for a ZPA exam and
+// refused for lacking "nicht von mir geplant".
+func TestExternalTimeForJointExam(t *testing.T) {
+	pg := pgtest.NewDBWithSemester(t)
+	p := &Plexams{dbClient: pg}
+	ctx := context.Background()
+	if err := pg.AddExternalExam(ctx, &model.ZPAExam{
+		AnCode: 90013, Module: "Medizinische Grundlagen", MainExamer: "FK11",
+		ExamType: "sp", ExamTypeFull: "schriftliche Prüfung", Groups: []string{},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	at := time.Date(2027, 2, 3, 10, 30, 0, 0, time.Local)
+	if ok, err := p.AddExamToSlottime(ctx, 90013, at); err != nil || !ok {
+		t.Fatalf("want the external time stored, got ok=%v err=%v", ok, err)
+	}
+	entry, err := pg.PlanEntry(ctx, 90013)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry == nil || entry.Starttime == nil || !entry.Starttime.Equal(at) || !entry.External {
+		t.Errorf("want an external plan entry at %v, got %+v", at, entry)
+	}
+}
+
+func TestExternalTimeForUnknownAncode(t *testing.T) {
+	pg := pgtest.NewDBWithSemester(t)
+	p := &Plexams{dbClient: pg}
+	_, err := p.AddExamToSlottime(context.Background(), 4711, time.Date(2027, 2, 3, 10, 30, 0, 0, time.Local))
+	if apierr.Code(err) != apierr.CodeNotFound {
+		t.Errorf("want not found, got %v", err)
+	}
+}

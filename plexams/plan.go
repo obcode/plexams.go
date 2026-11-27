@@ -65,13 +65,16 @@ func (p *Plexams) SetExamLocked(ctx context.Context, ancode int, locked bool) (*
 }
 
 func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, slottime time.Time) (bool, error) {
-	exam, err := p.GetZpaExamByAncode(ctx, ancode)
-	if err != nil {
-		exam, err = p.dbClient.ExternalExam(ctx, ancode)
+	// Externally owned exams (joint programs, other faculties) share the exam table
+	// with the ZPA ones, and GetZpaExamByAncode does not filter on the source -- so
+	// it would find a joint exam too and wrongly demand "nicht von mir geplant".
+	// Ask for the external exam first; only what is not external is a ZPA exam.
+	exam, err := p.dbClient.ExternalExam(ctx, ancode)
+	if err != nil || exam == nil {
+		exam, err = p.GetZpaExamByAncode(ctx, ancode)
 		if err != nil {
-			return false, err
+			return false, apierr.Newf(apierr.CodeNotFound, "Eine Prüfung mit Ancode %d gibt es nicht.", ancode)
 		}
-	} else {
 		// ZPA exam
 		constraints, err := p.ConstraintForAncode(ctx, ancode)
 		if err != nil {

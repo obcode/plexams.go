@@ -745,10 +745,10 @@ func (p *Plexams) RoomsWithInvigilationsForSlot(ctx context.Context, starttime t
 		maxDuration := 0
 		studentCount := 0
 		for _, roomForExam := range roomsForExam {
-			exam, err := p.dbClient.GetZpaExamByAncode(ctx, roomForExam.Ancode)
+			exam, err := p.ExamByAncode(ctx, roomForExam.Ancode)
 			if err != nil {
 				log.Error().Err(err).Int("ancode", roomForExam.Ancode).
-					Msg("cannot get zpa exam")
+					Msg("cannot get exam")
 				return nil, err
 			}
 			roomAndExams = append(roomAndExams, &model.RoomAndExam{

@@ -67,7 +67,7 @@ func (q *Queries) DeleteZPAPrimussAncodesForExam(ctx context.Context, arg Delete
 
 const getExam = `-- name: GetExam :one
 select semester_id, ancode, source, zpa_id, module, main_examer, main_examer_id, exam_type, exam_type_full, zpa_date, zpa_starttime, duration_min, is_repeater_exam, groups, faculty, withdrawn_at from exam
-where semester_id = $1 and ancode = $2 and withdrawn_at is null
+where semester_id = $1 and ancode = $2 and source = 'zpa' and withdrawn_at is null
 `
 
 type GetExamParams struct {
@@ -75,6 +75,9 @@ type GetExamParams struct {
 	Ancode     int
 }
 
+// Only ZPA exams: the table also holds the externally owned ones, and a caller
+// asking for "the ZPA exam" must not get a joint exam of another faculty.
+// Plexams.ExamByAncode looks in both.
 func (q *Queries) GetExam(ctx context.Context, arg GetExamParams) (Exam, error) {
 	row := q.db.QueryRow(ctx, getExam, arg.SemesterID, arg.Ancode)
 	var i Exam

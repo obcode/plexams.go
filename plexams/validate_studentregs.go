@@ -10,16 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// examByAncode resolves an exam by ancode from the right collection: external exams
-// (ancode >= externalAncodeBase) live in non_zpaexams, regular ZPA exams in zpaexams.
-// This avoids the "cannot find ZPA exam" error noise for external ancodes.
-func (p *Plexams) examByAncode(ctx context.Context, ancode int) (*model.ZPAExam, error) {
-	if ancode >= externalAncodeBase {
-		return p.dbClient.ExternalExam(ctx, ancode)
-	}
-	return p.dbClient.GetZpaExamByAncode(ctx, ancode)
-}
-
 // ValidateStudentRegs reports students registered in more than one program. This is
 // purely imported Primuss data that we cannot fix in plexams (it has to be corrected in
 // Primuss), so the findings are info, not errors.
@@ -49,7 +39,7 @@ func (p *Plexams) ValidateStudentRegs(reporter Reporter) (*model.ValidationRepor
 			for _, reg := range studentReg.RegsWithProgram {
 				// exam lookup uses the internal ZPA ancode; the human-facing text shows the
 				// external Primuss ancode (program-scoped, what the student registered on).
-				exam, err := p.examByAncode(ctx, reg.ZpaAncode)
+				exam, err := p.ExamByAncode(ctx, reg.ZpaAncode)
 				if err != nil {
 					// exam not found even in the right collection — show the bare ancode
 					// instead of dropping it, and don't spam the log.

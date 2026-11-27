@@ -65,10 +65,8 @@ func (p *Plexams) SetExamLocked(ctx context.Context, ancode int, locked bool) (*
 }
 
 func (p *Plexams) AddExamToSlottime(ctx context.Context, ancode int, slottime time.Time) (bool, error) {
-	// Externally owned exams (joint programs, other faculties) share the exam table
-	// with the ZPA ones, and GetZpaExamByAncode does not filter on the source -- so
-	// it would find a joint exam too and wrongly demand "nicht von mir geplant".
-	// Ask for the external exam first; only what is not external is a ZPA exam.
+	// Externally owned exams (joint programs, other faculties) take any external
+	// time; a ZPA exam only with the constraint "nicht von mir geplant".
 	exam, err := p.dbClient.ExternalExam(ctx, ancode)
 	if err != nil || exam == nil {
 		exam, err = p.GetZpaExamByAncode(ctx, ancode)
@@ -430,14 +428,10 @@ func (p *Plexams) PreExamsAt(ctx context.Context, starttime time.Time) ([]*model
 
 	preExams := make([]*model.PreExam, 0, len(planEntries))
 	for _, planEntry := range planEntries {
-		exam, err := p.GetZPAExam(ctx, planEntry.Ancode)
+		exam, err := p.ExamByAncode(ctx, planEntry.Ancode)
 		if err != nil {
-			// not a ZPA exam (e.g. a MUC.DAI / non-ZPA exam) — fall back
-			exam, err = p.dbClient.ExternalExam(ctx, planEntry.Ancode)
-			if err != nil {
-				log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam (neither ZPA nor non-ZPA)")
-				return nil, err
-			}
+			log.Error().Err(err).Int("ancode", planEntry.Ancode).Msg("cannot get exam (neither ZPA nor non-ZPA)")
+			return nil, err
 		}
 		constraints, err := p.ConstraintForAncode(ctx, planEntry.Ancode)
 		if err != nil {

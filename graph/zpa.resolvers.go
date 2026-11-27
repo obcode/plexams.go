@@ -65,7 +65,9 @@ func (r *queryResolver) ZpaExamsPlaningStatusUnknown(ctx context.Context) ([]*mo
 
 // ZpaExam is the resolver for the zpaExam field.
 func (r *queryResolver) ZpaExam(ctx context.Context, ancode int) (*model.ZPAExam, error) {
-	exam, err := r.plexams.GetZpaExamByAncode(ctx, ancode)
+	// The GUI's exam page falls back to this before the exams are assembled, for
+	// externally owned exams too -- so it answers for any source, as it always did.
+	exam, err := r.plexams.ExamByAncode(ctx, ancode)
 	// An unknown ancode is null, not an error; the field is nullable.
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

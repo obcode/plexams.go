@@ -1,8 +1,10 @@
 package db_test
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/obcode/plexams.go/internal/pgtest"
 )
@@ -405,5 +407,25 @@ func TestExamToPlanNeedsAnExam(t *testing.T) {
 	seedPrimussFixtures(t, pg, "IF-B")
 	if _, err := pg.AddZpaExamToPlan(t.Context(), 999); err == nil {
 		t.Error("a planning decision was recorded for an ancode that is not an exam")
+	}
+}
+
+// The exam table holds ZPA and externally owned exams; asking for the ZPA exam
+// must not return a joint exam of another faculty.
+func TestGetZpaExamByAncodeSkipsExternalExams(t *testing.T) {
+	pg := pgtest.NewDBWithSemester(t)
+	ctx := t.Context()
+
+	if err := pg.AddExternalExam(ctx, &model.ZPAExam{
+		AnCode: 90013, Module: "Extern", MainExamer: "FK11",
+		ExamType: "sp", Groups: []string{},
+	}); err != nil {
+		t.Fatalf("AddExternalExam: %v", err)
+	}
+	if got, err := pg.GetZpaExamByAncode(ctx, 90013); !errors.Is(err, pgx.ErrNoRows) {
+		t.Errorf("want ErrNoRows for an external exam, got %+v, %v", got, err)
+	}
+	if got, err := pg.ExternalExam(ctx, 90013); err != nil || got == nil || got.Module != "Extern" {
+		t.Errorf("ExternalExam: got %+v, %v", got, err)
 	}
 }

@@ -49,9 +49,10 @@ func (p *Plexams) PrintStudentInfo(name string, long, zpa bool) error {
 						fmt.Printf("  - %d: not found\n", ancode)
 					}
 				} else {
-					exam, err := p.GetZPAExam(ctx, ancode)
-					if err != nil {
+					exam, err := p.ExamByAncode(ctx, ancode)
+					if err != nil || exam == nil {
 						log.Debug().Err(err).Int("ancode", ancode).Msg("exam not found")
+						continue
 					}
 					fmt.Printf("  - %d. %s: %s not planned\n", ancode, exam.MainExamer, exam.Module)
 				}

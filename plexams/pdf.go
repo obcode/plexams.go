@@ -64,7 +64,7 @@ func (p *Plexams) constraintsMaroto(ctx context.Context) (pdf.Maroto, error) {
 	// resolve the same-slot partner exams up front so the renderer stays I/O-free
 	sameSlotExam := make(map[int]*model.ZPAExam)
 	for _, ancode := range pdfgen.SameSlotAncodes(examsWithConstraints) {
-		otherExam, err := p.GetZpaExamByAncode(ctx, ancode)
+		otherExam, err := p.ExamByAncode(ctx, ancode)
 		if err != nil {
 			log.Error().Err(err).Int("ancode", ancode).Msg("cannot get exam for same-slot ancode")
 		}

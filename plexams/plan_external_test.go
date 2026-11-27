@@ -65,3 +65,34 @@ func TestExternalTimeForUnknownAncode(t *testing.T) {
 		t.Errorf("want not found, got %v", err)
 	}
 }
+
+// GetZpaExamByAncode is ZPA only; ExamByAncode finds an exam of either source.
+func TestExamByAncodeFindsBothSources(t *testing.T) {
+	pg := pgtest.NewDBWithSemester(t)
+	p := &Plexams{dbClient: pg}
+	ctx := context.Background()
+	if err := pg.CacheZPAExams([]*model.ZPAExam{{
+		AnCode: 100, Module: "Analysis", MainExamer: "Test", MainExamerID: 1,
+		ExamType: "sp", ExamTypeFull: "schriftliche Prüfung", Groups: []string{},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := pg.AddExternalExam(ctx, &model.ZPAExam{
+		AnCode: 90013, Module: "Medizinische Grundlagen", MainExamer: "FK11",
+		ExamType: "sp", Groups: []string{},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	for ancode, module := range map[int]string{100: "Analysis", 90013: "Medizinische Grundlagen"} {
+		if exam, err := p.ExamByAncode(ctx, ancode); err != nil || exam == nil || exam.Module != module {
+			t.Errorf("ExamByAncode(%d): got %+v, %v", ancode, exam, err)
+		}
+	}
+	if exam, err := p.GetZpaExamByAncode(ctx, 90013); err == nil {
+		t.Errorf("GetZpaExamByAncode(90013) must not find the external exam, got %+v", exam)
+	}
+	if _, err := p.ExamByAncode(ctx, 4711); err == nil {
+		t.Error("ExamByAncode(4711): want an error for an unknown ancode")
+	}
+}

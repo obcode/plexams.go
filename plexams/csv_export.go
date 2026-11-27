@@ -592,11 +592,8 @@ func (p *Plexams) csvExamTimes() csvDataset {
 
 // moduleForAncode returns a human-friendly module name for an ancode (best effort).
 func (p *Plexams) moduleForAncode(ctx context.Context, ancode int) string {
-	if ext, err := p.dbClient.ExternalExam(ctx, ancode); err == nil && ext != nil {
-		return ext.Module
-	}
-	if zpa, err := p.GetZpaExamByAncode(ctx, ancode); err == nil && zpa != nil {
-		return zpa.Module
+	if exam, err := p.ExamByAncode(ctx, ancode); err == nil && exam != nil {
+		return exam.Module
 	}
 	return ""
 }

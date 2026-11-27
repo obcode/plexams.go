@@ -41,11 +41,8 @@ type examNamer struct {
 func (p *Plexams) newExamNamer(ctx context.Context, entries []*model.PlanEntry) examNamer {
 	n := examNamer{info: p.examInfoMap(ctx), start: make(map[int]time.Time, len(entries))}
 	n.lookup = func(ancode int) (string, string, bool) {
-		if zpa, err := p.GetZpaExamByAncode(ctx, ancode); err == nil && zpa != nil {
-			return zpa.Module, zpa.MainExamer, true
-		}
-		if ext, err := p.dbClient.ExternalExam(ctx, ancode); err == nil && ext != nil {
-			return ext.Module, ext.MainExamer, true
+		if exam, err := p.ExamByAncode(ctx, ancode); err == nil && exam != nil {
+			return exam.Module, exam.MainExamer, true
 		}
 		return "", "", false
 	}

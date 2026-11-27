@@ -10,10 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (p *Plexams) GetZPAExam(ctx context.Context, ancode int) (*model.ZPAExam, error) {
-	return p.dbClient.GetZpaExamByAncode(ctx, ancode)
-}
-
 func (p *Plexams) GetZPAStudents(ctx context.Context) ([]*model.ZPAStudent, error) {
 	return p.dbClient.GetZPAStudents(ctx)
 }

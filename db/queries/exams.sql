@@ -10,9 +10,12 @@ select * from exam
 where semester_id = $1 and source = $2 and withdrawn_at is null
 order by ancode;
 
+-- Only ZPA exams: the table also holds the externally owned ones, and a caller
+-- asking for "the ZPA exam" must not get a joint exam of another faculty.
+-- Plexams.ExamByAncode looks in both.
 -- name: GetExam :one
 select * from exam
-where semester_id = $1 and ancode = $2 and withdrawn_at is null;
+where semester_id = $1 and ancode = $2 and source = 'zpa' and withdrawn_at is null;
 
 -- The ZPA import UPSERTS. It must not drop and re-insert as CacheZPAExams did:
 -- the overlay tables reference these rows, and wiping the table would cascade the

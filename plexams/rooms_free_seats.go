@@ -48,7 +48,7 @@ func (p *Plexams) RoomsWithFreeSeatsForSlot(ctx context.Context, starttime time.
 		usedBy := make([]*model.RoomInSlotUsage, 0)
 		for ancode, count := range byRoomExam[name] {
 			module, examer := "", ""
-			if exam, err := p.dbClient.GetZpaExamByAncode(ctx, ancode); err == nil && exam != nil {
+			if exam, err := p.ExamByAncode(ctx, ancode); err == nil && exam != nil {
 				module = exam.Module
 				examer = exam.MainExamer
 			}

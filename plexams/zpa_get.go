@@ -176,8 +176,20 @@ func (p *Plexams) GetZpaAnCodesToPlan(ctx context.Context) ([]*model.AnCode, err
 	return ancodes, nil
 }
 
+// GetZpaExamByAncode finds a ZPA exam only -- never an externally owned one
+// (joint program, other faculty), although both live in the same table.
 func (p *Plexams) GetZpaExamByAncode(ctx context.Context, ancode int) (*model.ZPAExam, error) {
 	return p.dbClient.GetZpaExamByAncode(ctx, ancode)
+}
+
+// ExamByAncode finds an exam whatever its source: ZPA first, then the externally
+// owned ones. For callers that only need module, examiner and the like and must
+// not care who plans the exam.
+func (p *Plexams) ExamByAncode(ctx context.Context, ancode int) (*model.ZPAExam, error) {
+	if exam, err := p.dbClient.GetZpaExamByAncode(ctx, ancode); err == nil && exam != nil {
+		return exam, nil
+	}
+	return p.dbClient.ExternalExam(ctx, ancode)
 }
 
 func (p *Plexams) GetZPAExamsGroupedByType(ctx context.Context) ([]*model.ZPAExamsForType, error) {

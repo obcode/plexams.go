@@ -519,10 +519,8 @@ func (p *Plexams) ExamInfo(ancode int) (string, error) {
 	module, mainExamer := "", ""
 	var planEntry *model.PlanEntry
 	if err != nil {
-		exam, err := p.GetZpaExamByAncode(ctx, ancode)
-		if err != nil {
-			// TODO: maybe external exam?
-		} else {
+		exam, err := p.ExamByAncode(ctx, ancode)
+		if err == nil && exam != nil {
 			found = true
 			module = exam.Module
 			mainExamer = exam.MainExamer

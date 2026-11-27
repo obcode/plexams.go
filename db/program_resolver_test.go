@@ -15,119 +15,95 @@ func sp(shortname, zpaCode, degree string) *model.StudyProgram {
 	return p
 }
 
-// newResolverFor builds a programResolver directly from master programs + the set of
-// programs realized (as exams_<p> collections) in a semester, bypassing Mongo.
-func newResolverFor(master []*model.StudyProgram, realized ...string) *programResolver {
-	r := &programResolver{
-		candidatesByCode: make(map[string][]*model.StudyProgram),
-		realized:         make(map[string]bool),
-	}
-	for _, prog := range master {
-		code := prog.ZpaCode
-		if code == "" {
-			code = prog.Shortname
-		}
-		r.candidatesByCode[code] = append(r.candidatesByCode[code], prog)
-	}
-	for _, p := range realized {
-		r.realized[p] = true
-	}
-	return r
+// master mirrors the 2026-WS master data: two-letter shortnames, plus the
+// Master DC under the code ZPA uses for it.
+var master = []*model.StudyProgram{
+	sp("DA", "", "Master"),
+	sp("DC", "", "Bachelor"),
+	sp("DC-M", "", "Master"),
+	sp("IF", "", "Bachelor"),
+	sp("IG", "", "Master"),
+	sp("GN", "", "Bachelor"),
 }
 
 func TestProgramResolver(t *testing.T) {
-	newSemester := []*model.StudyProgram{
-		sp("IF-B", "IF", "Bachelor"),
-		sp("DC-B", "DC", "Bachelor"),
-		sp("DC-M", "DC", "Master"),
-		sp("GN", "", ""), // misc, no degree suffix → identity code
-	}
-
+	r := newProgramResolverFrom(master)
 	tests := []struct {
-		name     string
-		resolver *programResolver
-		group    string
-		want     string
+		group string
+		want  string
 	}{
-		{
-			name:     "single realized program → suffixed",
-			resolver: newResolverFor(newSemester, "IF-B", "DC-B", "DC-M", "GN"),
-			group:    "IF3",
-			want:     "IF-B",
-		},
-		{
-			name:     "identity code (no suffix)",
-			resolver: newResolverFor(newSemester, "IF-B", "GN"),
-			group:    "GN",
-			want:     "GN",
-		},
-		{
-			name:     "ambiguous dual code falls back to raw code (needs manual link)",
-			resolver: newResolverFor(newSemester, "IF-B", "DC-B", "DC-M"),
-			group:    "DC1",
-			want:     "DC",
-		},
-		{
-			name:     "unknown code preserved",
-			resolver: newResolverFor(newSemester, "IF-B"),
-			group:    "XX9",
-			want:     "XX",
-		},
-		{
-			name:     "before Primuss import: single master candidate used",
-			resolver: newResolverFor(newSemester /* nothing realized */),
-			group:    "IF3",
-			want:     "IF-B",
-		},
-		{
-			// old archival semester: master renamed to IF-B, but this semester's
-			// collection is still exams_IF → must resolve to the raw code, not IF-B.
-			name:     "old 2-letter semester stays 2-letter",
-			resolver: newResolverFor(newSemester, "IF"),
-			group:    "IF3",
-			want:     "IF",
-		},
-		{
-			name:     "short group returned unchanged",
-			resolver: newResolverFor(newSemester, "IF-B"),
-			group:    "I",
-			want:     "I",
-		},
+		{"IF3", "IF"},
+		{"IF1A", "IF"},
+		{"DC", "DC"},
+		{"DC5", "DC"},
+		{"DC-M", "DC-M"}, // the longest matching code wins
+		{"DC-M1", "DC-M"},
+		{"DA1", "DA"},
+		{"GN", "GN"},
+		{"XX9", "XX"}, // unknown: first two letters, as before
+		{"I", "I"},
 	}
-
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.resolver.program(tt.group); got != tt.want {
+		t.Run(tt.group, func(t *testing.T) {
+			if got := r.program(tt.group); got != tt.want {
 				t.Errorf("program(%q) = %q, want %q", tt.group, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestCleanupPrimussAncodesMapsStoredZpaCode guards the connect regression: ZPA
-// delivers each exam's primuss ancode tagged with the raw 2-letter code (e.g. "DA"),
-// which must be mapped to the internal degree-suffixed program (e.g. "DA-M") so the
-// real ancode is kept instead of being dropped to -1 (which breaks connecting).
-func TestCleanupPrimussAncodesMapsStoredZpaCode(t *testing.T) {
-	master := []*model.StudyProgram{
-		sp("DA-M", "DA", "Master"),
-		sp("IF-B", "IF", "Bachelor"),
+func TestProgramResolverZpaCode(t *testing.T) {
+	// A program may carry a ZPA code different from its shortname.
+	r := newProgramResolverFrom([]*model.StudyProgram{sp("DSM", "DC-M", "Master"), sp("DC", "", "Bachelor")})
+	if got := r.program("DC-M1"); got != "DSM" {
+		t.Errorf("program(DC-M1) = %q, want DSM", got)
 	}
-	resolver := newResolverFor(master, "DA-M", "IF-B")
+	if got := r.program("DC5"); got != "DC" {
+		t.Errorf("program(DC5) = %q, want DC", got)
+	}
+}
 
-	exam := &model.ZPAExam{
-		AnCode: 815,
-		Groups: []string{"DA1"},
-		// ZPA tags the primuss ancode with the raw 2-letter code:
-		PrimussAncodes: []model.ZPAPrimussAncodes{{Program: "DA", Ancode: 815}},
+func TestProgramResolverAmbiguousCode(t *testing.T) {
+	r := newProgramResolverFrom([]*model.StudyProgram{sp("X1", "DC", ""), sp("X2", "DC", "")})
+	if got := r.program("DC5"); got != "DC" {
+		t.Errorf("ambiguous code must stay raw, got %q", got)
 	}
-	cleanupPrimussAncodes(exam, resolver)
+}
 
-	if len(exam.PrimussAncodes) != 1 {
-		t.Fatalf("got %d primuss ancodes, want 1: %+v", len(exam.PrimussAncodes), exam.PrimussAncodes)
+func cleanup(groups []string, ancodes ...model.ZPAPrimussAncodes) []model.ZPAPrimussAncodes {
+	exam := &model.ZPAExam{AnCode: 815, Groups: groups, PrimussAncodes: ancodes}
+	cleanupPrimussAncodes(exam, newProgramResolverFrom(master))
+	return exam.PrimussAncodes
+}
+
+func TestCleanupPrimussAncodes(t *testing.T) {
+	got := cleanup([]string{"DA", "DC-M", "IG"},
+		model.ZPAPrimussAncodes{Program: "DA", Ancode: 11},
+		model.ZPAPrimussAncodes{Program: "DC-M", Ancode: 12},
+		model.ZPAPrimussAncodes{Program: "IG", Ancode: 13})
+	want := []model.ZPAPrimussAncodes{{Program: "DA", Ancode: 11}, {Program: "DC-M", Ancode: 12}, {Program: "IG", Ancode: 13}}
+	if len(got) != len(want) {
+		t.Fatalf("got %+v, want %+v", got, want)
 	}
-	if got := exam.PrimussAncodes[0]; got.Program != "DA-M" || got.Ancode != 815 {
-		t.Errorf("got {%q, %d}, want {DA-M, 815}: stored raw code must map to the suffixed program keeping its ancode",
-			got.Program, got.Ancode)
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("got %+v, want %+v", got, want)
+		}
+	}
+}
+
+// ZPA might tag the ancode of a Master exam with the plain two letters.
+func TestCleanupPrimussAncodesPlainTagForSuffixedProgram(t *testing.T) {
+	got := cleanup([]string{"DA1", "DC-M1"}, model.ZPAPrimussAncodes{Program: "DC", Ancode: 12})
+	if len(got) != 2 || got[1] != (model.ZPAPrimussAncodes{Program: "DC-M", Ancode: 12}) {
+		t.Errorf("got %+v, want DC-M with ancode 12", got)
+	}
+}
+
+// When the exam has the Bachelor DC itself, a "DC" tag belongs to it.
+func TestCleanupPrimussAncodesPlainTagPrefersExactProgram(t *testing.T) {
+	got := cleanup([]string{"DC5", "DC-M1"}, model.ZPAPrimussAncodes{Program: "DC", Ancode: 12})
+	if len(got) != 2 || got[0] != (model.ZPAPrimussAncodes{Program: "DC", Ancode: 12}) || got[1].Ancode != -1 {
+		t.Errorf("got %+v, want DC:12 and DC-M:-1", got)
 	}
 }

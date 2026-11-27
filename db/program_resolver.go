@@ -2,123 +2,96 @@ package db
 
 // The ZPA study-group -> internal program resolution, shared by everything that
 // reads ZPA exams.
-//
-// It used to sit in zpa_exams.go next to the Mongo methods. It is built from
-// data (master programs + the programs realized this semester), not from a
-// connection, which is why both db layers could share it during the migration
-// and why it outlived the one that is gone.
 
 import (
 	"sort"
+	"strings"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/obcode/plexams.go/graph/model"
 	"github.com/rs/zerolog/log"
 )
 
-// programResolver maps a ZPA study-group name to the internal program shortname
-// used as the per-semester Primuss collection suffix and connect key. It bridges the
-// external (2-letter, possibly non-unique) ZPA code to a possibly degree-suffixed
-// internal program (e.g. "DC" → "DC-B"), using the global StudyProgram master data
-// (ZpaCode field) cross-checked against the programs actually realized in this
-// semester. When no mapping applies it returns the raw 2-letter ZPA code, preserving
-// legacy behaviour for un-suffixed (old) semesters — which makes it semester-safe:
-// an archival "2025-WS" (collections exams_IF) still resolves to "IF", while a new
-// semester (collections exams_IF-B) resolves to "IF-B".
+// programResolver maps a ZPA study-group name (e.g. "IF3", "DC5", "DC-M1") to the
+// shortname of a study program in the master data.
+//
+// Every program has a ZPA code: its zpa_code, or its shortname when that is empty.
+// A group belongs to the program whose ZPA code is the LONGEST prefix of the group
+// name, so "DC-M1" resolves to the program with code "DC-M" although "DC" is a
+// prefix as well, and "DC5" resolves to "DC". This is how ZPA tells the Bachelor
+// (DC) and the Master (DC-M) of the same two letters apart.
 type programResolver struct {
-	candidatesByCode map[string][]*model.StudyProgram // ZPA code → master programs
-	realized         map[string]bool                  // programs present in this semester (exams_<p>)
+	byCode map[string][]*model.StudyProgram // ZPA code -> programs
+	codes  []string                         // all ZPA codes, longest first
 }
 
-// newProgramResolver builds a resolver for the current semester. Errors reading the
-// master data or the semester's programs degrade to raw ZPA codes (legacy behaviour).
-
-func newProgramResolverFrom(programs []*model.StudyProgram, realized []string) *programResolver {
-	r := &programResolver{
-		candidatesByCode: make(map[string][]*model.StudyProgram),
-		realized:         make(map[string]bool),
-	}
+func newProgramResolverFrom(programs []*model.StudyProgram) *programResolver {
+	r := &programResolver{byCode: make(map[string][]*model.StudyProgram)}
 	for _, prog := range programs {
-		code := prog.ZpaCode
-		if code == "" {
-			code = prog.Shortname
+		code := zpaCodeOf(prog)
+		if _, ok := r.byCode[code]; !ok {
+			r.codes = append(r.codes, code)
 		}
-		r.candidatesByCode[code] = append(r.candidatesByCode[code], prog)
+		r.byCode[code] = append(r.byCode[code], prog)
 	}
-	for _, prog := range realized {
-		r.realized[prog] = true
-	}
+	sort.SliceStable(r.codes, func(i, j int) bool {
+		if len(r.codes[i]) != len(r.codes[j]) {
+			return len(r.codes[i]) > len(r.codes[j])
+		}
+		return r.codes[i] < r.codes[j]
+	})
 	return r
 }
 
-// program returns the internal program shortname for one ZPA study-group name.
+// zpaCodeOf is the code ZPA uses for a program: zpa_code, defaulting to the shortname.
+func zpaCodeOf(prog *model.StudyProgram) string {
+	if prog.ZpaCode != "" {
+		return prog.ZpaCode
+	}
+	return prog.Shortname
+}
+
+// program returns the program shortname for one ZPA study-group name. A group no
+// program matches keeps its first two letters (programs of other faculties).
 func (r *programResolver) program(group string) string {
+	for _, code := range r.codes {
+		if strings.HasPrefix(group, code) {
+			return r.programForCode(code)
+		}
+	}
 	if len(group) < 2 {
 		return group
 	}
-	code := group[:2]
-	// Dual codes (e.g. DC → DC-B/DC-M): try to read the degree from the full group
-	// name before falling back to the plain-code resolution.
-	if realized := r.realizedCandidates(code); len(realized) > 1 {
-		if sn, ok := degreeSuffixedForGroup(group, realized); ok {
-			return sn
-		}
-	}
-	return r.programForCode(code)
+	return group[:2]
 }
 
-// realizedCandidates returns the master programs mapped to a ZPA code that actually
-// exist as collections in this semester.
-func (r *programResolver) realizedCandidates(code string) []*model.StudyProgram {
-	candidates := r.candidatesByCode[code]
-	realized := make([]*model.StudyProgram, 0, len(candidates))
-	for _, c := range candidates {
-		if r.realized[c.Shortname] {
-			realized = append(realized, c)
-		}
-	}
-	return realized
-}
-
-// programForCode maps a raw ZPA (2-letter) program code to the internal, possibly
-// degree-suffixed program shortname. It is used both for study-group names (via
-// program) and for the program code that ZPA carries on an exam's primuss ancodes —
-// both come in as the plain 2-letter code and must resolve to the same internal
-// program, otherwise the ancode ZPA delivered is dropped and the exam never connects.
+// programForCode maps an exact ZPA program code (as ZPA tags the primuss ancodes of
+// an exam) to the program shortname. An unknown code is returned unchanged; a code
+// shared by several programs is ambiguous and returned unchanged as well, so the
+// exam has to be linked manually.
 func (r *programResolver) programForCode(code string) string {
-	realized := r.realizedCandidates(code)
-	switch len(realized) {
-	case 1:
-		return realized[0].Shortname
+	switch candidates := r.byCode[code]; len(candidates) {
 	case 0:
-		// Nothing realized (yet): an old 2-letter semester keeps the raw code; a
-		// single master candidate (e.g. before Primuss import) is used directly.
-		if r.realized[code] {
-			return code
-		}
-		if candidates := r.candidatesByCode[code]; len(candidates) == 1 {
-			return candidates[0].Shortname
-		}
 		return code
+	case 1:
+		return candidates[0].Shortname
 	default:
-		// Ambiguous ZPA code realized as several programs (e.g. DC → DC-B/DC-M).
 		log.Warn().Str("zpaCode", code).
-			Msg("ambiguous ZPA code maps to several study programs; link the exam manually (primuss ancode / joint link)")
+			Msg("ZPA code maps to several study programs; link the exam manually (primuss ancode / joint link)")
 		return code
 	}
 }
 
-// degreeSuffixedForGroup picks the right degree-suffixed program for an ambiguous
-// ZPA code (one shared by a Bachelor and a Master program, e.g. "DC") by reading the
-// degree from the ZPA study-group name. The exact group format for such dual-code
-// programs is not yet known (ZPA still uses 2-letter codes today), so this is the
-// single, isolated hook to extend once the real group names are known. It returns
-// (shortname, true) only on a confident match; today it never matches, so ambiguous
-// exams fall back to the raw code and are linked manually.
-func degreeSuffixedForGroup(_ string, _ []*model.StudyProgram) (string, bool) {
-	// TODO(program-codes): derive Bachelor/Master from the group string and match
-	// against candidate.Degree once the ZPA group naming for dual codes is known.
-	return "", false
+// codeOfProgram is the ZPA code of a program shortname, or the shortname itself.
+func (r *programResolver) codeOfProgram(shortname string) string {
+	for code, progs := range r.byCode {
+		for _, p := range progs {
+			if p.Shortname == shortname {
+				return code
+			}
+		}
+	}
+	return shortname
 }
 
 func cleanupPrimussAncodes(zpaExam *model.ZPAExam, resolver *programResolver) {
@@ -132,11 +105,14 @@ func cleanupPrimussAncodes(zpaExam *model.ZPAExam, resolver *programResolver) {
 	}
 
 	for _, primussAncode := range zpaExam.PrimussAncodes {
-		// The primuss ancodes ZPA delivers carry the raw ZPA (2-letter) program code
-		// (e.g. "DA"); map it to the internal, possibly degree-suffixed program
-		// (e.g. "DA-M") so the ancode lands on the same key the groups produced.
 		program := resolver.programForCode(primussAncode.Program)
-		if programs.Contains(program) {
+		if !programs.Contains(program) {
+			// ZPA may tag the ancode of a "DC-M" exam with the plain "DC". If exactly
+			// one program of this exam has a ZPA code that extends the tag by a
+			// suffix, the ancode belongs to that one.
+			program = extendedProgram(primussAncode.Program, programs, resolver)
+		}
+		if program != "" && programs.Contains(program) {
 			ancodesMap[program] = primussAncode.Ancode
 		}
 	}
@@ -154,6 +130,21 @@ func cleanupPrimussAncodes(zpaExam *model.ZPAExam, resolver *programResolver) {
 	}
 
 	zpaExam.PrimussAncodes = newPrimussAncodes
+}
+
+// extendedProgram returns the only program of the exam whose ZPA code is the tag
+// plus a "-" suffix (tag "DC" -> program with code "DC-M"), or "".
+func extendedProgram(tag string, programs set.Set[string], resolver *programResolver) string {
+	found := ""
+	for program := range programs.Iter() {
+		if strings.HasPrefix(resolver.codeOfProgram(program), tag+"-") {
+			if found != "" {
+				return ""
+			}
+			found = program
+		}
+	}
+	return found
 }
 
 func mergePrimussAncodes(zpaExam *model.ZPAExam, added []model.ZPAPrimussAncodes) {

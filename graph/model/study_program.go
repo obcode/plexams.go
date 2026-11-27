@@ -5,17 +5,16 @@ package model
 // pre-planning to foresee program overlaps before Primuss data exists. Until now
 // programs were only strings derived from primuss collections / config.
 type StudyProgram struct {
-	// Shortname (Kürzel, e.g. "IF") is the unique key.
+	// Shortname (Kürzel, e.g. "IF") is the unique key. It carries the degree only
+	// where two programs share the letters ("DC" Bachelor, "DC-M" Master); the
+	// Primuss file names always carry it ("-IF-B-") and are mapped by the import.
 	Shortname string `json:"shortname" bson:"shortname"`
 	Name      string `json:"name" bson:"name"`
 	// Degree, e.g. "Bachelor" / "Master" (optional).
 	Degree *string `json:"degree,omitempty" bson:"degree,omitempty"`
-	// ZpaCode is the (still 2-letter, possibly non-unique) code this program has in
-	// the external ZPA system, e.g. "DC" for both "DC-B" and "DC-M". The internal
-	// Shortname may be degree-suffixed to stay unique; ZpaCode is what ZPA emits in
-	// study-group names and expects back in student-registration uploads. When empty
-	// it defaults to Shortname (identity) — the state before the suffix rename and
-	// once ZPA itself adopts unique per-degree codes.
+	// ZpaCode is the code of this program in ZPA: the prefix of its study groups
+	// ("DC" for "DC5", "DC-M" for "DC-M1"); the longest matching code wins. Empty
+	// means the same as Shortname, which is the normal case.
 	ZpaCode string `json:"zpaCode,omitempty" bson:"zpaCode,omitempty"`
 	// Category groups the program by origin: "fk07" | "joint" | "misc".
 	Category string `json:"category" bson:"category"`

@@ -10,12 +10,12 @@ import (
 	"context"
 
 	"github.com/obcode/plexams.go/db"
+	"github.com/obcode/plexams.go/graph/model"
 )
 
-// DB is the persistence the Primuss import needs. Both *db.DB and *db.PG
-// satisfy it; the Mongo side implements it as a thin adapter over the raw
-// collections, which is where the untyped round-trip now ends.
+// DB is the persistence the Primuss import needs; *db.PG satisfies it.
 type DB interface {
+	StudyPrograms(ctx context.Context) ([]*model.StudyProgram, error)
 	PrimussStudentRegRows(ctx context.Context, program string) ([]db.PrimussStudentRegRow, error)
 	ReplacePrimussStudentRegs(ctx context.Context, program string, rows []db.PrimussStudentRegRow) (int, error)
 	ReplacePrimussExams(ctx context.Context, program string, rows []db.PrimussExamRow) (int, error)

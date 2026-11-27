@@ -1,6 +1,6 @@
 # Memory Index
 
-- [program-code degree suffix](program-code-degree-suffix.md) — Kürzel may be degree-suffixed (DC-B/DC-M) internally; `StudyProgram.zpaCode` maps back to 2-letter ZPA at boundaries; semester-safe resolver, no old-semester migration; backend DONE & on main (c9e0d37), Mongo integration + GUI-sync pending.
+- [program-code degree suffix](program-code-degree-suffix.md) — Kürzel stay two-letter (IF, DC), only DC-M carries the degree like ZPA; Primuss file codes (IF-B) mapped by the import, ZPA groups by longest prefix (reworked 2026-11-27).
 - [admin overview + digest](admin-overview-digest.md) — ADMIN-only `adminOverview`/`schedulerStatus` queries + daily digest mail to all ADMIN users (self-maintaining recipients); backend DONE & merged to main, GUI page pending.
 - [nightly auto-sync ZPA+Anny](nightly-autosync-zpa-anny.md) — in-process daily scheduler re-pulls ZPA+Anny for active workspace, diffs, mails changes (+heartbeat); backend DONE & on main, `triggerScheduledSync` for on-demand; GUI "Sync jetzt" button pending. HARDENING on branch `feature/scheduler-hardening` (recover/persist+catch-up/graceful-drain/DST-fix, dependency-free) not yet merged.
 - [Jira integration](jira-integration.md) — on-prem jira.cc.hm.edu via PAT; backend DONE & on main (jira/ pkg, GraphQL create/read/comment/transition + REST attachment upload, per-user encrypted PATs); GUI pending.

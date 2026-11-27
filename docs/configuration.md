@@ -80,27 +80,21 @@ zpa:
 > `seedStudyProgramsFromConfig` (oldprograms werden dabei als `retired` angelegt).
 > Sind die Stammdaten gepflegt, können die beiden Listen aus der YAML entfallen.
 
-> **Studiengangskürzel & ZPA-Code.** Das interne Kürzel (`StudyProgram.shortname`)
-> darf grad-suffigiert sein (`DC-B`, `DC-M`, `IF-B`, …), damit Bachelor und Master
-> desselben 2-Buchstaben-Codes eindeutig bleiben. Im ZPA sind die Codes weiterhin
-> 2-stellig; die Zuordnung liegt im Feld `StudyProgram.zpaCode` (leer ⇒ identisch zum
-> `shortname`). Beim Seed wird `zpaCode` automatisch abgeleitet, indem ein
-> `-B`/`-M`-Suffix entfernt wird (`DC-B` → `DC`); für Sonderfälle kann ein Mapping
-> `zpacodes.<shortname>: <ZPA-Code>` in der YAML gesetzt werden. Die Übersetzung
-> greift nur an den externen Grenzen (ZPA-Import der Prüfungsgruppen, Upload der
-> Anmeldungen); intern/Primuss wird durchgängig das suffigierte Kürzel verwendet.
-> Primuss-Dateien tragen das Grad-Kürzel bereits im Dateinamen
-> (`…-DC-B-…xlsx`) und landen dadurch direkt in getrennten Collections. Alte
-> Semester bleiben 2-stellig und werden **nicht** migriert; die Auflösung ist
-> semester-sicher (fällt auf den rohen 2-Buchstaben-Code zurück, wenn kein
-> suffigierter Studiengang in diesem Semester existiert).
+> **Studiengangskürzel & ZPA-Code.** Das Kürzel (`StudyProgram.shortname`) ist
+> zweistellig (`IF`, `DC`, …) und trägt den Abschluss nur dort, wo sich zwei
+> Studiengänge die Buchstaben teilen: `DC` ist der Bachelor, `DC-M` der Master —
+> genau so, wie ZPA die Studiengruppen benennt (`DC5`, `DC-M1`).
 >
-> ```yaml
-> # optional, nur für Sonderfälle: explizites shortname → ZPA-Code Mapping
-> zpacodes:
->   DC-B: DC
->   DC-M: DC
-> ```
+> - **ZPA → Studiengang:** eine Studiengruppe gehört zu dem Studiengang, dessen
+>   ZPA-Code (`zpaCode`, leer ⇒ `shortname`) das *längste* Präfix der Gruppe ist.
+> - **Primuss → Studiengang:** die Dateinamen tragen immer den Abschluss
+>   (`…-IF-B-…xlsx`). Gibt es ein Kürzel genau so (`DC-M`), gilt das; sonst das
+>   Kürzel ohne Abschluss (`IF`), wenn dessen `degree` passt oder leer ist. Passt
+>   nichts, bricht der Import ab, bevor etwas ersetzt wird.
+> - **Anmeldungen → ZPA:** es wird der ZPA-Code gemeldet.
+>
+> `zpacodes.<shortname>: <ZPA-Code>` in der YAML setzt beim Seed einen abweichenden
+> ZPA-Code; normalerweise ist das nicht nötig.
 
 ## 3. SMTP / E-Mail
 

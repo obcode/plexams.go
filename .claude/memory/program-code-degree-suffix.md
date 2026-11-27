@@ -1,54 +1,36 @@
 ---
 name: program-code-degree-suffix
-description: "Study-program Kürzel may now be degree-suffixed (DC-B/DC-M); StudyProgram.zpaCode maps back to the 2-letter ZPA code at the boundaries. Backend DONE (build/test/lint green), no old-semester migration, GUI-sync pending."
+description: "Study-program Kürzel stay two-letter (IF, DC); only DC-M carries the degree, as ZPA names it. Primuss file codes (IF-B) are mapped to the master data by the import; ZPA groups by longest ZPA-code prefix. Reworked 2026-11-27, no history kept."
 metadata:
   node_type: memory
   type: project
-  originSessionId: 77b62a2f-c900-4edf-88a5-3d4376bdabc6
 ---
 
-Next semester there are both a Bachelor **DC** and a Master **DC**, breaking the old
-"2-letter Studiengangskürzel is unique" assumption. Fix (uniform, user-chosen): every
-fk07 program gets a degree suffix internally (`IF-B`, `DC-B`, `DC-M`, …); **ZPA keeps
-its 2-letter codes** and a translation layer bridges them.
+Since 2026-WS there is a Bachelor **DC** and a Master **DC** (the former DA was renamed).
+ZPA names the study groups `DC`, `DC5` (Bachelor) and `DC-M`, `DC-M1` (Master). The
+Primuss Sammellisten file names have always carried the degree (`…-IF-B-226.xlsx`,
+`…-DC-B-…`, `…-DC-M-…`).
 
-**Decisions:** suffix ALL programs (not just DC); **no migration of old semesters**
-(they stay 2-letter, archival); ZPA may later adopt unique codes → the mapping is
-transitional and degenerates to identity when `ZpaCode == Shortname`.
+**Model (2026-11-27, replaces the "suffix every program" design of c9e0d37):**
+- `study_program.shortname` stays two-letter (`IF`, `DC`, `DA`, …). Only where two
+  programs share the letters does it carry the degree, and then the way ZPA spells it:
+  `DC-M`. `zpaCode` is normally empty (= shortname).
+- **ZPA → program** ([db/program_resolver.go]): a group belongs to the program whose
+  ZPA code is the *longest* prefix (`DC-M1` → DC-M, `DC5` → DC). No more "realized
+  programs of this semester" cross-check — old semesters need not resolve anymore
+  (user decision: "wir brauchen keine Historie"). A ZPA primuss-ancode tag `DC` on an
+  exam that only has `DC-M` is moved to DC-M (`extendedProgram`).
+- **Primuss → program** ([plexams/primuss/programs.go] `resolveFileProgram`): exact
+  shortname (`DC-M`) wins; otherwise the code without degree, if that program's
+  `degree` fits or is empty. Every file is resolved before anything is replaced, so a
+  missing program gives a German message instead of the raw FK violation
+  `primuss_exam_program_fkey` (which is what the first DC-B upload hit).
+  A DC-M file never lands in the Bachelor DC: degree mismatch is an error.
+- **ZPA outbound**: `zpaCodeForProgram` (zpaCode or shortname) → `DC-M` is posted as
+  `DC-M`. Unverified whether ZPA expects exactly that for student regs.
+- `validateStudyProgram`: fk07 Kürzel/ZPA code `^[A-Z]{2,4}(-[BM])?$`; no forced suffix.
+  `defaultZpaCode` only reads the `zpacodes.<shortname>` override.
 
-**Design — mapping lives on the global `StudyProgram` entity:** new field
-`ZpaCode string` (empty ⇒ identity = Shortname). Boundaries translated:
-- **ZPA inbound** ([db/zpa_exams.go] `programResolver` + `cleanupPrimussAncodes`):
-  replaced `group[:2]` with a resolver that maps ZPA code → internal suffixed program.
-  It's **semester-safe**: cross-checks master `ZpaCode` candidates against the programs
-  actually realized (`GetPrograms`) this semester, so old `exams_IF` semesters still
-  resolve to `IF`, new `exams_IF-B` resolve to `IF-B`. Ambiguous dual codes (DC→DC-B/DC-M)
-  fall back to the raw code + a warning; the isolated `degreeSuffixedForGroup` hook is
-  the TODO extension point once real ZPA group names for dual codes are known.
-- **Primuss inbound** ([plexams/primuss/import.go] `primussGroupRE`): now
-  `-([A-Z]{2,4}-[BM])-` keeps the degree, so `…-DC-B-…xlsx`/`…-DC-M-…xlsx` land in
-  separate `studentregs_DC-B`/`_DC-M` collections (they collided in `_DC` before).
-- **ZPA outbound** ([plexams/zpa_post.go] + `zpaCodeForProgram`): student-reg upload
-  translates internal suffixed program → 2-letter `ZpaCode` so ZPA still receives `DC`.
-- Enumeration regexes widened: `GetPrograms` / `studentRegsCollectionNames` →
-  `^exams_[A-Z]{2,4}(-[BM])?$` etc. Collection naming (`getCollection` fmt.Sprintf)
-  already accepts hyphens; ICS route `{program}` (chi) too.
-
-Seed derives `ZpaCode` by stripping `-B`/`-M` (`DC-B`→`DC`); optional YAML override
-`zpacodes.<shortname>: <code>`. Config/docs updated ([docs/configuration.md]).
-
-**Status:** backend DONE & **on main** (merge c9e0d37, 4 commits), `go build/vet/test/lint`
-green; unit tests for resolver, regex, filename parsing, defaultZpaCode. **NOT run:** Mongo
-integration (no mongod in this env) — importing a DC-B/DC-M ZIP + round-trip upload.
-**GUI-sync pending:** `StudyProgram` editor needs `zpaCode` (+ `degree`) fields; program
-pickers/ICS/CSV must pass suffixed codes. Builds on [[mucdai-to-joint-generalization]]
-and [[studentreg-dual-ancodes]]; supersedes the 2-letter assumption noted in
-[[mucdai-import-linking]].
-
-**Update 2026-11-26:** `UpsertStudyProgram` validates codes (`validateStudyProgram`):
-new non-retired fk07 programs must match `^[A-Z]{2,4}-[BM]$`, their `zpaCode` must not
-carry the degree and is derived via `defaultZpaCode` when empty; typographic dashes and
-spaces are rejected for every category. Existing programs are not forced into the new
-form. The GUI editor already has the `zpaCode` field, and since 2026-11-26 it also shows
-the rule as a live hint. The Primuss ZIP import now gives a reason for each skipped file
-(not XLSX / no `-XX-B-` in the name / list type not imported).
+**To do in production:** create the program `DC-M` (fk07, Master) before the DC-M
+Sammellisten are uploaded; `degree` must be set on DC (Bachelor) for the mapping to
+refuse a DC-M file.

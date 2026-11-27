@@ -44,18 +44,14 @@ func zpaExamFromRow(row sqlc.Exam, semester string) *model.ZPAExam {
 	return exam
 }
 
-// newProgramResolver builds the resolver for this semester. Errors degrade to raw
-// ZPA codes, which is the legacy behaviour for un-suffixed old semesters.
+// newProgramResolver builds the resolver from the study-program master data. An
+// error degrades to the first two letters of each group.
 func (db *PG) newProgramResolver(ctx context.Context) *programResolver {
 	programs, err := db.StudyPrograms(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("program resolver: cannot read study programs; falling back to raw ZPA codes")
 	}
-	realized, err := db.GetPrograms(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("program resolver: cannot list semester programs")
-	}
-	return newProgramResolverFrom(programs, realized)
+	return newProgramResolverFrom(programs)
 }
 
 // GetZPAExams returns the ZPA-imported exams with their Primuss ancodes resolved

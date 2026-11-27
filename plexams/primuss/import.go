@@ -38,10 +38,9 @@ type ImportProgram struct {
 }
 
 // primussGroupRE extracts the degree-suffixed program code from a Sammellisten
-// filename, e.g. "Prüfungsanmeldungen-IF-B-126.xlsx" -> "IF-B". Keeping the B/M
-// degree marker in the code makes Bachelor and Master of the same 2-letter code
-// (e.g. DC-B vs DC-M) distinct programs / collections instead of colliding in a
-// single "DC".
+// filename, e.g. "Prüfungsanmeldungen-IF-B-126.xlsx" -> "IF-B". The degree keeps
+// Bachelor and Master of the same two letters (DC-B vs DC-M) apart; which study
+// program a code belongs to is decided by resolveFileProgram.
 var primussGroupRE = regexp.MustCompile(`-([A-Z]{2,4}-[BM])-`)
 
 // detectPrimussFile returns the program and the collection kind (studentregs | exams |
@@ -96,7 +95,7 @@ func (s *Service) ImportZip(ctx context.Context, zipData []byte) (*ImportResult,
 		return nil, fmt.Errorf("Die Datei ist kein gültiges ZIP-Archiv. Erwartet wird das ZIP mit den Sammellisten aus Primuss (eine XLSX-Datei je Studiengang): %w", err)
 	}
 
-	// program -> kind -> xlsx bytes (last one wins)
+	// file program code (IF-B) -> kind -> xlsx bytes (last one wins)
 	files := make(map[string]map[string][]byte)
 	result := &ImportResult{Skipped: []string{}}
 	for _, f := range zr.File {
@@ -129,14 +128,26 @@ func (s *Service) ImportZip(ctx context.Context, zipData []byte) (*ImportResult,
 		files[program][kind] = data
 	}
 
-	programs := make([]string, 0, len(files))
-	for program := range files {
-		programs = append(programs, program)
+	fileCodes := make([]string, 0, len(files))
+	for code := range files {
+		fileCodes = append(fileCodes, code)
 	}
-	sort.Strings(programs)
+	sort.Strings(fileCodes)
 
-	for _, program := range programs {
-		prog, err := s.importProgram(ctx, program, files[program])
+	// The file names carry the degree (IF-B, DC-M); the master data may not. Map
+	// every file to its study program before anything is replaced.
+	studyPrograms, err := s.db.StudyPrograms(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Die Studiengänge konnten nicht gelesen werden: %w", err)
+	}
+	programOf, err := resolveFilePrograms(fileCodes, studyPrograms)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, code := range fileCodes {
+		program := programOf[code]
+		prog, err := s.importProgram(ctx, program, files[code])
 		if err != nil {
 			return nil, fmt.Errorf("Studiengang %s: %w", program, err)
 		}

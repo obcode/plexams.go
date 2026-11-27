@@ -26,22 +26,11 @@ func (p *Plexams) UpsertStudyProgram(ctx context.Context, program *model.StudyPr
 		program.Category = "misc"
 	}
 	program.ZpaCode = strings.TrimSpace(program.ZpaCode)
-	isNew := true
-	if existing, err := p.dbClient.StudyPrograms(ctx); err == nil {
-		for _, e := range existing {
-			if e.Shortname == program.Shortname {
-				isNew = false
-				break
-			}
-		}
-	} else {
+	if err := validateStudyProgram(program); err != nil {
 		return nil, err
 	}
-	if err := validateStudyProgram(program, isNew); err != nil {
-		return nil, err
-	}
-	if program.Category == "fk07" && program.ZpaCode == "" {
-		program.ZpaCode = defaultZpaCode(program.Shortname)
+	if program.ZpaCode == program.Shortname {
+		program.ZpaCode = ""
 	}
 	if err := p.dbClient.UpsertStudyProgram(ctx, program); err != nil {
 		return nil, err
@@ -50,19 +39,16 @@ func (p *Plexams) UpsertStudyProgram(ctx context.Context, program *model.StudyPr
 }
 
 var (
-	// fk07ShortnameRE is the form of a new FK07 program Kürzel: the ZPA code plus the
-	// degree, joined by an ASCII hyphen — exactly what the Primuss file names carry.
-	fk07ShortnameRE = regexp.MustCompile(`^[A-Z]{2,4}-[BM]$`)
-	// fk07ZpaCodeRE is the ZPA code of an FK07 program: no degree suffix.
-	fk07ZpaCodeRE = regexp.MustCompile(`^[A-Z]{2,4}$`)
+	// fk07CodeRE is the form of an FK07 Kürzel and ZPA code: two to four capital
+	// letters, optionally with the degree, joined by an ASCII hyphen (IF, DC-M).
+	fk07CodeRE = regexp.MustCompile(`^[A-Z]{2,4}(-[BM])?$`)
 	// typographicDashRE matches dashes that look like "-" but are not.
 	typographicDashRE = regexp.MustCompile(`[\x{2010}-\x{2015}\x{2212}]`)
 )
 
 // validateStudyProgram checks the codes of a study program before it is stored.
-// The degree-suffixed form is only enforced for new FK07 programs, so existing
-// (archival 2-letter) programs can still be edited. Messages are shown in the GUI.
-func validateStudyProgram(program *model.StudyProgram, isNew bool) error {
+// Messages are shown in the GUI.
+func validateStudyProgram(program *model.StudyProgram) error {
 	for field, value := range map[string]string{"Kürzel": program.Shortname, "ZPA-Code": program.ZpaCode} {
 		if typographicDashRE.MatchString(value) {
 			return fmt.Errorf("%s %q enthält einen typografischen Strich — bitte den normalen Bindestrich „-“ verwenden", field, value)
@@ -74,11 +60,11 @@ func validateStudyProgram(program *model.StudyProgram, isNew bool) error {
 	if program.Category != "fk07" || program.Retired {
 		return nil
 	}
-	if isNew && !fk07ShortnameRE.MatchString(program.Shortname) {
-		return fmt.Errorf("neues FK07-Kürzel %q: FK07-Studiengänge brauchen die Form „XX-B“ bzw. „XX-M“ (z. B. IF-B, DC-M), wie in den Primuss-Dateinamen", program.Shortname)
+	if !fk07CodeRE.MatchString(program.Shortname) {
+		return fmt.Errorf("FK07-Kürzel %q: zwei bis vier Großbuchstaben, ggf. mit Abschluss (z. B. IF oder DC-M)", program.Shortname)
 	}
-	if program.ZpaCode != "" && !fk07ZpaCodeRE.MatchString(program.ZpaCode) {
-		return fmt.Errorf("ZPA-Code %q: ohne Abschluss angeben (z. B. DC für DC-B und DC-M) oder leer lassen", program.ZpaCode)
+	if program.ZpaCode != "" && !fk07CodeRE.MatchString(program.ZpaCode) {
+		return fmt.Errorf("ZPA-Code %q: zwei bis vier Großbuchstaben, ggf. mit Abschluss (z. B. DC-M), oder leer lassen", program.ZpaCode)
 	}
 	return nil
 }
@@ -185,30 +171,19 @@ func (p *Plexams) SeedStudyProgramsFromConfig(ctx context.Context) (int, error) 
 	return created, nil
 }
 
-// defaultZpaCode derives the external ZPA code for a (possibly degree-suffixed)
-// program shortname when seeding: an explicit `zpacodes.<shortname>` config entry
-// wins, otherwise a trailing "-B"/"-M" degree suffix is stripped (DC-B → DC).
-// Returns "" when the code equals the shortname (identity — no mapping needed).
+// defaultZpaCode is the ZPA code a seeded program gets: an explicit
+// `zpacodes.<shortname>` config entry, otherwise "" (the shortname itself).
 func defaultZpaCode(shortname string) string {
-	if code := strings.TrimSpace(viper.GetString("zpacodes." + shortname)); code != "" {
-		if code == shortname {
-			return ""
-		}
-		return code
+	code := strings.TrimSpace(viper.GetString("zpacodes." + shortname))
+	if code == shortname {
+		return ""
 	}
-	for _, suffix := range []string{"-B", "-M"} {
-		if strings.HasSuffix(shortname, suffix) {
-			return strings.TrimSuffix(shortname, suffix)
-		}
-	}
-	return ""
+	return code
 }
 
-// zpaCodeForProgram returns the external ZPA code (the 2-letter code ZPA uses) for
-// an internal, possibly degree-suffixed program shortname. It is the reverse of the
-// inbound ZPA-group→program mapping and is used when posting student registrations
-// back to ZPA. Falls back to the shortname itself when no ZpaCode is stored — the
-// identity case before the suffix rename and once ZPA adopts unique codes.
+// zpaCodeForProgram returns the code ZPA uses for a program shortname (its ZpaCode,
+// or the shortname itself). It is the reverse of the inbound ZPA-group→program
+// mapping and is used when posting student registrations back to ZPA.
 func (p *Plexams) zpaCodeForProgram(ctx context.Context, shortname string) string {
 	programs, err := p.dbClient.StudyPrograms(ctx)
 	if err != nil {

@@ -56,3 +56,4 @@
 - [Fehler-Telemetrie `obs/`](error-reporting-obs.md) — Phase 3a FERTIG auf main: Scrubber zuerst, dann Init, bootstrap, graph; caller-Fingerprint, pseudonymer Nutzer, `recoverMiddleware` für die REST-Routen; lokal gegen GlitchTip geprüft (2026-08-05)
 - [todos](todos.md) — per-semester todo list with comments and (kind,key) links without FK; labels resolved on read; read-only-semester exemption kept apart from the VIEWER check; carry-over by copy (2026-09-24).
 - [Planner error codes](planner-error-codes.md) — errors carry a stable code (extensions.code / LogLine.code / ValidationFinding.code); GUI reacts to codes, wording is free
+- [NTA list import](nta-list-import.md) — SharePoint NTA lists (PRIMUSS xlsx per faculty): format, parse rules, stored per faculty, preview vs. master data, selective apply; the list is incomplete (2026-11-27)

@@ -57,3 +57,4 @@
 - [todos](todos.md) — per-semester todo list with comments and (kind,key) links without FK; labels resolved on read; read-only-semester exemption kept apart from the VIEWER check; carry-over by copy (2026-09-24).
 - [Planner error codes](planner-error-codes.md) — errors carry a stable code (extensions.code / LogLine.code / ValidationFinding.code); GUI reacts to codes, wording is free
 - [NTA list import](nta-list-import.md) — SharePoint NTA lists (PRIMUSS xlsx per faculty): format, parse rules, stored per faculty, preview vs. master data, selective apply; the list is incomplete (2026-11-27)
+- [Exam source lookup](exam-source-lookup.md) — GetZpaExamByAncode also returns external exams (shared table); setExternalExamTime fix 2026-11-27, preplan-connect/joint-link still latent

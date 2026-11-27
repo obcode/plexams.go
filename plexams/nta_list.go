@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -63,7 +64,7 @@ func (p *Plexams) UploadNTALists(ctx context.Context, files []NTAListFile) ([]*N
 			return nil, fmt.Errorf("%s und %s sind beide die Liste der FK %s — bitte nur eine davon hochladen", other, f.Filename, list.FK)
 		}
 		byFK[list.FK] = f.Filename
-		if list.SemesterID != "" && list.SemesterID != p.semester {
+		if list.SemesterID != "" && !p.isActiveSemester(list.SemesterID) {
 			list.Warnings = append(list.Warnings, fmt.Sprintf(
 				"Die Liste gehört zum Semester %s, eingelesen wurde sie aber in %s", list.SemesterID, p.semester))
 		}
@@ -191,7 +192,7 @@ func (p *Plexams) NTAListPreview(ctx context.Context) (*model.NTAListPreview, er
 			Faculty:         "FK " + l.FK,
 			Filename:        l.Filename,
 			Semester:        l.SemesterID,
-			SemesterMatches: l.SemesterID == p.semester,
+			SemesterMatches: p.isActiveSemester(l.SemesterID),
 			ImportedAt:      s.ImportedAt,
 			ImportedBy:      s.ImportedBy,
 			Warnings:        l.Warnings,
@@ -301,7 +302,8 @@ func (p *Plexams) ntaListRow(ctx context.Context, r *ntalist.Row, l *ntalist.Lis
 		NeedsRoomAlone:       r.Parsed.NeedsRoomAlone,
 		NeedsHardware:        r.Parsed.NeedsHardware,
 		Program:              prog.program,
-		Until:                r.Until,
+		// empty if the validity could not be read (then it is a problem)
+		Until: r.Until.Label(prog.program),
 	}
 	if !l.Stand.IsZero() {
 		proposal.From = l.Stand.Format("02.01.2006")
@@ -315,7 +317,7 @@ func (p *Plexams) ntaListRow(ctx context.Context, r *ntalist.Row, l *ntalist.Lis
 			proposal.NeedsRoomAlone = existing.NeedsRoomAlone
 			proposal.NeedsHardware = existing.NeedsHardware
 		}
-		if r.Until == "" {
+		if proposal.Until == "" {
 			proposal.Until = existing.Until
 		}
 		if existing.Deactivated {
@@ -328,17 +330,39 @@ func (p *Plexams) ntaListRow(ctx context.Context, r *ntalist.Row, l *ntalist.Lis
 			proposal.Email = &email
 		}
 	}
-	row.Proposal = proposal
+	significant := false
 	if existing != nil {
+		// Changes are everything the list says differently; the proposal only takes
+		// over what matters for planning. The stored text is usually the longer one
+		// (typed from the decision), so it stays unless the decision changed.
 		row.Changes = ntaListChanges(row.Existing, proposal)
+		for _, c := range row.Changes {
+			significant = significant || c.Significant
+		}
+		listProposal := *proposal
+		*proposal = *row.Existing
+		proposal.Email = listProposal.Email
+		if significant {
+			proposal.DeltaDurationPercent = listProposal.DeltaDurationPercent
+			proposal.NeedsRoomAlone = listProposal.NeedsRoomAlone
+			proposal.NeedsHardware = listProposal.NeedsHardware
+			proposal.Program = listProposal.Program
+			proposal.Compensation = listProposal.Compensation
+			for _, c := range row.Changes {
+				if c.Field == "until" && c.Significant {
+					proposal.Until = listProposal.Until
+				}
+			}
+		}
 	}
+	row.Proposal = proposal
 
 	switch {
 	case len(row.Problems) > 0:
 		row.Status = model.NTAListRowStatusProblem
 	case existing == nil:
 		row.Status = model.NTAListRowStatusNew
-	case len(row.Changes) > 0:
+	case significant:
 		row.Status = model.NTAListRowStatusChanged
 	default:
 		row.Status = model.NTAListRowStatusUnchanged
@@ -406,6 +430,10 @@ func ntaToProposal(n *model.NTA) *model.NTAListProposal {
 	}
 }
 
+// wholeStudiesRE matches the ways the master data says "for the whole studies":
+// "Studium IF", "Ende WD", "Studiengang WT", "Gesamtes Studium", ...
+var wholeStudiesRE = regexp.MustCompile(`(?i)^\s*(Studium|Ende|Studiengang|Gesamtes\s+Studium)\b`)
+
 func ntaListChanges(old, cur *model.NTAListProposal) []*model.NTAListFieldChange {
 	changes := []*model.NTAListFieldChange{}
 	add := func(field, label, o, n string, significant bool) {
@@ -429,7 +457,7 @@ func ntaListChanges(old, cur *model.NTAListProposal) []*model.NTAListFieldChange
 	add("needsRoomAlone", "eigener Raum", yesNo(old.NeedsRoomAlone), yesNo(cur.NeedsRoomAlone), true)
 	add("needsHardware", "spezielle Hardware", yesNo(old.NeedsHardware), yesNo(cur.NeedsHardware), true)
 	add("program", "Studiengang", old.Program, cur.Program, true)
-	add("until", "gilt bis", old.Until, cur.Until, true)
+	add("until", "gilt bis", old.Until, cur.Until, !(wholeStudiesRE.MatchString(old.Until) && wholeStudiesRE.MatchString(cur.Until)))
 	add("name", "Name", old.Name, cur.Name, false)
 	add("compensation", "Ausgleich (Text)", strings.Join(strings.Fields(old.Compensation), " "), cur.Compensation, false)
 	add("email", "E-Mail", deref(old.Email), deref(cur.Email), false)
@@ -486,4 +514,10 @@ func (p *Plexams) ApplyNTAList(ctx context.Context, items []*model.NTAListApplyI
 		return nil, fmt.Errorf("Es wurde nichts übernommen. %w", err)
 	}
 	return result, nil
+}
+
+// isActiveSemester compares a semester id ("2026-WS") with the active semester,
+// which p.semester holds in its logical form ("2026 WS").
+func (p *Plexams) isActiveSemester(id string) bool {
+	return strings.ReplaceAll(id, "-", " ") == strings.ReplaceAll(p.semester, "-", " ")
 }

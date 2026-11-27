@@ -44,7 +44,7 @@ func strPtr(s string) *string { return &s }
 func TestNTAListUploadPreviewApply(t *testing.T) {
 	dbClient := pgtest.NewDBWithSemester(t)
 	ctx := t.Context()
-	p := &Plexams{dbClient: dbClient, semester: "2026-WS"}
+	p := &Plexams{dbClient: dbClient, semester: "2026 WS"}
 
 	for _, sp := range []*model.StudyProgram{
 		{Shortname: "IF", Name: "Informatik", Degree: strPtr("Bachelor"), Category: "fk07", Active: true},
@@ -56,11 +56,11 @@ func TestNTAListUploadPreviewApply(t *testing.T) {
 	}
 	// an existing NTA with a different extension and one that matches exactly
 	if _, err := dbClient.AddNta(ctx, &model.NTA{Name: "Muster, Erika", Mtknr: "00000001", Compensation: "10% Schreibzeitverlängerung",
-		DeltaDurationPercent: 10, Program: "IF", From: "01.03.2026", Until: "Ende Studium"}); err != nil {
+		DeltaDurationPercent: 10, Program: "IF", From: "01.03.2026", Until: "Studium IF"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := dbClient.AddNta(ctx, &model.NTA{Name: "Beispiel, Max", Mtknr: "00000002", Compensation: "20% Schreibzeitverlängerung",
-		DeltaDurationPercent: 20, Program: "IF", From: "01.03.2026", Until: "Ende Studium"}); err != nil {
+	if _, err := dbClient.AddNta(ctx, &model.NTA{Name: "Beispiel, Max", Mtknr: "00000002", Compensation: "20% Schreibzeitverlängerung laut Bescheid vom 1.3.",
+		DeltaDurationPercent: 20, Program: "IF", From: "01.03.2026", Until: "Ende IF"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := dbClient.ReplacePrimussStudentRegs(ctx, "IF", []db.PrimussStudentRegRow{
@@ -116,6 +116,14 @@ func TestNTAListUploadPreviewApply(t *testing.T) {
 	if !changed["deltaDurationPercent"] || !changed["needsRoomAlone"] || changed["compensation"] || len(changed) != 3 {
 		t.Errorf("changes = %+v", changed)
 	}
+	// only wording differs: unchanged, and the stored text is kept
+	if len(rows[1].Changes) != 2 || rows[1].Changes[0].Significant || rows[1].Changes[1].Significant ||
+		rows[1].Proposal.Compensation != "20% Schreibzeitverlängerung laut Bescheid vom 1.3." || rows[1].Proposal.Until != "Ende IF" {
+		t.Errorf("row 1 changes %+v, proposal %+v", rows[1].Changes, rows[1].Proposal)
+	}
+	if rows[0].Proposal.Compensation != "25% Schreibzeitverlängerung, gesonderter Raum" || rows[0].Proposal.DeltaDurationPercent != 25 {
+		t.Errorf("row 0 proposal = %+v", rows[0].Proposal)
+	}
 	if rows[0].Proposal.From != "01.03.2026" {
 		t.Errorf("existing from must be kept, got %q", rows[0].Proposal.From)
 	}
@@ -124,7 +132,7 @@ func TestNTAListUploadPreviewApply(t *testing.T) {
 		t.Errorf("regs: only in list %+v, only in primuss %+v", rows[0].RegsOnlyInList, rows[0].RegsOnlyInPrimuss)
 	}
 	n := rows[2].Proposal
-	if n.From != "27.11.2026" || n.Until != "2027-SS" || n.Program != "IF" || n.Name != "Neu, Anna" || n.DeltaDurationPercent != 10 {
+	if n.From != "27.11.2026" || n.Until != "Sommersemester 2027" || n.Program != "IF" || n.Name != "Neu, Anna" || n.DeltaDurationPercent != 10 {
 		t.Errorf("new proposal = %+v", n)
 	}
 	if p := preview.Lists[1].Rows[0].Proposal; p.Program != "DE" {

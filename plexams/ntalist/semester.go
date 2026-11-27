@@ -33,27 +33,50 @@ func SemesterID(code string) (string, error) {
 	return fmt.Sprintf("%d-%s", 2000+year, term), nil
 }
 
-// UntilEndOfStudies is stored as "valid until" for an NTA that holds until the
-// end of the studies (semester column "*").
-const UntilEndOfStudies = "Ende Studium"
+// Validity is the semester column of the list: "*" means the NTA holds for the
+// whole studies, "226:127" a range of semesters of which only the last one
+// matters.
+type Validity struct {
+	WholeStudies bool `json:"wholeStudies"`
+	// LastSemester is the semester id of the last semester ("2027-SS"); empty for
+	// WholeStudies.
+	LastSemester string `json:"lastSemester"`
+}
 
-// ParseValidity converts the semester column of the list into the "valid until"
-// label of an NTA: "*" means until the end of the studies, "226:127" a range of
-// semesters of which the last one is kept ("2027-SS"); a single code is that
-// semester.
-func ParseValidity(raw string) (string, error) {
+// ParseValidity reads the semester column ("*", "226:127", "226").
+func ParseValidity(raw string) (Validity, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "*" {
-		return UntilEndOfStudies, nil
+		return Validity{WholeStudies: true}, nil
 	}
 	if raw == "" {
-		return "", fmt.Errorf("Gültigkeit fehlt (Spalte semester)")
+		return Validity{}, fmt.Errorf("Gültigkeit fehlt (Spalte semester)")
 	}
 	parts := strings.Split(raw, ":")
-	last := strings.TrimSpace(parts[len(parts)-1])
-	id, err := SemesterID(last)
+	id, err := SemesterID(strings.TrimSpace(parts[len(parts)-1]))
 	if err != nil {
-		return "", fmt.Errorf("Gültigkeit „%s“ nicht erkannt (erwartet * oder z. B. 226:127)", raw)
+		return Validity{}, fmt.Errorf("Gültigkeit „%s“ nicht erkannt (erwartet * oder z. B. 226:127)", raw)
 	}
-	return id, nil
+	return Validity{LastSemester: id}, nil
+}
+
+// Label is the "valid until" text of the NTA master data, in the convention the
+// stored NTAs use: "Studium IF" for the whole studies in program IF,
+// "Wintersemester 2026/2027" or "Sommersemester 2027" for a last semester.
+func (v Validity) Label(program string) string {
+	if v.WholeStudies {
+		return strings.TrimSpace("Studium " + program)
+	}
+	year, term, ok := strings.Cut(v.LastSemester, "-")
+	if !ok {
+		return v.LastSemester
+	}
+	if term == "WS" {
+		y, err := strconv.Atoi(year)
+		if err != nil {
+			return v.LastSemester
+		}
+		return fmt.Sprintf("Wintersemester %d/%d", y, y+1)
+	}
+	return "Sommersemester " + year
 }

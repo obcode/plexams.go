@@ -23,11 +23,11 @@ func TestSemesterID(t *testing.T) {
 }
 
 func TestParseValidity(t *testing.T) {
-	for raw, want := range map[string]string{"*": UntilEndOfStudies, " * ": UntilEndOfStudies,
-		"226:127": "2027-SS", "226": "2026-WS", "225:126:226": "2026-WS"} {
+	for raw, want := range map[string]string{"*": "Studium IF", " * ": "Studium IF",
+		"226:127": "Sommersemester 2027", "226": "Wintersemester 2026/2027", "225:126:226": "Wintersemester 2026/2027"} {
 		got, err := ParseValidity(raw)
-		if err != nil || got != want {
-			t.Errorf("ParseValidity(%q) = %q, %v; want %q", raw, got, err, want)
+		if err != nil || got.Label("IF") != want {
+			t.Errorf("ParseValidity(%q) = %+v (%q), %v; want %q", raw, got, got.Label("IF"), err, want)
 		}
 	}
 	for _, bad := range []string{"", "bis Ende", "226:"} {
@@ -127,12 +127,12 @@ func TestParse(t *testing.T) {
 		t.Fatalf("rows = %d", len(list.Rows))
 	}
 	r := list.Rows[0]
-	if r.Line != 7 || r.FK != "07" || r.Mtknr != "00000001" || r.Until != UntilEndOfStudies ||
+	if r.Line != 7 || r.FK != "07" || r.Mtknr != "00000001" || !r.Until.WholeStudies ||
 		r.Parsed.DeltaDurationPercent != 10 || len(r.Regs) != 2 || len(r.Problems) != 0 {
 		t.Errorf("row 0 = %+v", r)
 	}
 	r = list.Rows[1]
-	if r.Until != "2027-SS" || !r.Parsed.NeedsRoomAlone || r.Parsed.DeltaDurationPercent != 25 || len(r.Problems) != 0 {
+	if r.Until.LastSemester != "2027-SS" || !r.Parsed.NeedsRoomAlone || r.Parsed.DeltaDurationPercent != 25 || len(r.Problems) != 0 {
 		t.Errorf("row 1 = %+v", r)
 	}
 	if len(list.Rows[2].Problems) != 1 {

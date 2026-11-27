@@ -40,9 +40,9 @@ type Row struct {
 	// Compensation is the cleaned free text of the column nachteilsausgleich.
 	Compensation string       `json:"compensation"`
 	Parsed       Compensation `json:"parsed"`
-	// Validity is the raw semester column ("*", "226:127"), Until its conversion.
+	// Validity is the raw semester column ("*", "226:127"), Until its reading.
 	Validity string   `json:"validity"`
-	Until    string   `json:"until"`
+	Until    Validity `json:"until"`
 	Regs     []Reg    `json:"regs"`
 	Problems []string `json:"problems"`
 }

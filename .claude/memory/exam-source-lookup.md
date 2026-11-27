@@ -1,6 +1,6 @@
 ---
 name: exam-source-lookup
-description: GetZpaExamByAncode also finds external (joint/other-FK) exams -- the exam table holds both; callers must not treat a hit as "is a ZPA exam"
+description: exam table holds ZPA + external exams; GetZpaExamByAncode is ZPA-only (source filter since 2026-11-27), ExamByAncode finds either
 metadata:
   type: project
 ---
@@ -16,11 +16,15 @@ by FK11 and refused it with „… plant unsere Fakultät selbst … nicht von m
 geplant“. Now it asks `ExternalExam` first. Regression test:
 `TestExternalTimeForJointExam`.
 
-**Still latent (not yet seen in practice):** `ConnectPreplanExam`
-(preplan_connect.go) and `SetJointZpaLink` (joint_links.go) would accept an
-external ancode as a "ZPA exam". The clean fix is `and source = 'zpa'` in
-`GetExam`, but check all ~14 callers first (pdf.go, invigilators.go, messages.go,
-csv_export.go, rooms_free_seats.go may rely on finding external exams).
+**Clean fix (2026-11-27, same day):** the `GetExam` query now filters
+`source = 'zpa'`, so `GetZpaExamByAncode` really is ZPA-only (this closed the
+same hole in `ConnectPreplanExam` and `SetJointZpaLink`). Callers that only want
+module/examiner of *any* exam use **`Plexams.ExamByAncode`** (ZPA, then external):
+invigilators, rooms_free_seats, pdf same-slot, messages, csv_export, PreExamsAt,
+ExamInfo, and the `zpaExam` GraphQL resolver -- the GUI's exam page falls back to
+it for external ancodes too, so it keeps answering for any source despite its
+name. Rule for new code: "is this a ZPA exam?" → `GetZpaExamByAncode`; "what is
+this exam?" → `ExamByAncode`.
 
 Why it surfaced: Michael (planner) could not set the date of a DH exam; the
 exam correctly does not appear under „Prüfungen auswählen & Vorgaben“ (that

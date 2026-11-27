@@ -457,7 +457,7 @@ func ntaListChanges(old, cur *model.NTAListProposal) []*model.NTAListFieldChange
 	add("needsRoomAlone", "eigener Raum", yesNo(old.NeedsRoomAlone), yesNo(cur.NeedsRoomAlone), true)
 	add("needsHardware", "spezielle Hardware", yesNo(old.NeedsHardware), yesNo(cur.NeedsHardware), true)
 	add("program", "Studiengang", old.Program, cur.Program, true)
-	add("until", "gilt bis", old.Until, cur.Until, !(wholeStudiesRE.MatchString(old.Until) && wholeStudiesRE.MatchString(cur.Until)))
+	add("until", "gilt bis", old.Until, cur.Until, !wholeStudiesRE.MatchString(old.Until) || !wholeStudiesRE.MatchString(cur.Until))
 	add("name", "Name", old.Name, cur.Name, false)
 	add("compensation", "Ausgleich (Text)", strings.Join(strings.Fields(old.Compensation), " "), cur.Compensation, false)
 	add("email", "E-Mail", deref(old.Email), deref(cur.Email), false)

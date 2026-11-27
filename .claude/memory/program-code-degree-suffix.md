@@ -19,7 +19,9 @@ Primuss Sammellisten file names have always carried the degree (`…-IF-B-226.xl
   ZPA code is the *longest* prefix (`DC-M1` → DC-M, `DC5` → DC). No more "realized
   programs of this semester" cross-check — old semesters need not resolve anymore
   (user decision: "wir brauchen keine Historie"). A ZPA primuss-ancode tag `DC` on an
-  exam that only has `DC-M` is moved to DC-M (`extendedProgram`).
+  exam that only has `DC-M` is moved to DC-M (`extendedProgram`). Checked against
+  prod on 2026-11-27: ZPA tags the primuss ancodes exactly like the groups
+  (`DC-M` for groups `DC-M`, `DC` for `DC5`), so the fallback is not needed today.
 - **Primuss → program** ([plexams/primuss/programs.go] `resolveFileProgram`): exact
   shortname (`DC-M`) wins; otherwise the code without degree, if that program's
   `degree` fits or is empty. Every file is resolved before anything is replaced, so a

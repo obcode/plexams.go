@@ -36,6 +36,7 @@ var assembledExamsDirtyOps = map[string]bool{
 	"addNTA":       true,
 	"updateNTA":    true,
 	"setNTAActive": true,
+	"applyNTAList": true,
 	// per-ancode duration overrides
 	"setExamDuration":    true,
 	"removeExamDuration": true,

@@ -14,7 +14,7 @@ import (
 func stubRoutes() restRoutes {
 	ok := func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
 	return restRoutes{
-		uploadEmailAttachment: ok, uploadEmailAttachmentsZip: ok, uploadPrimussZip: ok,
+		uploadEmailAttachment: ok, uploadEmailAttachmentsZip: ok, uploadPrimussZip: ok, uploadNTAList: ok,
 		uploadJiraAttachment: ok, uploadDatasetCSV: ok, downloadPlannedRooms: ok,
 		downloadPDF: ok, downloadCSVDraft: ok, downloadICS: ok, downloadDatasetCSV: ok,
 		downloadMyInputsCSV: ok,
@@ -44,6 +44,8 @@ func TestRESTRoutesAreGated(t *testing.T) {
 		{"viewer upload", req{"POST", "/upload/primuss-zip", "viewer@example.test", "", false}, http.StatusForbidden},
 		{"viewer jira upload", req{"POST", "/upload/jira-attachment", "viewer@example.test", "", false}, http.StatusForbidden},
 		{"planer upload", req{"POST", "/upload/primuss-zip", "planer@example.test", "", false}, http.StatusOK},
+		{"viewer nta list upload", req{"POST", "/upload/nta-list", "viewer@example.test", "", false}, http.StatusForbidden},
+		{"planer nta list upload", req{"POST", "/upload/nta-list", "planer@example.test", "", false}, http.StatusOK},
 		{"planer upload, dev GUI origin", req{"POST", "/upload/dataset-csv", "planer@example.test", "http://localhost:5173", false}, http.StatusOK},
 		{"planer upload, same host", req{"POST", "/upload/dataset-csv", "planer@example.test", "http://example.com", false}, http.StatusOK},
 		{"planer upload, foreign origin", req{"POST", "/upload/email-attachment", "planer@example.test", "https://evil.example", false}, http.StatusForbidden},

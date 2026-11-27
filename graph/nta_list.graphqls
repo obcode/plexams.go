@@ -1,0 +1,134 @@
+extend type Query {
+  """
+  The NTA lists uploaded for the active semester (one per faculty, from the
+  SharePoint folder of the exam board), each row matched against the NTA master
+  data and against the Primuss registrations. Read-only: nothing is applied
+  until applyNTAList.
+  """
+  ntaListPreview: NTAListPreview!
+}
+
+extend type Mutation {
+  """
+  Apply the selected rows of the uploaded NTA lists to the NTA master data: ADD
+  creates an NTA, UPDATE replaces the editable fields of an existing one (as
+  updateNTA). All or nothing.
+  """
+  applyNTAList(items: [NTAListApplyItem!]!): NTAListApplyResult!
+  "Remove the uploaded NTA list of a faculty (the NTA master data stays as it is)."
+  removeNTAList(fk: String!): Boolean!
+}
+
+type NTAListPreview {
+  lists: [NTAList!]!
+  "Whether Primuss registrations exist for the semester; without them there is nothing to compare."
+  primussRegsAvailable: Boolean!
+}
+
+type NTAList {
+  "Faculty number with two digits, e.g. 07 or 21."
+  fk: String!
+  "Display name, e.g. FK 07 or FK 21 (MUC.DAI)."
+  faculty: String!
+  filename: String!
+  "Semester id of the list (e.g. 2026-WS); empty if unknown."
+  semester: String!
+  "Whether the list belongs to the active semester."
+  semesterMatches: Boolean!
+  "Export time of the list."
+  stand: Time
+  importedAt: Time!
+  importedBy: String
+  warnings: [String!]!
+  rows: [NTAListRow!]!
+}
+
+enum NTAListRowStatus {
+  "No NTA with this mtknr in the master data."
+  NEW
+  "The master data differs from the list."
+  CHANGED
+  "The master data matches the list."
+  UNCHANGED
+  "The row could not be read completely; check and complete it before applying."
+  PROBLEM
+}
+
+type NTAListRow {
+  line: Int!
+  status: NTAListRowStatus!
+  mtknr: String!
+  "Name, Vorname"
+  name: String!
+  "Study program as in the list, e.g. IF-B."
+  stg: String!
+  "Start of studies as semester id (e.g. 2025-WS), or the raw value if unknown."
+  beginnStudium: String!
+  "The free text of the list."
+  compensation: String!
+  "The raw validity of the list: * or e.g. 226:127."
+  validity: String!
+  "When this student first appeared in a list of this faculty."
+  firstSeen: Time!
+  "What would be written to the master data; fits NTAInput."
+  proposal: NTAListProposal!
+  "The NTA in the master data, if there is one."
+  existing: NTAListProposal
+  existingDeactivated: Boolean!
+  "Differences between the master data and the proposal (CHANGED)."
+  changes: [NTAListFieldChange!]!
+  problems: [String!]!
+  infos: [String!]!
+  regs: [NTAListReg!]!
+  "Registrations in the list that Primuss does not have (any more)."
+  regsOnlyInList: [NTAListReg!]!
+  "Registrations in Primuss that the list does not have (yet)."
+  regsOnlyInPrimuss: [NTAListReg!]!
+}
+
+type NTAListProposal {
+  name: String!
+  email: String
+  mtknr: String!
+  compensation: String!
+  deltaDurationPercent: Int!
+  needsRoomAlone: Boolean!
+  needsHardware: Boolean!
+  program: String!
+  from: String!
+  until: String!
+}
+
+type NTAListFieldChange {
+  "Field name of NTAInput."
+  field: String!
+  "German label for the GUI."
+  label: String!
+  old: String!
+  new: String!
+  "False for differences that do not change how the exam is planned (name, text)."
+  significant: Boolean!
+}
+
+type NTAListReg {
+  "Program code as in the list or in Primuss, e.g. IF-B or IF."
+  stg: String!
+  "Study program in the master data, if the code could be resolved."
+  program: String!
+  primussAncode: Int!
+}
+
+enum NTAListApplyAction {
+  ADD
+  UPDATE
+}
+
+input NTAListApplyItem {
+  action: NTAListApplyAction!
+  nta: NTAInput!
+}
+
+type NTAListApplyResult {
+  added: Int!
+  updated: Int!
+}

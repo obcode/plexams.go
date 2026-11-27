@@ -10,12 +10,12 @@ import (
 // nachteilsausgleich. The text itself is always kept as the NTA's compensation;
 // these fields only prefill the structured ones.
 type Compensation struct {
-	DeltaDurationPercent int
-	NeedsRoomAlone       bool
-	NeedsHardware        bool
+	DeltaDurationPercent int  `json:"deltaDurationPercent"`
+	NeedsRoomAlone       bool `json:"needsRoomAlone"`
+	NeedsHardware        bool `json:"needsHardware"`
 	// Unparsed is set when no extension of the writing time was found. The planner
 	// has to set the fields by hand then.
-	Unparsed bool
+	Unparsed bool `json:"unparsed"`
 }
 
 var (

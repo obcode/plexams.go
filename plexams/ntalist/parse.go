@@ -30,27 +30,27 @@ type List struct {
 // Row is one student of the list.
 type Row struct {
 	// Line is the row number in the sheet (1-based), for messages.
-	Line          int
-	FK            string
-	Stg           string
-	Mtknr         string
-	Vorname       string
-	Name          string
-	BeginnStudium string
+	Line          int    `json:"line"`
+	FK            string `json:"fk"`
+	Stg           string `json:"stg"`
+	Mtknr         string `json:"mtknr"`
+	Vorname       string `json:"vname"`
+	Name          string `json:"name"`
+	BeginnStudium string `json:"beginnStudium"`
 	// Compensation is the cleaned free text of the column nachteilsausgleich.
-	Compensation string
-	Parsed       Compensation
+	Compensation string       `json:"compensation"`
+	Parsed       Compensation `json:"parsed"`
 	// Validity is the raw semester column ("*", "226:127"), Until its conversion.
-	Validity string
-	Until    string
-	Regs     []Reg
-	Problems []string
+	Validity string   `json:"validity"`
+	Until    string   `json:"until"`
+	Regs     []Reg    `json:"regs"`
+	Problems []string `json:"problems"`
 }
 
 // Reg is one registration of the column anmeldungen_aktsemester, e.g. "IF-B:123".
 type Reg struct {
-	Stg           string
-	PrimussAncode int
+	Stg           string `json:"stg"`
+	PrimussAncode int    `json:"primussAncode"`
 }
 
 var (

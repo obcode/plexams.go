@@ -836,6 +836,7 @@ type ComplexityRoot struct {
 		AddTodoComment                func(childComplexity int, todoID int, body string) int
 		AddTodoLink                   func(childComplexity int, todoID int, link model.TodoLinkInput) int
 		AddZpaExamToPlan              func(childComplexity int, ancode int) int
+		ApplyNTAList                  func(childComplexity int, items []*model.NTAListApplyItem) int
 		ApplyRoomRequestsPreview      func(childComplexity int, force bool) int
 		BlockRoomAt                   func(childComplexity int, room string, starttime time.Time, reason *string) int
 		BlockRoomAtTimes              func(childComplexity int, room string, starttimes []*time.Time, reason *string) int
@@ -876,6 +877,7 @@ type ComplexityRoot struct {
 		RemoveJointLink               func(childComplexity int, program string, primussAncode int) int
 		RemoveLoginAlias              func(childComplexity int, email string, teacherID int) int
 		RemoveMyJiraToken             func(childComplexity int) int
+		RemoveNTAList                 func(childComplexity int, fk string) int
 		RemoveNtaRoomAloneWaiver      func(childComplexity int, mtknr string, ancode int) int
 		RemovePermanentNonInvigilator func(childComplexity int, teacherID int) int
 		RemovePortalLoginBlock        func(childComplexity int, email string) int
@@ -989,6 +991,77 @@ type ComplexityRoot struct {
 		NeedsRoomAlone       func(childComplexity int) int
 		Program              func(childComplexity int) int
 		Until                func(childComplexity int) int
+	}
+
+	NTAList struct {
+		Faculty         func(childComplexity int) int
+		Filename        func(childComplexity int) int
+		Fk              func(childComplexity int) int
+		ImportedAt      func(childComplexity int) int
+		ImportedBy      func(childComplexity int) int
+		Rows            func(childComplexity int) int
+		Semester        func(childComplexity int) int
+		SemesterMatches func(childComplexity int) int
+		Stand           func(childComplexity int) int
+		Warnings        func(childComplexity int) int
+	}
+
+	NTAListApplyResult struct {
+		Added   func(childComplexity int) int
+		Updated func(childComplexity int) int
+	}
+
+	NTAListFieldChange struct {
+		Field       func(childComplexity int) int
+		Label       func(childComplexity int) int
+		New         func(childComplexity int) int
+		Old         func(childComplexity int) int
+		Significant func(childComplexity int) int
+	}
+
+	NTAListPreview struct {
+		Lists                func(childComplexity int) int
+		PrimussRegsAvailable func(childComplexity int) int
+	}
+
+	NTAListProposal struct {
+		Compensation         func(childComplexity int) int
+		DeltaDurationPercent func(childComplexity int) int
+		Email                func(childComplexity int) int
+		From                 func(childComplexity int) int
+		Mtknr                func(childComplexity int) int
+		Name                 func(childComplexity int) int
+		NeedsHardware        func(childComplexity int) int
+		NeedsRoomAlone       func(childComplexity int) int
+		Program              func(childComplexity int) int
+		Until                func(childComplexity int) int
+	}
+
+	NTAListReg struct {
+		PrimussAncode func(childComplexity int) int
+		Program       func(childComplexity int) int
+		Stg           func(childComplexity int) int
+	}
+
+	NTAListRow struct {
+		BeginnStudium       func(childComplexity int) int
+		Changes             func(childComplexity int) int
+		Compensation        func(childComplexity int) int
+		Existing            func(childComplexity int) int
+		ExistingDeactivated func(childComplexity int) int
+		FirstSeen           func(childComplexity int) int
+		Infos               func(childComplexity int) int
+		Line                func(childComplexity int) int
+		Mtknr               func(childComplexity int) int
+		Name                func(childComplexity int) int
+		Problems            func(childComplexity int) int
+		Proposal            func(childComplexity int) int
+		Regs                func(childComplexity int) int
+		RegsOnlyInList      func(childComplexity int) int
+		RegsOnlyInPrimuss   func(childComplexity int) int
+		Status              func(childComplexity int) int
+		Stg                 func(childComplexity int) int
+		Validity            func(childComplexity int) int
 	}
 
 	NTAWithRegs struct {
@@ -1387,6 +1460,7 @@ type ComplexityRoot struct {
 		MyNotificationSetting         func(childComplexity int) int
 		NewSemesterConfigDefaults     func(childComplexity int) int
 		Nta                           func(childComplexity int, mtknr string) int
+		NtaListPreview                func(childComplexity int) int
 		NtaRoomAloneWaivers           func(childComplexity int) int
 		Ntas                          func(childComplexity int) int
 		NtasWithRegs                  func(childComplexity int) int
@@ -2108,6 +2182,8 @@ type MutationResolver interface {
 	AddNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	UpdateNta(ctx context.Context, input model.NTAInput) (*model.NTA, error)
 	SetNTAActive(ctx context.Context, mtknr string, active bool) (*model.NTA, error)
+	ApplyNTAList(ctx context.Context, items []*model.NTAListApplyItem) (*model.NTAListApplyResult, error)
+	RemoveNTAList(ctx context.Context, fk string) (bool, error)
 	AddNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int, reason string) (*model.NtaRoomAloneWaiver, error)
 	RemoveNtaRoomAloneWaiver(ctx context.Context, mtknr string, ancode int) (bool, error)
 	SetExamTime(ctx context.Context, ancode int, starttime time.Time) (bool, error)
@@ -2250,6 +2326,7 @@ type QueryResolver interface {
 	NtasWithRegs(ctx context.Context) ([]*model.Student, error)
 	Nta(ctx context.Context, mtknr string) (*model.NTAWithRegs, error)
 	ExamsWithNtas(ctx context.Context) ([]*model.PlannedExam, error)
+	NtaListPreview(ctx context.Context) (*model.NTAListPreview, error)
 	NtaRoomAloneWaivers(ctx context.Context) ([]*model.NtaRoomAloneWaiver, error)
 	AllProgramsInPlan(ctx context.Context) ([]string, error)
 	AncodesInPlan(ctx context.Context) ([]int, error)
@@ -5754,6 +5831,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddZpaExamToPlan(childComplexity, args["ancode"].(int)), true
+	case "Mutation.applyNTAList":
+		if e.ComplexityRoot.Mutation.ApplyNTAList == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_applyNTAList_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ApplyNTAList(childComplexity, args["items"].([]*model.NTAListApplyItem)), true
 	case "Mutation.applyRoomRequestsPreview":
 		if e.ComplexityRoot.Mutation.ApplyRoomRequestsPreview == nil {
 			break
@@ -6169,6 +6257,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RemoveMyJiraToken(childComplexity), true
+	case "Mutation.removeNTAList":
+		if e.ComplexityRoot.Mutation.RemoveNTAList == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeNTAList_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemoveNTAList(childComplexity, args["fk"].(string)), true
 	case "Mutation.removeNtaRoomAloneWaiver":
 		if e.ComplexityRoot.Mutation.RemoveNtaRoomAloneWaiver == nil {
 			break
@@ -7089,6 +7188,313 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.NTA.Until(childComplexity), true
+
+	case "NTAList.faculty":
+		if e.ComplexityRoot.NTAList.Faculty == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.Faculty(childComplexity), true
+	case "NTAList.filename":
+		if e.ComplexityRoot.NTAList.Filename == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.Filename(childComplexity), true
+	case "NTAList.fk":
+		if e.ComplexityRoot.NTAList.Fk == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.Fk(childComplexity), true
+	case "NTAList.importedAt":
+		if e.ComplexityRoot.NTAList.ImportedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.ImportedAt(childComplexity), true
+	case "NTAList.importedBy":
+		if e.ComplexityRoot.NTAList.ImportedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.ImportedBy(childComplexity), true
+	case "NTAList.rows":
+		if e.ComplexityRoot.NTAList.Rows == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.Rows(childComplexity), true
+	case "NTAList.semester":
+		if e.ComplexityRoot.NTAList.Semester == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.Semester(childComplexity), true
+	case "NTAList.semesterMatches":
+		if e.ComplexityRoot.NTAList.SemesterMatches == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.SemesterMatches(childComplexity), true
+	case "NTAList.stand":
+		if e.ComplexityRoot.NTAList.Stand == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.Stand(childComplexity), true
+	case "NTAList.warnings":
+		if e.ComplexityRoot.NTAList.Warnings == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAList.Warnings(childComplexity), true
+
+	case "NTAListApplyResult.added":
+		if e.ComplexityRoot.NTAListApplyResult.Added == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListApplyResult.Added(childComplexity), true
+	case "NTAListApplyResult.updated":
+		if e.ComplexityRoot.NTAListApplyResult.Updated == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListApplyResult.Updated(childComplexity), true
+
+	case "NTAListFieldChange.field":
+		if e.ComplexityRoot.NTAListFieldChange.Field == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListFieldChange.Field(childComplexity), true
+	case "NTAListFieldChange.label":
+		if e.ComplexityRoot.NTAListFieldChange.Label == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListFieldChange.Label(childComplexity), true
+	case "NTAListFieldChange.new":
+		if e.ComplexityRoot.NTAListFieldChange.New == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListFieldChange.New(childComplexity), true
+	case "NTAListFieldChange.old":
+		if e.ComplexityRoot.NTAListFieldChange.Old == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListFieldChange.Old(childComplexity), true
+	case "NTAListFieldChange.significant":
+		if e.ComplexityRoot.NTAListFieldChange.Significant == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListFieldChange.Significant(childComplexity), true
+
+	case "NTAListPreview.lists":
+		if e.ComplexityRoot.NTAListPreview.Lists == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListPreview.Lists(childComplexity), true
+	case "NTAListPreview.primussRegsAvailable":
+		if e.ComplexityRoot.NTAListPreview.PrimussRegsAvailable == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListPreview.PrimussRegsAvailable(childComplexity), true
+
+	case "NTAListProposal.compensation":
+		if e.ComplexityRoot.NTAListProposal.Compensation == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.Compensation(childComplexity), true
+	case "NTAListProposal.deltaDurationPercent":
+		if e.ComplexityRoot.NTAListProposal.DeltaDurationPercent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.DeltaDurationPercent(childComplexity), true
+	case "NTAListProposal.email":
+		if e.ComplexityRoot.NTAListProposal.Email == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.Email(childComplexity), true
+	case "NTAListProposal.from":
+		if e.ComplexityRoot.NTAListProposal.From == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.From(childComplexity), true
+	case "NTAListProposal.mtknr":
+		if e.ComplexityRoot.NTAListProposal.Mtknr == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.Mtknr(childComplexity), true
+	case "NTAListProposal.name":
+		if e.ComplexityRoot.NTAListProposal.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.Name(childComplexity), true
+	case "NTAListProposal.needsHardware":
+		if e.ComplexityRoot.NTAListProposal.NeedsHardware == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.NeedsHardware(childComplexity), true
+	case "NTAListProposal.needsRoomAlone":
+		if e.ComplexityRoot.NTAListProposal.NeedsRoomAlone == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.NeedsRoomAlone(childComplexity), true
+	case "NTAListProposal.program":
+		if e.ComplexityRoot.NTAListProposal.Program == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.Program(childComplexity), true
+	case "NTAListProposal.until":
+		if e.ComplexityRoot.NTAListProposal.Until == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListProposal.Until(childComplexity), true
+
+	case "NTAListReg.primussAncode":
+		if e.ComplexityRoot.NTAListReg.PrimussAncode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListReg.PrimussAncode(childComplexity), true
+	case "NTAListReg.program":
+		if e.ComplexityRoot.NTAListReg.Program == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListReg.Program(childComplexity), true
+	case "NTAListReg.stg":
+		if e.ComplexityRoot.NTAListReg.Stg == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListReg.Stg(childComplexity), true
+
+	case "NTAListRow.beginnStudium":
+		if e.ComplexityRoot.NTAListRow.BeginnStudium == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.BeginnStudium(childComplexity), true
+	case "NTAListRow.changes":
+		if e.ComplexityRoot.NTAListRow.Changes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Changes(childComplexity), true
+	case "NTAListRow.compensation":
+		if e.ComplexityRoot.NTAListRow.Compensation == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Compensation(childComplexity), true
+	case "NTAListRow.existing":
+		if e.ComplexityRoot.NTAListRow.Existing == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Existing(childComplexity), true
+	case "NTAListRow.existingDeactivated":
+		if e.ComplexityRoot.NTAListRow.ExistingDeactivated == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.ExistingDeactivated(childComplexity), true
+	case "NTAListRow.firstSeen":
+		if e.ComplexityRoot.NTAListRow.FirstSeen == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.FirstSeen(childComplexity), true
+	case "NTAListRow.infos":
+		if e.ComplexityRoot.NTAListRow.Infos == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Infos(childComplexity), true
+	case "NTAListRow.line":
+		if e.ComplexityRoot.NTAListRow.Line == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Line(childComplexity), true
+	case "NTAListRow.mtknr":
+		if e.ComplexityRoot.NTAListRow.Mtknr == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Mtknr(childComplexity), true
+	case "NTAListRow.name":
+		if e.ComplexityRoot.NTAListRow.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Name(childComplexity), true
+	case "NTAListRow.problems":
+		if e.ComplexityRoot.NTAListRow.Problems == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Problems(childComplexity), true
+	case "NTAListRow.proposal":
+		if e.ComplexityRoot.NTAListRow.Proposal == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Proposal(childComplexity), true
+	case "NTAListRow.regs":
+		if e.ComplexityRoot.NTAListRow.Regs == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Regs(childComplexity), true
+	case "NTAListRow.regsOnlyInList":
+		if e.ComplexityRoot.NTAListRow.RegsOnlyInList == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.RegsOnlyInList(childComplexity), true
+	case "NTAListRow.regsOnlyInPrimuss":
+		if e.ComplexityRoot.NTAListRow.RegsOnlyInPrimuss == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.RegsOnlyInPrimuss(childComplexity), true
+	case "NTAListRow.status":
+		if e.ComplexityRoot.NTAListRow.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Status(childComplexity), true
+	case "NTAListRow.stg":
+		if e.ComplexityRoot.NTAListRow.Stg == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Stg(childComplexity), true
+	case "NTAListRow.validity":
+		if e.ComplexityRoot.NTAListRow.Validity == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NTAListRow.Validity(childComplexity), true
 
 	case "NTAWithRegs.nta":
 		if e.ComplexityRoot.NTAWithRegs.Nta == nil {
@@ -8891,6 +9297,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Nta(childComplexity, args["mtknr"].(string)), true
+	case "Query.ntaListPreview":
+		if e.ComplexityRoot.Query.NtaListPreview == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.NtaListPreview(childComplexity), true
 	case "Query.ntaRoomAloneWaivers":
 		if e.ComplexityRoot.Query.NtaRoomAloneWaivers == nil {
 			break
@@ -12042,6 +12454,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			graphql.NewInputUnmarshaler("InvigilatorConstraintsInput", ec.unmarshalInputInvigilatorConstraintsInput),
 			graphql.NewInputUnmarshaler("JointProgramTimesInput", ec.unmarshalInputJointProgramTimesInput),
 			graphql.NewInputUnmarshaler("NTAInput", ec.unmarshalInputNTAInput),
+			graphql.NewInputUnmarshaler("NTAListApplyItem", ec.unmarshalInputNTAListApplyItem),
 			graphql.NewInputUnmarshaler("PreplanExamInput", ec.unmarshalInputPreplanExamInput),
 			graphql.NewInputUnmarshaler("PrimussExamInput", ec.unmarshalInputPrimussExamInput),
 			graphql.NewInputUnmarshaler("RoomInput", ec.unmarshalInputRoomInput),
@@ -14089,6 +14502,141 @@ type NTAWithRegsByExamAndTeacher {
 type NTAWithRegsByExam {
   exam: ZPAExam!
   ntas: [NTAWithRegs!]
+}
+`, BuiltIn: false},
+	{Name: "../nta_list.graphqls", Input: `extend type Query {
+  """
+  The NTA lists uploaded for the active semester (one per faculty, from the
+  SharePoint folder of the exam board), each row matched against the NTA master
+  data and against the Primuss registrations. Read-only: nothing is applied
+  until applyNTAList.
+  """
+  ntaListPreview: NTAListPreview!
+}
+
+extend type Mutation {
+  """
+  Apply the selected rows of the uploaded NTA lists to the NTA master data: ADD
+  creates an NTA, UPDATE replaces the editable fields of an existing one (as
+  updateNTA). All or nothing.
+  """
+  applyNTAList(items: [NTAListApplyItem!]!): NTAListApplyResult!
+  "Remove the uploaded NTA list of a faculty (the NTA master data stays as it is)."
+  removeNTAList(fk: String!): Boolean!
+}
+
+type NTAListPreview {
+  lists: [NTAList!]!
+  "Whether Primuss registrations exist for the semester; without them there is nothing to compare."
+  primussRegsAvailable: Boolean!
+}
+
+type NTAList {
+  "Faculty number with two digits, e.g. 07 or 21."
+  fk: String!
+  "Display name, e.g. FK 07 or FK 21 (MUC.DAI)."
+  faculty: String!
+  filename: String!
+  "Semester id of the list (e.g. 2026-WS); empty if unknown."
+  semester: String!
+  "Whether the list belongs to the active semester."
+  semesterMatches: Boolean!
+  "Export time of the list."
+  stand: Time
+  importedAt: Time!
+  importedBy: String
+  warnings: [String!]!
+  rows: [NTAListRow!]!
+}
+
+enum NTAListRowStatus {
+  "No NTA with this mtknr in the master data."
+  NEW
+  "The master data differs from the list."
+  CHANGED
+  "The master data matches the list."
+  UNCHANGED
+  "The row could not be read completely; check and complete it before applying."
+  PROBLEM
+}
+
+type NTAListRow {
+  line: Int!
+  status: NTAListRowStatus!
+  mtknr: String!
+  "Name, Vorname"
+  name: String!
+  "Study program as in the list, e.g. IF-B."
+  stg: String!
+  "Start of studies as semester id (e.g. 2025-WS), or the raw value if unknown."
+  beginnStudium: String!
+  "The free text of the list."
+  compensation: String!
+  "The raw validity of the list: * or e.g. 226:127."
+  validity: String!
+  "When this student first appeared in a list of this faculty."
+  firstSeen: Time!
+  "What would be written to the master data; fits NTAInput."
+  proposal: NTAListProposal!
+  "The NTA in the master data, if there is one."
+  existing: NTAListProposal
+  existingDeactivated: Boolean!
+  "Differences between the master data and the proposal (CHANGED)."
+  changes: [NTAListFieldChange!]!
+  problems: [String!]!
+  infos: [String!]!
+  regs: [NTAListReg!]!
+  "Registrations in the list that Primuss does not have (any more)."
+  regsOnlyInList: [NTAListReg!]!
+  "Registrations in Primuss that the list does not have (yet)."
+  regsOnlyInPrimuss: [NTAListReg!]!
+}
+
+type NTAListProposal {
+  name: String!
+  email: String
+  mtknr: String!
+  compensation: String!
+  deltaDurationPercent: Int!
+  needsRoomAlone: Boolean!
+  needsHardware: Boolean!
+  program: String!
+  from: String!
+  until: String!
+}
+
+type NTAListFieldChange {
+  "Field name of NTAInput."
+  field: String!
+  "German label for the GUI."
+  label: String!
+  old: String!
+  new: String!
+  "False for differences that do not change how the exam is planned (name, text)."
+  significant: Boolean!
+}
+
+type NTAListReg {
+  "Program code as in the list or in Primuss, e.g. IF-B or IF."
+  stg: String!
+  "Study program in the master data, if the code could be resolved."
+  program: String!
+  primussAncode: Int!
+}
+
+enum NTAListApplyAction {
+  ADD
+  UPDATE
+}
+
+input NTAListApplyItem {
+  action: NTAListApplyAction!
+  nta: NTAInput!
+}
+
+type NTAListApplyResult {
+  added: Int!
+  updated: Int!
 }
 `, BuiltIn: false},
 	{Name: "../nta_room_alone_waiver.graphqls", Input: `# An NTA student can deliberately give up their right to a room of their own for a
@@ -17670,6 +18218,148 @@ func (ec *executionContext) childFields_NTA(ctx context.Context, field graphql.C
 	return nil, fmt.Errorf("no field named %q was found under type NTA", field.Name)
 }
 
+func (ec *executionContext) childFields_NTAList(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "fk":
+		return ec.fieldContext_NTAList_fk(ctx, field)
+	case "faculty":
+		return ec.fieldContext_NTAList_faculty(ctx, field)
+	case "filename":
+		return ec.fieldContext_NTAList_filename(ctx, field)
+	case "semester":
+		return ec.fieldContext_NTAList_semester(ctx, field)
+	case "semesterMatches":
+		return ec.fieldContext_NTAList_semesterMatches(ctx, field)
+	case "stand":
+		return ec.fieldContext_NTAList_stand(ctx, field)
+	case "importedAt":
+		return ec.fieldContext_NTAList_importedAt(ctx, field)
+	case "importedBy":
+		return ec.fieldContext_NTAList_importedBy(ctx, field)
+	case "warnings":
+		return ec.fieldContext_NTAList_warnings(ctx, field)
+	case "rows":
+		return ec.fieldContext_NTAList_rows(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type NTAList", field.Name)
+}
+
+func (ec *executionContext) childFields_NTAListApplyResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "added":
+		return ec.fieldContext_NTAListApplyResult_added(ctx, field)
+	case "updated":
+		return ec.fieldContext_NTAListApplyResult_updated(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type NTAListApplyResult", field.Name)
+}
+
+func (ec *executionContext) childFields_NTAListFieldChange(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "field":
+		return ec.fieldContext_NTAListFieldChange_field(ctx, field)
+	case "label":
+		return ec.fieldContext_NTAListFieldChange_label(ctx, field)
+	case "old":
+		return ec.fieldContext_NTAListFieldChange_old(ctx, field)
+	case "new":
+		return ec.fieldContext_NTAListFieldChange_new(ctx, field)
+	case "significant":
+		return ec.fieldContext_NTAListFieldChange_significant(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type NTAListFieldChange", field.Name)
+}
+
+func (ec *executionContext) childFields_NTAListPreview(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "lists":
+		return ec.fieldContext_NTAListPreview_lists(ctx, field)
+	case "primussRegsAvailable":
+		return ec.fieldContext_NTAListPreview_primussRegsAvailable(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type NTAListPreview", field.Name)
+}
+
+func (ec *executionContext) childFields_NTAListProposal(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "name":
+		return ec.fieldContext_NTAListProposal_name(ctx, field)
+	case "email":
+		return ec.fieldContext_NTAListProposal_email(ctx, field)
+	case "mtknr":
+		return ec.fieldContext_NTAListProposal_mtknr(ctx, field)
+	case "compensation":
+		return ec.fieldContext_NTAListProposal_compensation(ctx, field)
+	case "deltaDurationPercent":
+		return ec.fieldContext_NTAListProposal_deltaDurationPercent(ctx, field)
+	case "needsRoomAlone":
+		return ec.fieldContext_NTAListProposal_needsRoomAlone(ctx, field)
+	case "needsHardware":
+		return ec.fieldContext_NTAListProposal_needsHardware(ctx, field)
+	case "program":
+		return ec.fieldContext_NTAListProposal_program(ctx, field)
+	case "from":
+		return ec.fieldContext_NTAListProposal_from(ctx, field)
+	case "until":
+		return ec.fieldContext_NTAListProposal_until(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type NTAListProposal", field.Name)
+}
+
+func (ec *executionContext) childFields_NTAListReg(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "stg":
+		return ec.fieldContext_NTAListReg_stg(ctx, field)
+	case "program":
+		return ec.fieldContext_NTAListReg_program(ctx, field)
+	case "primussAncode":
+		return ec.fieldContext_NTAListReg_primussAncode(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type NTAListReg", field.Name)
+}
+
+func (ec *executionContext) childFields_NTAListRow(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "line":
+		return ec.fieldContext_NTAListRow_line(ctx, field)
+	case "status":
+		return ec.fieldContext_NTAListRow_status(ctx, field)
+	case "mtknr":
+		return ec.fieldContext_NTAListRow_mtknr(ctx, field)
+	case "name":
+		return ec.fieldContext_NTAListRow_name(ctx, field)
+	case "stg":
+		return ec.fieldContext_NTAListRow_stg(ctx, field)
+	case "beginnStudium":
+		return ec.fieldContext_NTAListRow_beginnStudium(ctx, field)
+	case "compensation":
+		return ec.fieldContext_NTAListRow_compensation(ctx, field)
+	case "validity":
+		return ec.fieldContext_NTAListRow_validity(ctx, field)
+	case "firstSeen":
+		return ec.fieldContext_NTAListRow_firstSeen(ctx, field)
+	case "proposal":
+		return ec.fieldContext_NTAListRow_proposal(ctx, field)
+	case "existing":
+		return ec.fieldContext_NTAListRow_existing(ctx, field)
+	case "existingDeactivated":
+		return ec.fieldContext_NTAListRow_existingDeactivated(ctx, field)
+	case "changes":
+		return ec.fieldContext_NTAListRow_changes(ctx, field)
+	case "problems":
+		return ec.fieldContext_NTAListRow_problems(ctx, field)
+	case "infos":
+		return ec.fieldContext_NTAListRow_infos(ctx, field)
+	case "regs":
+		return ec.fieldContext_NTAListRow_regs(ctx, field)
+	case "regsOnlyInList":
+		return ec.fieldContext_NTAListRow_regsOnlyInList(ctx, field)
+	case "regsOnlyInPrimuss":
+		return ec.fieldContext_NTAListRow_regsOnlyInPrimuss(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type NTAListRow", field.Name)
+}
+
 func (ec *executionContext) childFields_NTAWithRegs(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "nta":
@@ -19718,6 +20408,20 @@ func (ec *executionContext) field_Mutation_addZpaExamToPlan_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_applyNTAList_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "items",
+		func(ctx context.Context, v any) ([]*model.NTAListApplyItem, error) {
+			return ec.unmarshalNNTAListApplyItem2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListApplyItemᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["items"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_applyRoomRequestsPreview_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -20389,6 +21093,20 @@ func (ec *executionContext) field_Mutation_removeLoginAlias_args(ctx context.Con
 		return nil, err
 	}
 	args["teacherID"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeNTAList_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "fk",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["fk"] = arg0
 	return args, nil
 }
 
@@ -38782,6 +39500,94 @@ func (ec *executionContext) fieldContext_Mutation_setNTAActive(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_applyNTAList(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_applyNTAList(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ApplyNTAList(ctx, fc.Args["items"].([]*model.NTAListApplyItem))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.NTAListApplyResult) graphql.Marshaler {
+			return ec.marshalNNTAListApplyResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListApplyResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_applyNTAList(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAListApplyResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_applyNTAList_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeNTAList(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_removeNTAList(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemoveNTAList(ctx, fc.Args["fk"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_removeNTAList(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeNTAList_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addNtaRoomAloneWaiver(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -42008,6 +42814,1228 @@ func (ec *executionContext) _NTA_deactivated(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_NTA_deactivated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("NTA", field, false, false, "Boolean")
+}
+
+func (ec *executionContext) _NTAList_fk(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_fk(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Fk, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_fk(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAList", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAList_faculty(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_faculty(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Faculty, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_faculty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAList", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAList_filename(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_filename(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Filename, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_filename(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAList", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAList_semester(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_semester(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Semester, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_semester(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAList", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAList_semesterMatches(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_semesterMatches(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SemesterMatches, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_semesterMatches(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAList", field, false, false, "Boolean")
+}
+
+func (ec *executionContext) _NTAList_stand(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_stand(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Stand, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_stand(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAList", field, false, false, "Time")
+}
+
+func (ec *executionContext) _NTAList_importedAt(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_importedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ImportedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_importedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAList", field, false, false, "Time")
+}
+
+func (ec *executionContext) _NTAList_importedBy(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_importedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ImportedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_importedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAList", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAList_warnings(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_warnings(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Warnings, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_warnings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAList", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAList_rows(ctx context.Context, field graphql.CollectedField, obj *model.NTAList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAList_rows(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Rows, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.NTAListRow) graphql.Marshaler {
+			return ec.marshalNNTAListRow2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRowᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAList_rows(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAList",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAListRow(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAListApplyResult_added(ctx context.Context, field graphql.CollectedField, obj *model.NTAListApplyResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListApplyResult_added(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Added, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListApplyResult_added(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListApplyResult", field, false, false, "Int")
+}
+
+func (ec *executionContext) _NTAListApplyResult_updated(ctx context.Context, field graphql.CollectedField, obj *model.NTAListApplyResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListApplyResult_updated(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Updated, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListApplyResult_updated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListApplyResult", field, false, false, "Int")
+}
+
+func (ec *executionContext) _NTAListFieldChange_field(ctx context.Context, field graphql.CollectedField, obj *model.NTAListFieldChange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListFieldChange_field(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Field, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListFieldChange_field(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListFieldChange", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListFieldChange_label(ctx context.Context, field graphql.CollectedField, obj *model.NTAListFieldChange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListFieldChange_label(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListFieldChange_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListFieldChange", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListFieldChange_old(ctx context.Context, field graphql.CollectedField, obj *model.NTAListFieldChange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListFieldChange_old(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Old, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListFieldChange_old(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListFieldChange", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListFieldChange_new(ctx context.Context, field graphql.CollectedField, obj *model.NTAListFieldChange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListFieldChange_new(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.New, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListFieldChange_new(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListFieldChange", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListFieldChange_significant(ctx context.Context, field graphql.CollectedField, obj *model.NTAListFieldChange) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListFieldChange_significant(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Significant, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListFieldChange_significant(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListFieldChange", field, false, false, "Boolean")
+}
+
+func (ec *executionContext) _NTAListPreview_lists(ctx context.Context, field graphql.CollectedField, obj *model.NTAListPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListPreview_lists(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Lists, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.NTAList) graphql.Marshaler {
+			return ec.marshalNNTAList2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListPreview_lists(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAListPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAList(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAListPreview_primussRegsAvailable(ctx context.Context, field graphql.CollectedField, obj *model.NTAListPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListPreview_primussRegsAvailable(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PrimussRegsAvailable, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListPreview_primussRegsAvailable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListPreview", field, false, false, "Boolean")
+}
+
+func (ec *executionContext) _NTAListProposal_name(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListProposal_email(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_email(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Email, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListProposal_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_mtknr(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Mtknr, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_mtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListProposal_compensation(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_compensation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Compensation, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_compensation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListProposal_deltaDurationPercent(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_deltaDurationPercent(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DeltaDurationPercent, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_deltaDurationPercent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "Int")
+}
+
+func (ec *executionContext) _NTAListProposal_needsRoomAlone(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_needsRoomAlone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NeedsRoomAlone, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_needsRoomAlone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "Boolean")
+}
+
+func (ec *executionContext) _NTAListProposal_needsHardware(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_needsHardware(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NeedsHardware, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_needsHardware(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "Boolean")
+}
+
+func (ec *executionContext) _NTAListProposal_program(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_program(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Program, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_program(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListProposal_from(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_from(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.From, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_from(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListProposal_until(ctx context.Context, field graphql.CollectedField, obj *model.NTAListProposal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListProposal_until(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Until, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListProposal_until(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListProposal", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListReg_stg(ctx context.Context, field graphql.CollectedField, obj *model.NTAListReg) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListReg_stg(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Stg, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListReg_stg(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListReg", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListReg_program(ctx context.Context, field graphql.CollectedField, obj *model.NTAListReg) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListReg_program(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Program, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListReg_program(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListReg", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListReg_primussAncode(ctx context.Context, field graphql.CollectedField, obj *model.NTAListReg) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListReg_primussAncode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PrimussAncode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListReg_primussAncode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListReg", field, false, false, "Int")
+}
+
+func (ec *executionContext) _NTAListRow_line(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_line(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Line, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_line(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "Int")
+}
+
+func (ec *executionContext) _NTAListRow_status(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_status(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.NTAListRowStatus) graphql.Marshaler {
+			return ec.marshalNNTAListRowStatus2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRowStatus(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "NTAListRowStatus")
+}
+
+func (ec *executionContext) _NTAListRow_mtknr(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_mtknr(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Mtknr, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_mtknr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListRow_name(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListRow_stg(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_stg(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Stg, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_stg(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListRow_beginnStudium(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_beginnStudium(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BeginnStudium, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_beginnStudium(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListRow_compensation(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_compensation(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Compensation, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_compensation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListRow_validity(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_validity(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Validity, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_validity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListRow_firstSeen(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_firstSeen(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.FirstSeen, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_firstSeen(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "Time")
+}
+
+func (ec *executionContext) _NTAListRow_proposal(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_proposal(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Proposal, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.NTAListProposal) graphql.Marshaler {
+			return ec.marshalNNTAListProposal2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListProposal(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_proposal(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAListRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAListProposal(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAListRow_existing(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_existing(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Existing, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.NTAListProposal) graphql.Marshaler {
+			return ec.marshalONTAListProposal2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListProposal(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_existing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAListRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAListProposal(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAListRow_existingDeactivated(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_existingDeactivated(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExistingDeactivated, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_existingDeactivated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "Boolean")
+}
+
+func (ec *executionContext) _NTAListRow_changes(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_changes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Changes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.NTAListFieldChange) graphql.Marshaler {
+			return ec.marshalNNTAListFieldChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListFieldChangeᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_changes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAListRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAListFieldChange(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAListRow_problems(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_problems(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Problems, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_problems(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListRow_infos(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_infos(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Infos, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_infos(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("NTAListRow", field, false, false, "String")
+}
+
+func (ec *executionContext) _NTAListRow_regs(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_regs(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Regs, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.NTAListReg) graphql.Marshaler {
+			return ec.marshalNNTAListReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRegᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_regs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAListRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAListReg(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAListRow_regsOnlyInList(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_regsOnlyInList(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RegsOnlyInList, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.NTAListReg) graphql.Marshaler {
+			return ec.marshalNNTAListReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRegᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_regsOnlyInList(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAListRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAListReg(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NTAListRow_regsOnlyInPrimuss(ctx context.Context, field graphql.CollectedField, obj *model.NTAListRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NTAListRow_regsOnlyInPrimuss(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RegsOnlyInPrimuss, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.NTAListReg) graphql.Marshaler {
+			return ec.marshalNNTAListReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRegᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_NTAListRow_regsOnlyInPrimuss(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NTAListRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAListReg(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _NTAWithRegs_nta(ctx context.Context, field graphql.CollectedField, obj *model.NTAWithRegs) (ret graphql.Marshaler) {
@@ -49631,6 +51659,38 @@ func (ec *executionContext) fieldContext_Query_examsWithNtas(_ context.Context, 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_PlannedExam(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_ntaListPreview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_ntaListPreview(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().NtaListPreview(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.NTAListPreview) graphql.Marshaler {
+			return ec.marshalNNTAListPreview2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListPreview(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_ntaListPreview(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NTAListPreview(ctx, field)
 		},
 	}
 	return fc, nil
@@ -64638,6 +66698,55 @@ func UnmarshalNTAInput(ctx context.Context, raw any) (model.NTAInput, error) {
 	return out, err
 }
 
+func (ec *executionContext) unmarshalInputNTAListApplyItem(ctx context.Context, obj any) (model.NTAListApplyItem, error) {
+	var it model.NTAListApplyItem
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"action", "nta"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "action":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+			data, err := ec.unmarshalNNTAListApplyAction2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListApplyAction(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Action = data
+		case "nta":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nta"))
+			data, err := ec.unmarshalNNTAInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Nta = data
+		}
+	}
+	return it, nil
+}
+
+// UnmarshalNTAListApplyItem unmarshals raw into the NTAListApplyItem input type, using the
+// unmarshaler bound to ctx's request. Call it from a resolver to decode an input
+// object that was not passed as a field argument.
+//
+// ctx must come from a gqlgen request; outside one there is no unmarshaler to use
+// and the returned error says so.
+func UnmarshalNTAListApplyItem(ctx context.Context, raw any) (model.NTAListApplyItem, error) {
+	var out model.NTAListApplyItem
+	err := graphql.UnmarshalNamedInputFromContext(ctx, "NTAListApplyItem", raw, &out)
+	return out, err
+}
+
 func (ec *executionContext) unmarshalInputPreplanExamInput(ctx context.Context, obj any) (model.PreplanExamInput, error) {
 	var it model.PreplanExamInput
 	if obj == nil {
@@ -70836,6 +72945,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "applyNTAList":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_applyNTAList(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeNTAList":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeNTAList(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addNtaRoomAloneWaiver":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addNtaRoomAloneWaiver(ctx, field)
@@ -71517,6 +73640,452 @@ func (ec *executionContext) _NTA(ctx context.Context, sel ast.SelectionSet, obj 
 			}
 		case "deactivated":
 			out.Values[i] = ec._NTA_deactivated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	if n := len(deferred.Defers); n > 0 {
+		atomic.AddInt32(&ec.Deferred, int32(min(n, math.MaxInt32)))
+		ec.ProcessDeferredGroup(deferred)
+	}
+
+	return out
+}
+
+var nTAListImplementors = []string{"NTAList"}
+
+func (ec *executionContext) _NTAList(ctx context.Context, sel ast.SelectionSet, obj *model.NTAList) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAListImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := graphql.NewDeferredGroup(ctx)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAList")
+		case "fk":
+			out.Values[i] = ec._NTAList_fk(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "faculty":
+			out.Values[i] = ec._NTAList_faculty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "filename":
+			out.Values[i] = ec._NTAList_filename(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "semester":
+			out.Values[i] = ec._NTAList_semester(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "semesterMatches":
+			out.Values[i] = ec._NTAList_semesterMatches(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stand":
+			out.Values[i] = ec._NTAList_stand(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "importedAt":
+			out.Values[i] = ec._NTAList_importedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "importedBy":
+			out.Values[i] = ec._NTAList_importedBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "warnings":
+			out.Values[i] = ec._NTAList_warnings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rows":
+			out.Values[i] = ec._NTAList_rows(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	if n := len(deferred.Defers); n > 0 {
+		atomic.AddInt32(&ec.Deferred, int32(min(n, math.MaxInt32)))
+		ec.ProcessDeferredGroup(deferred)
+	}
+
+	return out
+}
+
+var nTAListApplyResultImplementors = []string{"NTAListApplyResult"}
+
+func (ec *executionContext) _NTAListApplyResult(ctx context.Context, sel ast.SelectionSet, obj *model.NTAListApplyResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAListApplyResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := graphql.NewDeferredGroup(ctx)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAListApplyResult")
+		case "added":
+			out.Values[i] = ec._NTAListApplyResult_added(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updated":
+			out.Values[i] = ec._NTAListApplyResult_updated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	if n := len(deferred.Defers); n > 0 {
+		atomic.AddInt32(&ec.Deferred, int32(min(n, math.MaxInt32)))
+		ec.ProcessDeferredGroup(deferred)
+	}
+
+	return out
+}
+
+var nTAListFieldChangeImplementors = []string{"NTAListFieldChange"}
+
+func (ec *executionContext) _NTAListFieldChange(ctx context.Context, sel ast.SelectionSet, obj *model.NTAListFieldChange) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAListFieldChangeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := graphql.NewDeferredGroup(ctx)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAListFieldChange")
+		case "field":
+			out.Values[i] = ec._NTAListFieldChange_field(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._NTAListFieldChange_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "old":
+			out.Values[i] = ec._NTAListFieldChange_old(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "new":
+			out.Values[i] = ec._NTAListFieldChange_new(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "significant":
+			out.Values[i] = ec._NTAListFieldChange_significant(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	if n := len(deferred.Defers); n > 0 {
+		atomic.AddInt32(&ec.Deferred, int32(min(n, math.MaxInt32)))
+		ec.ProcessDeferredGroup(deferred)
+	}
+
+	return out
+}
+
+var nTAListPreviewImplementors = []string{"NTAListPreview"}
+
+func (ec *executionContext) _NTAListPreview(ctx context.Context, sel ast.SelectionSet, obj *model.NTAListPreview) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAListPreviewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := graphql.NewDeferredGroup(ctx)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAListPreview")
+		case "lists":
+			out.Values[i] = ec._NTAListPreview_lists(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "primussRegsAvailable":
+			out.Values[i] = ec._NTAListPreview_primussRegsAvailable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	if n := len(deferred.Defers); n > 0 {
+		atomic.AddInt32(&ec.Deferred, int32(min(n, math.MaxInt32)))
+		ec.ProcessDeferredGroup(deferred)
+	}
+
+	return out
+}
+
+var nTAListProposalImplementors = []string{"NTAListProposal"}
+
+func (ec *executionContext) _NTAListProposal(ctx context.Context, sel ast.SelectionSet, obj *model.NTAListProposal) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAListProposalImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := graphql.NewDeferredGroup(ctx)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAListProposal")
+		case "name":
+			out.Values[i] = ec._NTAListProposal_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "email":
+			out.Values[i] = ec._NTAListProposal_email(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "mtknr":
+			out.Values[i] = ec._NTAListProposal_mtknr(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "compensation":
+			out.Values[i] = ec._NTAListProposal_compensation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deltaDurationPercent":
+			out.Values[i] = ec._NTAListProposal_deltaDurationPercent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "needsRoomAlone":
+			out.Values[i] = ec._NTAListProposal_needsRoomAlone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "needsHardware":
+			out.Values[i] = ec._NTAListProposal_needsHardware(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "program":
+			out.Values[i] = ec._NTAListProposal_program(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "from":
+			out.Values[i] = ec._NTAListProposal_from(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "until":
+			out.Values[i] = ec._NTAListProposal_until(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	if n := len(deferred.Defers); n > 0 {
+		atomic.AddInt32(&ec.Deferred, int32(min(n, math.MaxInt32)))
+		ec.ProcessDeferredGroup(deferred)
+	}
+
+	return out
+}
+
+var nTAListRegImplementors = []string{"NTAListReg"}
+
+func (ec *executionContext) _NTAListReg(ctx context.Context, sel ast.SelectionSet, obj *model.NTAListReg) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAListRegImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := graphql.NewDeferredGroup(ctx)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAListReg")
+		case "stg":
+			out.Values[i] = ec._NTAListReg_stg(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "program":
+			out.Values[i] = ec._NTAListReg_program(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "primussAncode":
+			out.Values[i] = ec._NTAListReg_primussAncode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	if n := len(deferred.Defers); n > 0 {
+		atomic.AddInt32(&ec.Deferred, int32(min(n, math.MaxInt32)))
+		ec.ProcessDeferredGroup(deferred)
+	}
+
+	return out
+}
+
+var nTAListRowImplementors = []string{"NTAListRow"}
+
+func (ec *executionContext) _NTAListRow(ctx context.Context, sel ast.SelectionSet, obj *model.NTAListRow) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nTAListRowImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := graphql.NewDeferredGroup(ctx)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NTAListRow")
+		case "line":
+			out.Values[i] = ec._NTAListRow_line(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._NTAListRow_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mtknr":
+			out.Values[i] = ec._NTAListRow_mtknr(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._NTAListRow_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stg":
+			out.Values[i] = ec._NTAListRow_stg(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "beginnStudium":
+			out.Values[i] = ec._NTAListRow_beginnStudium(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "compensation":
+			out.Values[i] = ec._NTAListRow_compensation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "validity":
+			out.Values[i] = ec._NTAListRow_validity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "firstSeen":
+			out.Values[i] = ec._NTAListRow_firstSeen(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "proposal":
+			out.Values[i] = ec._NTAListRow_proposal(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "existing":
+			out.Values[i] = ec._NTAListRow_existing(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "existingDeactivated":
+			out.Values[i] = ec._NTAListRow_existingDeactivated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "changes":
+			out.Values[i] = ec._NTAListRow_changes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "problems":
+			out.Values[i] = ec._NTAListRow_problems(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "infos":
+			out.Values[i] = ec._NTAListRow_infos(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "regs":
+			out.Values[i] = ec._NTAListRow_regs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "regsOnlyInList":
+			out.Values[i] = ec._NTAListRow_regsOnlyInList(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "regsOnlyInPrimuss":
+			out.Values[i] = ec._NTAListRow_regsOnlyInPrimuss(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -74145,6 +76714,12 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				true, true,
 				func(ctx context.Context) graphql.Marshaler {
 					return ec._Query_examsWithNtas(ctx, field)
+				})
+		case "ntaListPreview":
+			out.ResolveRootConcurrently(innerCtx, ec.OperationContext, i,
+				true, true,
+				func(ctx context.Context) graphql.Marshaler {
+					return ec._Query_ntaListPreview(ctx, field)
 				})
 		case "ntaRoomAloneWaivers":
 			out.ResolveRootConcurrently(innerCtx, ec.OperationContext, i,
@@ -80047,6 +82622,170 @@ func (ec *executionContext) unmarshalNNTAInput2githubᚗcomᚋobcodeᚋplexams�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNNTAInput2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAInput(ctx context.Context, v any) (*model.NTAInput, error) {
+	res, err := ec.unmarshalInputNTAInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNNTAList2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTAList) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNNTAList2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAList(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNNTAList2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAList(ctx context.Context, sel ast.SelectionSet, v *model.NTAList) graphql.Marshaler {
+	if v == nil {
+		graphql.AddInvalidNullError(ctx, "NTAList!")
+		return graphql.Null
+	}
+	return ec._NTAList(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNNTAListApplyAction2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListApplyAction(ctx context.Context, v any) (model.NTAListApplyAction, error) {
+	var res model.NTAListApplyAction
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNNTAListApplyAction2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListApplyAction(ctx context.Context, sel ast.SelectionSet, v model.NTAListApplyAction) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNNTAListApplyItem2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListApplyItemᚄ(ctx context.Context, v any) ([]*model.NTAListApplyItem, error) {
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]*model.NTAListApplyItem, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNNTAListApplyItem2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListApplyItem(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNNTAListApplyItem2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListApplyItem(ctx context.Context, v any) (*model.NTAListApplyItem, error) {
+	res, err := ec.unmarshalInputNTAListApplyItem(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNNTAListApplyResult2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListApplyResult(ctx context.Context, sel ast.SelectionSet, v *model.NTAListApplyResult) graphql.Marshaler {
+	if v == nil {
+		graphql.AddInvalidNullError(ctx, "NTAListApplyResult!")
+		return graphql.Null
+	}
+	return ec._NTAListApplyResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNNTAListFieldChange2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListFieldChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTAListFieldChange) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNNTAListFieldChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListFieldChange(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNNTAListFieldChange2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListFieldChange(ctx context.Context, sel ast.SelectionSet, v *model.NTAListFieldChange) graphql.Marshaler {
+	if v == nil {
+		graphql.AddInvalidNullError(ctx, "NTAListFieldChange!")
+		return graphql.Null
+	}
+	return ec._NTAListFieldChange(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNNTAListPreview2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListPreview(ctx context.Context, sel ast.SelectionSet, v *model.NTAListPreview) graphql.Marshaler {
+	if v == nil {
+		graphql.AddInvalidNullError(ctx, "NTAListPreview!")
+		return graphql.Null
+	}
+	return ec._NTAListPreview(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNNTAListProposal2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListProposal(ctx context.Context, sel ast.SelectionSet, v *model.NTAListProposal) graphql.Marshaler {
+	if v == nil {
+		graphql.AddInvalidNullError(ctx, "NTAListProposal!")
+		return graphql.Null
+	}
+	return ec._NTAListProposal(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNNTAListReg2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRegᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTAListReg) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNNTAListReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListReg(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNNTAListReg2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListReg(ctx context.Context, sel ast.SelectionSet, v *model.NTAListReg) graphql.Marshaler {
+	if v == nil {
+		graphql.AddInvalidNullError(ctx, "NTAListReg!")
+		return graphql.Null
+	}
+	return ec._NTAListReg(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNNTAListRow2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRowᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTAListRow) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNNTAListRow2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRow(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNNTAListRow2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRow(ctx context.Context, sel ast.SelectionSet, v *model.NTAListRow) graphql.Marshaler {
+	if v == nil {
+		graphql.AddInvalidNullError(ctx, "NTAListRow!")
+		return graphql.Null
+	}
+	return ec._NTAListRow(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNNTAListRowStatus2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRowStatus(ctx context.Context, v any) (model.NTAListRowStatus, error) {
+	var res model.NTAListRowStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNNTAListRowStatus2githubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListRowStatus(ctx context.Context, sel ast.SelectionSet, v model.NTAListRowStatus) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNNTAWithRegs2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegs(ctx context.Context, sel ast.SelectionSet, v *model.NTAWithRegs) graphql.Marshaler {
 	if v == nil {
 		graphql.AddInvalidNullError(ctx, "NTAWithRegs!")
@@ -82619,6 +85358,13 @@ func (ec *executionContext) marshalONTA2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgo�
 		return graphql.Null
 	}
 	return ec._NTA(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalONTAListProposal2ᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAListProposal(ctx context.Context, sel ast.SelectionSet, v *model.NTAListProposal) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._NTAListProposal(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalONTAWithRegs2ᚕᚖgithubᚗcomᚋobcodeᚋplexamsᚗgoᚋgraphᚋmodelᚐNTAWithRegsᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.NTAWithRegs) graphql.Marshaler {

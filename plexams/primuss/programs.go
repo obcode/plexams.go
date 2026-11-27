@@ -93,3 +93,10 @@ func resolveFilePrograms(fileCodes []string, programs []*model.StudyProgram) (ma
 	}
 	return resolved, nil
 }
+
+// ResolveProgram maps a degree-suffixed program code ("IF-B", "DC-M") onto the
+// shortname of a study program, like the Sammellisten file names. Also used for
+// the program codes of the NTA lists.
+func ResolveProgram(code string, programs []*model.StudyProgram) (string, error) {
+	return resolveFileProgram(code, programs)
+}

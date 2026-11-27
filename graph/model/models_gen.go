@@ -1136,6 +1136,104 @@ type NTAInput struct {
 	Until                string  `json:"until"`
 }
 
+type NTAList struct {
+	// Faculty number with two digits, e.g. 07 or 21.
+	Fk string `json:"fk"`
+	// Display name, e.g. FK 07 or FK 21 (MUC.DAI).
+	Faculty  string `json:"faculty"`
+	Filename string `json:"filename"`
+	// Semester id of the list (e.g. 2026-WS); empty if unknown.
+	Semester string `json:"semester"`
+	// Whether the list belongs to the active semester.
+	SemesterMatches bool `json:"semesterMatches"`
+	// Export time of the list.
+	Stand      *time.Time    `json:"stand,omitempty"`
+	ImportedAt time.Time     `json:"importedAt"`
+	ImportedBy *string       `json:"importedBy,omitempty"`
+	Warnings   []string      `json:"warnings"`
+	Rows       []*NTAListRow `json:"rows"`
+}
+
+type NTAListApplyItem struct {
+	Action NTAListApplyAction `json:"action"`
+	Nta    *NTAInput          `json:"nta"`
+}
+
+type NTAListApplyResult struct {
+	Added   int `json:"added"`
+	Updated int `json:"updated"`
+}
+
+type NTAListFieldChange struct {
+	// Field name of NTAInput.
+	Field string `json:"field"`
+	// German label for the GUI.
+	Label string `json:"label"`
+	Old   string `json:"old"`
+	New   string `json:"new"`
+	// False for differences that do not change how the exam is planned (name, text).
+	Significant bool `json:"significant"`
+}
+
+type NTAListPreview struct {
+	Lists []*NTAList `json:"lists"`
+	// Whether Primuss registrations exist for the semester; without them there is nothing to compare.
+	PrimussRegsAvailable bool `json:"primussRegsAvailable"`
+}
+
+type NTAListProposal struct {
+	Name                 string  `json:"name"`
+	Email                *string `json:"email,omitempty"`
+	Mtknr                string  `json:"mtknr"`
+	Compensation         string  `json:"compensation"`
+	DeltaDurationPercent int     `json:"deltaDurationPercent"`
+	NeedsRoomAlone       bool    `json:"needsRoomAlone"`
+	NeedsHardware        bool    `json:"needsHardware"`
+	Program              string  `json:"program"`
+	From                 string  `json:"from"`
+	Until                string  `json:"until"`
+}
+
+type NTAListReg struct {
+	// Program code as in the list or in Primuss, e.g. IF-B or IF.
+	Stg string `json:"stg"`
+	// Study program in the master data, if the code could be resolved.
+	Program       string `json:"program"`
+	PrimussAncode int    `json:"primussAncode"`
+}
+
+type NTAListRow struct {
+	Line   int              `json:"line"`
+	Status NTAListRowStatus `json:"status"`
+	Mtknr  string           `json:"mtknr"`
+	// Name, Vorname
+	Name string `json:"name"`
+	// Study program as in the list, e.g. IF-B.
+	Stg string `json:"stg"`
+	// Start of studies as semester id (e.g. 2025-WS), or the raw value if unknown.
+	BeginnStudium string `json:"beginnStudium"`
+	// The free text of the list.
+	Compensation string `json:"compensation"`
+	// The raw validity of the list: * or e.g. 226:127.
+	Validity string `json:"validity"`
+	// When this student first appeared in a list of this faculty.
+	FirstSeen time.Time `json:"firstSeen"`
+	// What would be written to the master data; fits NTAInput.
+	Proposal *NTAListProposal `json:"proposal"`
+	// The NTA in the master data, if there is one.
+	Existing            *NTAListProposal `json:"existing,omitempty"`
+	ExistingDeactivated bool             `json:"existingDeactivated"`
+	// Differences between the master data and the proposal (CHANGED).
+	Changes  []*NTAListFieldChange `json:"changes"`
+	Problems []string              `json:"problems"`
+	Infos    []string              `json:"infos"`
+	Regs     []*NTAListReg         `json:"regs"`
+	// Registrations in the list that Primuss does not have (any more).
+	RegsOnlyInList []*NTAListReg `json:"regsOnlyInList"`
+	// Registrations in Primuss that the list does not have (yet).
+	RegsOnlyInPrimuss []*NTAListReg `json:"regsOnlyInPrimuss"`
+}
+
 type NTAWithRegs struct {
 	Nta  *NTA                   `json:"nta"`
 	Regs *StudentRegsPerStudent `json:"regs,omitempty"`
@@ -2333,6 +2431,124 @@ func (e *LogLevel) UnmarshalJSON(b []byte) error {
 }
 
 func (e LogLevel) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type NTAListApplyAction string
+
+const (
+	NTAListApplyActionAdd    NTAListApplyAction = "ADD"
+	NTAListApplyActionUpdate NTAListApplyAction = "UPDATE"
+)
+
+var AllNTAListApplyAction = []NTAListApplyAction{
+	NTAListApplyActionAdd,
+	NTAListApplyActionUpdate,
+}
+
+func (e NTAListApplyAction) IsValid() bool {
+	switch e {
+	case NTAListApplyActionAdd, NTAListApplyActionUpdate:
+		return true
+	}
+	return false
+}
+
+func (e NTAListApplyAction) String() string {
+	return string(e)
+}
+
+func (e *NTAListApplyAction) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = NTAListApplyAction(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid NTAListApplyAction", str)
+	}
+	return nil
+}
+
+func (e NTAListApplyAction) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *NTAListApplyAction) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e NTAListApplyAction) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type NTAListRowStatus string
+
+const (
+	// No NTA with this mtknr in the master data.
+	NTAListRowStatusNew NTAListRowStatus = "NEW"
+	// The master data differs from the list.
+	NTAListRowStatusChanged NTAListRowStatus = "CHANGED"
+	// The master data matches the list.
+	NTAListRowStatusUnchanged NTAListRowStatus = "UNCHANGED"
+	// The row could not be read completely; check and complete it before applying.
+	NTAListRowStatusProblem NTAListRowStatus = "PROBLEM"
+)
+
+var AllNTAListRowStatus = []NTAListRowStatus{
+	NTAListRowStatusNew,
+	NTAListRowStatusChanged,
+	NTAListRowStatusUnchanged,
+	NTAListRowStatusProblem,
+}
+
+func (e NTAListRowStatus) IsValid() bool {
+	switch e {
+	case NTAListRowStatusNew, NTAListRowStatusChanged, NTAListRowStatusUnchanged, NTAListRowStatusProblem:
+		return true
+	}
+	return false
+}
+
+func (e NTAListRowStatus) String() string {
+	return string(e)
+}
+
+func (e *NTAListRowStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = NTAListRowStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid NTAListRowStatus", str)
+	}
+	return nil
+}
+
+func (e NTAListRowStatus) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *NTAListRowStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e NTAListRowStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

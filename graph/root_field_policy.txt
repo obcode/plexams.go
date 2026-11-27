@@ -18,6 +18,7 @@ Mutation.addStudentReg PLANER
 Mutation.addTodoComment PLANER
 Mutation.addTodoLink PLANER
 Mutation.addZpaExamToPlan PLANER
+Mutation.applyNTAList PLANER
 Mutation.applyRoomRequestsPreview PLANER
 Mutation.blockRoomAt PLANER
 Mutation.blockRoomAtTimes PLANER
@@ -58,6 +59,7 @@ Mutation.removeExamsCanShareSlot PLANER
 Mutation.removeJointLink PLANER
 Mutation.removeLoginAlias ADMIN
 Mutation.removeMyJiraToken PLANER
+Mutation.removeNTAList PLANER
 Mutation.removeNtaRoomAloneWaiver PLANER
 Mutation.removePermanentNonInvigilator PLANER
 Mutation.removePortalLoginBlock ADMIN
@@ -199,6 +201,7 @@ Query.myAccount VIEWER
 Query.myNotificationSetting VIEWER
 Query.newSemesterConfigDefaults VIEWER
 Query.nta VIEWER
+Query.ntaListPreview VIEWER
 Query.ntaRoomAloneWaivers VIEWER
 Query.ntas VIEWER
 Query.ntasWithRegs VIEWER

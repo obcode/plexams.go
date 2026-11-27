@@ -24,6 +24,7 @@ var studentRegsDirtyOps = map[string]bool{
 	"addNTA":       true,
 	"updateNTA":    true,
 	"setNTAActive": true,
+	"applyNTAList": true,
 	// imports that change exams/students
 	"importExamsFromZPA":    true,
 	"importStudentsFromZPA": true,

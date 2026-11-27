@@ -408,6 +408,27 @@ type NotificationSetting struct {
 	UpdatedAt  time.Time
 }
 
+type NtaList struct {
+	SemesterID   string
+	Fk           string
+	Filename     string
+	SemesterCode string
+	ListSemester string
+	Stand        *time.Time
+	Warnings     []byte
+	ImportedAt   time.Time
+	ImportedBy   *string
+}
+
+type NtaListEntry struct {
+	SemesterID string
+	Fk         string
+	Line       int
+	Mtknr      string
+	Row        []byte
+	FirstSeen  time.Time
+}
+
 type NtaRoomAloneWaiver struct {
 	SemesterID string
 	Ancode     int

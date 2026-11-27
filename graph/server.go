@@ -177,6 +177,7 @@ type restRoutes struct {
 	uploadEmailAttachment     http.HandlerFunc
 	uploadEmailAttachmentsZip http.HandlerFunc
 	uploadPrimussZip          http.HandlerFunc
+	uploadNTAList             http.HandlerFunc
 	uploadJiraAttachment      http.HandlerFunc
 	uploadDatasetCSV          http.HandlerFunc
 	downloadPlannedRooms      http.HandlerFunc
@@ -193,6 +194,7 @@ func restRoutesOf(p *plexams.Plexams) restRoutes {
 		uploadEmailAttachment:     p.HTTPUploadEmailAttachment,
 		uploadEmailAttachmentsZip: p.HTTPUploadEmailAttachmentsZip,
 		uploadPrimussZip:          p.HTTPUploadPrimussZip,
+		uploadNTAList:             p.HTTPUploadNTAList,
 		uploadJiraAttachment:      p.HTTPUploadJiraAttachment,
 		uploadDatasetCSV:          p.HTTPUploadDatasetCSV,
 		downloadPlannedRooms:      p.HTTPDownloadPlannedRooms,
@@ -289,6 +291,7 @@ func newRouter(auth authProvider, state gateState, graphQL http.Handler, rest re
 		r.Post("/upload/email-attachment", rest.uploadEmailAttachment)
 		r.Post("/upload/email-attachments-zip", rest.uploadEmailAttachmentsZip)
 		r.Post("/upload/primuss-zip", rest.uploadPrimussZip)
+		r.Post("/upload/nta-list", rest.uploadNTAList)
 		r.Post("/upload/dataset-csv", rest.uploadDatasetCSV)
 	})
 	router.Group(func(r chi.Router) {
